@@ -164,9 +164,9 @@ int launch_pcache(int argc, char * argv[])
 
 	fs = (struct fs *)malloc(sizeof(struct fs));
 	fs_init(fs, argv[1]);
-	printf("starting fuse main...\n");
+	printf("starting pcache...\n");
 	ret = fuse_main(fuse_argc, fuse_argv, &fuse_ops, NULL);
-	printf("fuse main finished, ret %d\n", ret);
+	printf("pcache finished, ret %d\n", ret);
 	fs_destroy(fs);
 	return ret;
 }

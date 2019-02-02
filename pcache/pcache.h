@@ -23,6 +23,11 @@ struct pcache_info
 };
 
 
+int pcache_put();
+
+int pcache_get();
+
+int pcache_del();
 
 
 

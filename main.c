@@ -8,6 +8,7 @@
 
 #define PAREA_MAX_NODE 10
 #define PAREA_MAX 1000
+#define PFS_MOUNTPOINT "/mnt/beegfs"
 
 
 struct p_area_detail
@@ -51,7 +52,7 @@ int main(int argc, char * argv[])
 		ret = launch_pcache(argc, argv);
 		if (ret != 0)
 		{
-			printf("launch p are error\n");
+			printf("launch pare error\n");
 			return -1;
 		}
 	}

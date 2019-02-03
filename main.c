@@ -11,50 +11,58 @@
 #define PFS_MOUNTPOINT "/mnt/beegfs"
 
 
-struct p_area_detail
+struct parea_detail
 {
 	char *area_path;
-	int node_list[PAREA_MAX_NODE];
+	char node_list[PAREA_MAX_NODE][15];
 };
 
-struct sysstat
+// cluster stat
+struct clstat
 {
-	int p_area_number;
-	struct p_area_detail p_area_detail[PAREA_MAX];
+	int parea_number;
+	struct parea_detail parea_detail[PAREA_MAX];
 };
 
+/*
 struct sysconfig
 {
 
 };
 
-
-
 int resolve_config(struct sysconfig *conf)
 {
 
 }
+*/
 
+/*
+ * 1. Run redis clusters accroding to the sysconfig
+ * 2. Initial each pcache
+ * 3. Launch fuse
+ */
 int main(int argc, char * argv[])
 {
 	int ret;
 	int i;
-	struct sysstat *sysstat = (struct sysstat *) malloc(sizeof(struct sysstat));
-	ret = resolve_config(&sysstat);
+	struct clstat *clstat = (struct clstat *) malloc(sizeof(struct clstat));
+	/*ret = resolve_config(&clstat);
 	if (ret != 0)
 	{
 		printf("resolve config fail\n");
 		return -1;
-	}	
+	}*/
+	clstat->parea_number = 1;
+	clstat->
 
-	for (i = 0; i < sysstat->p_area_number; ++i)
+	// Initial redis clusters, call the script
+
+
+	ret = launch_pcache(argc, argv, clstat);
+	if (ret != 0)
 	{
-		ret = launch_pcache(argc, argv);
-		if (ret != 0)
-		{
-			printf("launch pare error\n");
-			return -1;
-		}
+		printf("launch pare error\n");
+		return -1;
 	}
 
 	return ret;

@@ -7,27 +7,29 @@
 #include <stdio.h>
 #include <hiredis/hiredis.h>
 
-#define NODE_NUM_MAX 128
 
-struct pcarea
+struct pcache
 {
-	int node_num;
-	char node_list[NODE_NUM_MAX][15];
+	/* redis info */
+	redisContext *redis;
+	redisReply *reply;
+	const char *hostname;
+	int port;
+	struct timeval timeout;
+
+	/* commit info */
+
 };
 
-// 
-struct pcache_info
-{
-	int pcarea_count;
-	struct pcarea *pcarea_list_head;
-};
+int find_parea(char *ipaddr);
 
+int pcache_init(struct pcache *new_pcache);
 
-int pcache_put();
+int pcache_set(struct pcache *pcache, redisReply *reply, char *key, char *value);
 
-int pcache_get();
+int pcache_get(struct pcache *pcache, redisReply *reply, char *key);
 
-int pcache_del();
+int pcache_del(struct pcache *pcache, redisReply *reply, char *key);
 
 
 

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <fuse.h>
 #include <malloc.h>
+#include <ifaddrs.h>
 #include "cache/fs.h"
 
 
@@ -142,7 +143,16 @@ static void usage(void)
     );
 }
 
-int launch_pcache(int argc, char * argv[])
+int start_fuse(struct fuse_args *args)
+{
+#if FUSE_USE_VERSION >= 26
+   return fuse_main(args->argc, args->argv, &fuse_ops, NULL);
+#else
+   return fuse_main(args->argc, args->argv, &fuse_ops);
+#endif
+}
+
+int launch_pcache(int argc, char * argv[], struct clstat *clstat)
 {
 	int ret;
 	int i;
@@ -162,11 +172,33 @@ int launch_pcache(int argc, char * argv[])
 		}
 	}
 
+	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
+   	fuse_opt_insert_arg( &args, 1, "-odirect_io" );
+   	fuse_opt_insert_arg( &args, 1, "-oattr_timeout=0");
+   	fuse_opt_insert_arg( &args, 1, "-oattr_timeout=0");
+
+   	// find the pare that including this node
+   	struct ifaddrs *id = NULL;
+   	struct ifaddrs *temp_addr = NULL;
+   	char *ipaddr = NULL;
+   	getifaddrs(&id);
+   	temp_addr = id;
+   	while(temp_addr != NULL)
+   	{
+   		if(strcmp(temp_addr->ifa_name, "eth1"))
+   		{
+   			ipaddr = temp_addr->ifa_addr;
+   		}
+   	}
+   	
+   	argv[1] = ipaddr;
 	fs = (struct fs *)malloc(sizeof(struct fs));
 	fs_init(fs, argv[1]);
 	printf("starting pcache...\n");
-	ret = fuse_main(fuse_argc, fuse_argv, &fuse_ops, NULL);
+	//ret = fuse_main(fuse_argc, fuse_argv, &fuse_ops, NULL);
+	ret = start_fuse(&args)
 	printf("pcache finished, ret %d\n", ret);
 	fs_destroy(fs);
+	freeifaddrs(id)
 	return ret;
 }

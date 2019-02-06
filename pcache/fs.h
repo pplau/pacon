@@ -4,9 +4,17 @@
 #ifndef FS_H
 #define FS_H
 
+#include "pcache.h"
+
 #define DIR_META 0
 #define FILE_META 1
 
+
+struct fs
+{
+	char *mount_point;
+	struct pcache *pcache;
+};
 
 struct metadata
 {
@@ -24,12 +32,12 @@ struct metadata
 	uint32_t nlink;
 };
 
-void md_to_value(struct metadata *md);
+char* md_to_value(struct metadata *md);
 
 
 
 // *********************** fuse interfaces ****************************
-void fs_init(struct fs *fs, char * mount_point);
+int fs_init(struct fs *fs, char * mount_point);
 
 int fs_mkdir(struct fs *fs, const char *path, mode_t mode);
 

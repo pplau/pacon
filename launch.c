@@ -176,22 +176,7 @@ int launch_pcache(int argc, char * argv[], struct clstat *clstat)
    	fuse_opt_insert_arg( &args, 1, "-odirect_io" );
    	fuse_opt_insert_arg( &args, 1, "-oattr_timeout=0");
    	fuse_opt_insert_arg( &args, 1, "-oattr_timeout=0");
-
-   	// find the pare that including this node
-   	struct ifaddrs *id = NULL;
-   	struct ifaddrs *temp_addr = NULL;
-   	char *ipaddr = NULL;
-   	getifaddrs(&id);
-   	temp_addr = id;
-   	while(temp_addr != NULL)
-   	{
-   		if(strcmp(temp_addr->ifa_name, "eth1"))
-   		{
-   			ipaddr = temp_addr->ifa_addr;
-   		}
-   	}
    	
-   	argv[1] = ipaddr;
 	fs = (struct fs *)malloc(sizeof(struct fs));
 	fs_init(fs, argv[1]);
 	printf("starting pcache...\n");
@@ -199,6 +184,6 @@ int launch_pcache(int argc, char * argv[], struct clstat *clstat)
 	ret = start_fuse(&args)
 	printf("pcache finished, ret %d\n", ret);
 	fs_destroy(fs);
-	freeifaddrs(id)
+	freeifaddrs(id);
 	return ret;
 }

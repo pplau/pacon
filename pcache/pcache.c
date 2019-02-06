@@ -22,14 +22,27 @@ int pcache_init(struct pcache *new_pcache)
 	}
 
 	/* construct namespace */
+	char *nsinfo_path;
 
+	FILE *fptr = fopen(new_pcache->mount_point, "r")
+	if (fptr == NULL)
+		goto out;
+	// get existing namespace data and put them into the pcache 
+
+out:
 	return 0;
+}
+
+int pcache_clean(struct pcache *pcache)
+{
+
 }
 
 int pcache_free(struct pcache *pcache)
 {
 	/* disconnects redis */
 	redisFree(pcache->redis);
+	free(pcache);
 	return 0;
 }
 

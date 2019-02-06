@@ -17,8 +17,10 @@ struct pcache
 	int port;
 	struct timeval timeout;
 
-	/* commit info */
+	/* mount info */
+	char *mount_point;
 
+	/* commit info */
 };
 
 int find_parea(char *ipaddr);
@@ -30,6 +32,10 @@ int pcache_set(struct pcache *pcache, redisReply *reply, char *key, char *value)
 int pcache_get(struct pcache *pcache, redisReply *reply, char *key);
 
 int pcache_del(struct pcache *pcache, redisReply *reply, char *key);
+
+
+/************* postpone commit *****************/
+
 
 
 

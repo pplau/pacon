@@ -9,10 +9,55 @@
 #include "pcache.h"
 
 
+char* md_to_value(struct metadata *md)
+{
+	char *value;
+	value = (char *)malloc(sizeof(struct metadata));
+	memcpy(value, md, sizeof(struct metadata));
+	return value;
+}
+
+char* generate_key(char *path, char opt_type)
+{
+	
+}
+
 // *********************** fuse interfaces ****************************
 void fs_init(struct fs *fs, char * mount_point)
 {
+	int ret;
 
+   	// find the pare that including this node
+   	struct ifaddrs *id = NULL;
+   	struct ifaddrs *temp_addr = NULL;
+   	char *ipaddr = NULL;
+   	getifaddrs(&id);
+   	temp_addr = id;
+   	while(temp_addr != NULL)
+   	{
+   		if(strcmp(temp_addr->ifa_name, "eth1"))
+   		{
+   			ipaddr = temp_addr->ifa_addr;
+   		}
+   	}
+
+   	struct pcache *new_pcache;
+	new_pcache = (struct pcache *)malloc(sizeof(struct pcache));
+	new_pcache->hostname = ipaddr;
+	new_pcache->port = 6379;
+	new_pcache->timeout = 50000;
+	new_pcache->mount_point = mount_point;
+	ret = pcache_init(new_pcache);
+	if (ret != 0)
+	{
+		printf("fs init error\n");
+		pcache_free(new_pcache);
+		return -1;
+	}
+
+	fs->mount_point = mount_point;
+	fs->pcache = new_pcache;
+	return 0;
 }
 
 int fs_mkdir(struct fs *fs, const char *path, mode_t mode)

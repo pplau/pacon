@@ -205,7 +205,31 @@ int fs_rename(struct fs *fs, const char *path, const char *newpath)
 
 int fs_open(struct fs *fs, const char *path, struct fuse_file_info *fileInfo)
 {
+	int ret;
+	struct metadata *md;
+	md = (struct metadata *)malloc(sizeof(struct metadata));
+	ret = lookup(fs->pcache, path, md);
+	if (ret != 0)
+	{
+		printf("open file fail\n");
+		return -1;
+	}
+	if (get_md_flag(md->flags, MD_type) == 0)
+	{
+		printf("it is a directory\n");
+		return -1;
+	}
 
+	if (md->size > SMALL_FILE_SIZE)
+	{
+		// large file, access DFS directly
+		
+		goto out;
+	}
+	fileInfo->fh = md->fd;
+
+out:
+	return ret;
 }
 
 int fs_opendir(struct fs *fs, const char *path, struct fuse_file_info *fileInfo)

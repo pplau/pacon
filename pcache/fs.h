@@ -8,6 +8,7 @@
 
 #define DIR_META 0
 #define FILE_META 1
+#define SMALL_FILE_SIZE 4096
 
 
 enum metadataflags

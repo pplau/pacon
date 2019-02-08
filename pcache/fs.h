@@ -10,6 +10,22 @@
 #define FILE_META 1
 
 
+enum metadataflags
+{
+	MD_type,  // 0 is directory, 1 is file
+	MD_cache, // 1 is cached
+	MD_commit, // 0 is committed, 1 is uncommit
+	MD_file_open, // for file metadata, 0 is close, 1 is open
+};
+
+enum operations
+{
+	OP_mkdir,  // 
+	OP_create,  // 
+	OP_chmod, //
+	OP_del, //
+};
+
 struct fs
 {
 	char *mount_point;
@@ -18,10 +34,9 @@ struct fs
 
 struct metadata
 {
-	int md_type;  // DIR_META or FILE_META
 	uint32_t id;
-	uint32_t flags;   //  
-	char key[MAX_DENTRY_NAME];  // full path
+	uint32_t flags;   //  including the metadata type
+	//char key[MAX_DENTRY_NAME];  // full path
 	uint32_t mode;
 	uint32_t ctime;
 	uint32_t atime;
@@ -30,6 +45,13 @@ struct metadata
 	uint32_t uid;
 	uint32_t gid;
 	uint32_t nlink;
+	uint32_t fd;
+	uint32_t opt;
+};
+
+struct simple_metadata
+{
+	uint32_t flags;
 };
 
 char* md_to_value(struct metadata *md);

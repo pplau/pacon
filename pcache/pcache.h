@@ -8,6 +8,12 @@
 #include <hiredis/hiredis.h>
 
 
+// control struct of lazy committing
+struct commit_ctl
+{
+	
+};
+
 struct pcache
 {
 	/* redis info */
@@ -21,6 +27,7 @@ struct pcache
 	char *mount_point;
 
 	/* commit info */
+	struct commit_ctl *commit_ctl;
 };
 
 int find_parea(char *ipaddr);
@@ -34,7 +41,9 @@ int pcache_get(struct pcache *pcache, redisReply *reply, char *key);
 int pcache_del(struct pcache *pcache, redisReply *reply, char *key);
 
 
-/************* postpone commit *****************/
+/************* commit phase *****************/
+
+void bg_commit();
 
 
 

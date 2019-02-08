@@ -173,9 +173,10 @@ int launch_pcache(int argc, char * argv[], struct clstat *clstat)
 	}
 
 	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-   	fuse_opt_insert_arg( &args, 1, "-odirect_io" );
+   	fuse_opt_insert_arg( &args, 1, "-odirect_io");
    	fuse_opt_insert_arg( &args, 1, "-oattr_timeout=0");
    	fuse_opt_insert_arg( &args, 1, "-oattr_timeout=0");
+   	fuse_opt_insert_arg( &args, 1, "-ononempty");
    	
 	fs = (struct fs *)malloc(sizeof(struct fs));
 	fs_init(fs, argv[1]);

@@ -23,11 +23,11 @@ int pcache_init(struct pcache *new_pcache)
 
 	/* construct namespace */
 	char *nsinfo_path;
-
-	FILE *fptr = fopen(new_pcache->mount_point, "r")
+	FILE *fptr = fopen(new_pcache->mount_point, "r");
 	if (fptr == NULL)
 		goto out;
 	// get existing namespace data and put them into the pcache 
+
 
 out:
 	return 0;
@@ -47,6 +47,12 @@ int pcache_free(struct pcache *pcache)
 }
 
 int pcache_set(struct pcache *pcache, redisReply *reply, char *key, char *value)
+{
+	reply = redisCommand(pcache->redis,"SETNX %s %s", key, value);
+	return 0;
+}
+
+int pcache_update(struct pcache *pcache, redisReply *reply, char *key, char *value)
 {
 	reply = redisCommand(pcache->redis,"SET %s %s", key, value);
 	return 0;

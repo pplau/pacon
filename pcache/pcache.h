@@ -5,7 +5,8 @@
 #define PCACHE_H
 
 #include <stdio.h>
-#include <hiredis/hiredis.h>
+#include <hiredis-vip/hiredis.h>
+#include <hiredis-vip/hircluster.h>
 
 
 // control struct of lazy committing
@@ -17,8 +18,8 @@ struct commit_ctl
 struct pcache
 {
 	/* redis info */
-	redisContext *redis;
-	redisReply *reply;
+	redisClusterContext *redis;
+	//redisReply *reply;
 	const char *hostname;
 	int port;
 	struct timeval timeout;

@@ -33,13 +33,15 @@ struct pcache
 
 int find_parea(char *ipaddr);
 
-int pcache_init(struct pcache *new_pcache);
+redisReply* pcache_init(struct pcache *new_pcache);
 
-int pcache_set(struct pcache *pcache, redisReply *reply, char *key, char *value);
+redisReply* pcache_set(struct pcache *pcache, char *key, char *value);
 
-int pcache_get(struct pcache *pcache, redisReply *reply, char *key);
+redisReply* pcache_get(struct pcache *pcache, char *key);
 
-int pcache_del(struct pcache *pcache, redisReply *reply, char *key);
+redisReply* pcache_del(struct pcache *pcache, char *key);
+
+int pcache_free(struct pcache *pcache);
 
 
 /************* commit phase *****************/

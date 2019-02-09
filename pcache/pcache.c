@@ -32,28 +32,12 @@ int find_parea(char *ipaddr)
 int pcache_init(struct pcache *new_pcache)
 {
 	/* connect to redis */
-	new_pcache->redis = redisClusterContextInit();
-	redisClusterSetOptionAddNodes(new_pcache->redis, node_list);
-	redisClusterConnect2(new_pcache->redis);
-	//new_pcache->redis = redisConnect(new_pcache->hostname, new_pcache->port);
+	new_pcache->redis = redisClusterConnect(node_list, HIRCLUSTER_FLAG_ROUTE_USE_SLOTS);
 	if (new_pcache->redis == NULL || new_pcache->redis->err)
 	{
 		printf("can not connect to redis\n");
 		return -1;
 	}
-
-	char *key = "foo";
-	char *value = "bar";
-
-	redisReply *reply = redisClusterCommand(new_pcache->redis, "set %s %s", key, value);
-    if(reply == NULL)
-    {
-        printf("reply is null[%s]\n", cc->errstr);
-        redisClusterFree(cc);
-        return -1;
-    }
-    printf("get: %s\n", reply->str);
-    freeReplyObject(reply);
 
 	/* construct namespace 
 	char *nsinfo_path;
@@ -61,7 +45,6 @@ int pcache_init(struct pcache *new_pcache)
 	if (fptr == NULL)
 		goto out;*/
 	// get existing namespace data and put them into the pcache 
-
 
 out:
 	return 0;
@@ -80,26 +63,22 @@ int pcache_free(struct pcache *pcache)
 	return 0;
 }
 
-int pcache_set(struct pcache *pcache, redisReply *reply, char *key, char *value)
+redisReply* pcache_set(struct pcache *pcache, char *key, char *value)
 {
-	reply = redisClusterCommand(pcache->redis,"SETNX %s %s", key, value);
-	return 0;
+	return redisClusterCommand(pcache->redis,"SETNX %s %s", key, value);
 }
 
-int pcache_update(struct pcache *pcache, redisReply *reply, char *key, char *value)
+redisReply* pcache_update(struct pcache *pcache, char *key, char *value)
 {
-	reply = redisClusterCommand(pcache->redis,"SET %s %s", key, value);
-	return 0;
+	return redisClusterCommand(pcache->redis,"SET %s %s", key, value);
 }
 
-int pcache_get(struct pcache *pcache, redisReply *reply, char *key)
+redisReply* pcache_get(struct pcache *pcache, char *key)
 {
-	reply = redisClusterCommand(pcache->redis,"GET %s", key);
-	return 0;
+	return redisClusterCommand(pcache->redis,"GET %s", key);
 }
 
-int pcache_del(struct pcache *pcache, redisReply *reply, char *key)
+redisReply* pcache_del(struct pcache *pcache, char *key)
 {
-	reply = redisClusterCommand(pcache->redis,"DEL %s", key);
-	return 0;
+	return redisClusterCommand(pcache->redis,"DEL %s", key);
 }

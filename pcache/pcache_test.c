@@ -17,16 +17,24 @@ int main(int argc, char const *argv[])
 
 	int ret;
 	redisReply *reply;
-	reply = (struct redisReply *)malloc(sizeof(struct redisReply));
-	ret = pcache_set(pc, reply, key, value);
+	reply = pcache_set(pc, key, value);
 	printf("set success\n");
-	ret = pcache_get(pc, reply, key);
+	freeReplyObject(reply);
+
+	reply = pcache_get(pc, key);
 	printf("get key: %s\n", reply->str);
-	ret = pcache_update(pc, reply, key, new_value);
-	ret = pcache_get(pc, reply, key);
+	freeReplyObject(reply);
+
+	reply = pcache_update(pc, key, new_value);
+	freeReplyObject(reply);
+	reply = pcache_get(pc, key);
 	printf("get key after update: %s\n", reply->str);
-	ret = pcache_del(pc, reply, key);
+	freeReplyObject(reply);
+
+	reply = pcache_del(pc, key);
 	printf("get key after del: %s\n", reply->str);
+	freeReplyObject(reply);
+	
 	ret = pcache_free(pc);
 	printf("free success\n");
 

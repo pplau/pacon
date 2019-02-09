@@ -22,7 +22,7 @@ static char *node_list = "10.182.171.1:6379,10.182.171.2:6379,10.182.171.3:6379,
 							10.182.172.21:6379,10.182.172.22:6379,10.182.172.23:6379,10.182.172.24:6379,\
 							10.182.172.25:6379,10.182.172.26:6379,10.182.172.27:6379,10.182.172.28:6379,\
 							10.182.172.29:6379,10.182.172.30:6379,10.182.172.31:6379,10.182.172.32:6379";
-							
+
 
 int find_parea(char *ipaddr)
 {
@@ -41,6 +41,19 @@ int pcache_init(struct pcache *new_pcache)
 		printf("can not connect to redis\n");
 		return -1;
 	}
+
+	char *key = "foo";
+	char *value = "bar";
+
+	redisReply *reply = redisClusterCommand(new_pcache->redis, "set %s %s", key, value);
+    if(reply == NULL)
+    {
+        printf("reply is null[%s]\n", cc->errstr);
+        redisClusterFree(cc);
+        return -1;
+    }
+    printf("get: %s\n", reply->str);
+    freeReplyObject(reply);
 
 	/* construct namespace 
 	char *nsinfo_path;

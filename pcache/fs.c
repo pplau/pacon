@@ -13,6 +13,8 @@
 #define SIMPLE_MD_SIZE 4
 
 
+/*********************** tools *************************/
+
 void set_md_flag(struct metadata *md, int flag_type, int val)
 {
 	if (val == 0)
@@ -70,6 +72,55 @@ char* generate_key(char *path, char opt_type)
 
 }
 
+/* 
+ * ret = 0 means recursive sub file/dir, 1 means not recursive sub file/dir,  
+ * recursive = 0 means not recursive, =1 means recursive search all sub dir 
+ */
+int child_cmp(char *path, char *p_path, int recursive)
+{
+	int len = strlen(path);
+	int p_len = strlen(p_path); 
+	if (len <= p_len)
+		return 0;    // not the child dentry
+
+	int i;
+	if (recursive == 0)
+	{
+		for (i = 0; i < p_len; ++i)
+		{
+			if (path[i] == p_path[i])
+				continue;
+			if (path[i] != p_path[i])
+				return 0;
+		}
+		if (p_len > 1 && path[i] != '/')    // just name prefix is the same and not the root
+			return 0;
+		i++;
+		for (; i < len; ++i)
+		{
+			if (path[i] == '/')
+				return 0;
+		}
+		return 1;
+	} 
+	if (recursive == 1)
+	{
+		for (i = 0; i < p_len; ++i)
+		{
+			if (path[i] == p_path[i])
+				continue;
+			if (path[i] != p_path[i])
+				return 0;
+		}
+		if (path[i] != '/')
+			return 0;
+		return 1;
+	}		
+	return -1;
+}
+
+
+/********************* inner functions ***********************/
 /*
  *	1. check the path in the cache
  * 	2. if fail, lookup in MDS
@@ -78,8 +129,7 @@ int lookup(struct pcache *pcache, const char *path, struct metadata *md)
 {
 	int ret;
 	redisReply *reply;
-	reply = (struct redisReply *)malloc(sizeof(struct redisReply));
-	ret = pcache_get(pcache, reply, path);
+	reply = pcache_get(pcache, path);
 	if (reply->len > SIMPLE_MD_SIZE)
 	{
 		struct stat buf;
@@ -95,14 +145,31 @@ int lookup(struct pcache *pcache, const char *path, struct metadata *md)
 		md->uid = buf.st_uid;
 		md->gid = buf.st_gid;
 		md->nlink = 0;
-		pcache_set(pcache, reply, path, (char *) md);
+		pcache_set(pcache, path, (char *) md);
 		goto out;
 	}
 
 	md = (struct metadata *)(reply->str);
 out:
+	freeReplyObject(reply);
 	return 0;
 }
+
+int readdir_local()
+{
+
+}
+
+int readdir_remote()
+{
+
+}
+
+int readdir_merge()
+{
+	
+}
+
 
 // *********************** fuse interfaces ****************************
 void fs_init(struct fs *fs, char * mount_point)
@@ -162,14 +229,31 @@ int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
 
 	// put the new metadata into pcache
 	redisReply *reply;
-	reply = (struct redisReply *)malloc(sizeof(struct redisReply));
-	ret = pcache_set(fs->pcache, reply, key, value);
+	reply = pcache_set(fs->pcache, key, value);
 	return 0;
 }
 
+/* 
+ * 1. read the entries in the local
+ * 2. read the entries in other nodes
+ * 3. merge the results
+ */
 int fs_readdir(struct fs *fs, const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fileInfo)
 {
+	int ret, entry_count;
+	ret = readdir_local();
+	ret = readdir_remote();
+	entry_count = readdir_merge();
 
+	int i;
+	for (i = 0; i < entry_count; ++i)
+	{
+		if (filler(buf, basename(dir_name), NULL, 0) < 0) 
+		{
+			printf("filler %s error in readdir\n", dir_name);
+			return -1;
+		}
+	}
 }
 
 int fs_getattr(struct fs *fs, const char* path, struct stat* st)
@@ -195,7 +279,9 @@ int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 
 int fs_rmdir(struct fs *fs, const char *path)
 {
-
+	int ret;
+	struct metadata *md;
+	md = (struct metadata *)malloc(sizeof(struct metadata));
 }
 
 int fs_rename(struct fs *fs, const char *path, const char *newpath)
@@ -223,7 +309,7 @@ int fs_open(struct fs *fs, const char *path, struct fuse_file_info *fileInfo)
 	if (md->size > SMALL_FILE_SIZE)
 	{
 		// large file, access DFS directly
-		
+
 		goto out;
 	}
 	fileInfo->fh = md->fd;

@@ -12,7 +12,15 @@
 // control struct of lazy committing
 struct commit_ctl
 {
+	int uncommit_count;
 	
+};
+
+// used to accelerate readdir
+struct local_namespace
+{
+	int entry_count;
+
 };
 
 struct pcache
@@ -27,13 +35,16 @@ struct pcache
 	/* mount info */
 	char *mount_point;
 
+	/* local namespace */
+	struct local_namespace *loc_ns;
+
 	/* commit info */
 	struct commit_ctl *commit_ctl;
 };
 
 int find_parea(char *ipaddr);
 
-redisReply* pcache_init(struct pcache *new_pcache);
+int pcache_init(struct pcache *new_pcache);
 
 redisReply* pcache_set(struct pcache *pcache, char *key, char *value);
 

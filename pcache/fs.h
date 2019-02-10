@@ -24,7 +24,8 @@ enum operations
 	OP_mkdir,  // 
 	OP_create,  // 
 	OP_chmod, //
-	OP_del, //
+	OP_rm, //
+	OP_rmdir,
 };
 
 struct fs

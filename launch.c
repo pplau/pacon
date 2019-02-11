@@ -182,9 +182,9 @@ int launch_pcache(int argc, char * argv[], struct clstat *clstat)
 	fs_init(fs, NULL, argv[1]);
 	printf("starting pcache...\n");
 	//ret = fuse_main(fuse_argc, fuse_argv, &fuse_ops, NULL);
-	ret = start_fuse(&args)
+	ret = start_fuse(&args);
 	printf("pcache finished, ret %d\n", ret);
 	fs_destroy(fs);
-	freeifaddrs(id);
+	//freeifaddrs(id);
 	return ret;
 }

@@ -186,7 +186,7 @@ int add_to_local_namespace(struct pcache *pcache, char *path)
 	struct entry_info *entry_info;
 	entry_info = init_entry_info(path);
 
-	pthread_rwlock_wrlock(loc_ns->rwlock);
+	pthread_rwlock_wrlock(&(loc_ns->rwlock));
 	if (loc_ns->head == NULL && loc_ns->tail == NULL)
 	{
 		loc_ns->head = entry_info;
@@ -197,14 +197,14 @@ int add_to_local_namespace(struct pcache *pcache, char *path)
 		loc_ns->tail = entry_info;
 		loc_ns->entry_count++;
 	}
-	pthread_rwlock_unlock(loc_ns->rwlock);
-	return 0
+	pthread_rwlock_unlock(&(loc_ns->rwlock));
+	return 0;
 }
 
 int remove_from_local_namespace(struct pcache *pcache, char *path)
 {
 	struct local_namespace *loc_ns = pcache->loc_ns;
-	pthread_rwlock_wrlock(loc_ns->rwlock);
+	pthread_rwlock_wrlock(&(loc_ns->rwlock));
 	struct entry_info *preentry_info = search_preentry_in_local_namespace(path);
 	if (loc_ns->entry_count == 1)
 	{
@@ -215,7 +215,7 @@ int remove_from_local_namespace(struct pcache *pcache, char *path)
 	} else {
 
 	}
-	pthread_rwlock_unlock(loc_ns->rwlock);
+	pthread_rwlock_unlock(&(loc_ns->rwlock));
 }
 
 int readdir_local(struct pcache *pcache, void *buf, fuse_fill_dir_t filler, char *p_path)
@@ -226,10 +226,10 @@ int readdir_local(struct pcache *pcache, void *buf, fuse_fill_dir_t filler, char
 	{
 		if (child_cmp(ptr->entry_name, p_path, 0) == 1)
 		{
-			if (filler(buf, basename(name), NULL, 0) < 0) 
+			if (filler(buf, basename(ptr->entry_name), NULL, 0) < 0) 
 			{
-				printf("filler %s error in func = %s\n", name, __FUNCTION__);
-				return ERROR;
+				printf("filler %s error in func = %s\n", ptr->entry_name, __FUNCTION__);
+				return -1;
 			}
 		}
 		ptr = ptr->next;
@@ -249,7 +249,7 @@ int readdir_merge()
 
 
 // *********************** fuse interfaces ****************************
-void fs_init(struct fs *fs, char *node_list, char *mount_point)
+int fs_init(struct fs *fs, char *node_list, char *mount_point)
 {
 	int ret;
 
@@ -300,10 +300,11 @@ int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
 	md->gid = getgid();
 	md->nlink = 0;
 	//strcpy(metadata->key, path);
-	set_opt_flag(metadata, OPT_mkdir, 1);
+	set_opt_flag(md, OP_mkdir, 1);
 
 	// put the new metadata into pcache
 	redisReply *reply;
+	char *value = (char *)md;
 	reply = pcache_set(fs->pcache, key, value);
 	if (reply->integer == 0)
 	{

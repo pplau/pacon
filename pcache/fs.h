@@ -4,6 +4,7 @@
 #ifndef FS_H
 #define FS_H
 
+#include <fuse.h>
 #include "pcache.h"
 
 #define DIR_META 0

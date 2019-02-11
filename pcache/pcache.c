@@ -39,6 +39,19 @@ int pcache_init(struct pcache *new_pcache)
 		return -1;
 	}
 
+	// inital temporary local namespace
+   	struct local_namespace *loc_ns;
+	loc_ns = (struct local_namespace *)malloc(sizeof(struct local_namespace));
+	loc_ns->entry_count = 0;
+	loc_ns->head = NULL;
+	new_pcache->loc_ns = loc_ns;
+
+	// inital commit control info
+   	struct commit_ctl *commit_ctl;
+	commit_ctl = (struct commit_ctl *)malloc(sizeof(struct commit_ctl));
+	commit_ctl->uncommit_count = 0;
+	new_pcache->commit_ctl = commit_ctl;
+
 	/* construct namespace 
 	char *nsinfo_path;
 	FILE *fptr = fopen(new_pcache->mount_point, "r");
@@ -59,6 +72,8 @@ int pcache_free(struct pcache *pcache)
 {
 	/* disconnects redis */
 	redisClusterFree(pcache->redis);
+	free(pcache->loc_ns);
+	free(pcache->commit_ctl);
 	free(pcache);
 	return 0;
 }

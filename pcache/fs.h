@@ -61,7 +61,7 @@ char* md_to_value(struct metadata *md);
 
 
 // *********************** fuse interfaces ****************************
-int fs_init(struct fs *fs, char * mount_point);
+int fs_init(struct fs *fs, char *node_list, char *mount_point);
 
 int fs_mkdir(struct fs *fs, const char *path, mode_t mode);
 

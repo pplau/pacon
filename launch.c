@@ -179,7 +179,7 @@ int launch_pcache(int argc, char * argv[], struct clstat *clstat)
    	fuse_opt_insert_arg( &args, 1, "-ononempty");
    	
 	fs = (struct fs *)malloc(sizeof(struct fs));
-	fs_init(fs, argv[1]);
+	fs_init(fs, NULL, argv[1]);
 	printf("starting pcache...\n");
 	//ret = fuse_main(fuse_argc, fuse_argv, &fuse_ops, NULL);
 	ret = start_fuse(&args)

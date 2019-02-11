@@ -5,32 +5,39 @@
 #define PCACHE_H
 
 #include <stdio.h>
+#include <linux/spinlock.h>
 #include <hiredis-vip/hiredis.h>
 #include <hiredis-vip/hircluster.h>
 
+
+// 
+struct entry_info
+{
+	char *entry_name;
+	struct entry_info *next;
+};
 
 // control struct of lazy committing
 struct commit_ctl
 {
 	int uncommit_count;
-	
+
 };
 
 // used to accelerate readdir
 struct local_namespace
 {
 	int entry_count;
-
+	struct entry_info *head;
+	struct entry_info *tail;
+	spinlock_t spinlock;
 };
 
 struct pcache
 {
 	/* redis info */
 	redisClusterContext *redis;
-	//redisReply *reply;
-	const char *hostname;
-	int port;
-	struct timeval timeout;
+	char *node_list;
 
 	/* mount info */
 	char *mount_point;

@@ -6,6 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
+#include <linux/spinlock.h>
 #include "fs.h"
 #include "pcache.h"
 
@@ -155,9 +156,85 @@ out:
 	return 0;
 }
 
-int readdir_local()
+struct entry_info* init_entry_info(char *path)
 {
+	struct entry_info *entry_info;
+	entry_info = (struct entry_info *)malloc(sizeof(struct entry_info));
+	int len = strlen(path);
+	char *entry_name = (char *)malloc(len);
+	int i;
+	char *cur = entry_name;
+	for (i = 0; i < len; ++i)
+	{
+		*cur = *(path + 1);
+		cur++;
+	}
+	entry_info->next = NULL;
+	return entry_info;
+}
 
+void free_entry_info(struct entry_info *entry_info)
+{
+	free(entry_info->entry_name);
+	free(entry_info);
+}
+
+// add the new entry to the tail
+int add_to_local_namespace(struct pcache *pcache, char *path)
+{
+	struct local_namespace *loc_ns = pcache->loc_ns;
+	struct entry_info *entry_info;
+	entry_info = init_entry_info(path);
+
+	spin_lock(loc_ns->spinlock);
+	if (loc_ns->head == NULL && loc_ns->tail == NULL)
+	{
+		loc_ns->head = entry_info;
+		loc_ns->tail = entry_info;
+		loc_ns->entry_count = 1;
+	} else {
+		loc_ns->tail->next = entry_info;
+		loc_ns->tail = entry_info;
+		loc_ns->entry_count++;
+	}
+	spin_unlock(loc_ns->spinlock);
+	return 0
+}
+
+int remove_from_local_namespace(struct pcache *pcache, char *path)
+{
+	struct local_namespace *loc_ns = pcache->loc_ns;
+	spin_lock(loc_ns->spinlock)
+	struct entry_info *preentry_info = search_preentry_in_local_namespace(path);
+	if (loc_ns->entry_count == 1)
+	{
+		free_entry_info(entry_info);
+		loc_ns->head = NULL;
+		loc_ns->tail = NULL;
+		loc_ns->entry_count = 0;
+	} else {
+
+	}
+	spin_unlock(loc_ns->spinlock);
+}
+
+int readdir_local(struct pcache *pcache, void *buf, fuse_fill_dir_t filler, char *p_path)
+{
+	struct local_namespace *loc_ns = pcache->loc_ns;
+	struct entry_info *ptr = loc_ns->head;
+	while (ptr != NULL)
+	{
+		if (child_cmp(ptr->entry_name, p_path, 0) == 1)
+		{
+			if (filler(buf, basename(name), NULL, 0) < 0) 
+			{
+				printf("filler %s error in func = %s\n", name, __FUNCTION__);
+				return ERROR;
+			}
+		}
+		ptr = ptr->next;
+	}
+	return 0;
 }
 
 int readdir_remote()
@@ -167,16 +244,16 @@ int readdir_remote()
 
 int readdir_merge()
 {
-	
+
 }
 
 
 // *********************** fuse interfaces ****************************
-void fs_init(struct fs *fs, char * mount_point)
+void fs_init(struct fs *fs, char *node_list, char *mount_point)
 {
 	int ret;
 
-   	// find the pare that including this node
+   	/* find the pare that including this node
    	struct ifaddrs *id = NULL;
    	struct ifaddrs *temp_addr = NULL;
    	char *ipaddr = NULL;
@@ -188,14 +265,12 @@ void fs_init(struct fs *fs, char * mount_point)
    		{
    			ipaddr = temp_addr->ifa_addr;
    		}
-   	}
+   	}*/
 
    	struct pcache *new_pcache;
 	new_pcache = (struct pcache *)malloc(sizeof(struct pcache));
-	new_pcache->hostname = ipaddr;
-	new_pcache->port = 6379;
-	new_pcache->timeout = 50000;
 	new_pcache->mount_point = mount_point;
+	new_pcache->node_list = node_list;
 	ret = pcache_init(new_pcache);
 	if (ret != 0)
 	{
@@ -230,6 +305,13 @@ int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
 	// put the new metadata into pcache
 	redisReply *reply;
 	reply = pcache_set(fs->pcache, key, value);
+	if (reply->integer == 0)
+	{
+		printf("mkdir: set %s to redis fail\n", path);
+		return -1;
+	}
+	ret = add_to_local_namespace(fs->pcache, path);
+
 	return 0;
 }
 
@@ -240,20 +322,10 @@ int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
  */
 int fs_readdir(struct fs *fs, const char *path, void *buf, fuse_fill_dir_t filler, off_t offset, struct fuse_file_info *fileInfo)
 {
-	int ret, entry_count;
-	ret = readdir_local();
+	int ret;
+	ret = readdir_local(fs->pcache, buf, filler, path);
 	ret = readdir_remote();
-	entry_count = readdir_merge();
-
-	int i;
-	for (i = 0; i < entry_count; ++i)
-	{
-		if (filler(buf, basename(dir_name), NULL, 0) < 0) 
-		{
-			printf("filler %s error in readdir\n", dir_name);
-			return -1;
-		}
-	}
+	return ret;
 }
 
 int fs_getattr(struct fs *fs, const char* path, struct stat* st)

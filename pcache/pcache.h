@@ -5,7 +5,7 @@
 #define PCACHE_H
 
 #include <stdio.h>
-#include <linux/spinlock.h>
+#include <pthread.h>
 #include <hiredis-vip/hiredis.h>
 #include <hiredis-vip/hircluster.h>
 
@@ -30,7 +30,7 @@ struct local_namespace
 	int entry_count;
 	struct entry_info *head;
 	struct entry_info *tail;
-	spinlock_t spinlock;
+	pthread_rwlock_t rwlock;
 };
 
 struct pcache

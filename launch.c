@@ -7,7 +7,7 @@
 #include <fuse.h>
 #include <malloc.h>
 #include <ifaddrs.h>
-#include "cache/fs.h"
+#include "pcache/fs.h"
 
 
 static struct fs *fs;

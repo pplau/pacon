@@ -44,6 +44,8 @@ int pcache_init(struct pcache *new_pcache)
 	loc_ns = (struct local_namespace *)malloc(sizeof(struct local_namespace));
 	loc_ns->entry_count = 0;
 	loc_ns->head = NULL;
+	loc_ns->tail = NULL;
+	pthread_rwlock_init(&(loc_ns->rwlock), NULL);
 	new_pcache->loc_ns = loc_ns;
 
 	// inital commit control info

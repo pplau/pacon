@@ -6,7 +6,7 @@
 #include <string.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <linux/spinlock.h>
+#include <pthread.h>
 #include "fs.h"
 #include "pcache.h"
 
@@ -186,7 +186,7 @@ int add_to_local_namespace(struct pcache *pcache, char *path)
 	struct entry_info *entry_info;
 	entry_info = init_entry_info(path);
 
-	spin_lock(loc_ns->spinlock);
+	pthread_rwlock_wrlock(loc_ns->rwlock);
 	if (loc_ns->head == NULL && loc_ns->tail == NULL)
 	{
 		loc_ns->head = entry_info;
@@ -197,14 +197,14 @@ int add_to_local_namespace(struct pcache *pcache, char *path)
 		loc_ns->tail = entry_info;
 		loc_ns->entry_count++;
 	}
-	spin_unlock(loc_ns->spinlock);
+	pthread_rwlock_unlock(loc_ns->rwlock);
 	return 0
 }
 
 int remove_from_local_namespace(struct pcache *pcache, char *path)
 {
 	struct local_namespace *loc_ns = pcache->loc_ns;
-	spin_lock(loc_ns->spinlock)
+	pthread_rwlock_wrlock(loc_ns->rwlock);
 	struct entry_info *preentry_info = search_preentry_in_local_namespace(path);
 	if (loc_ns->entry_count == 1)
 	{
@@ -215,7 +215,7 @@ int remove_from_local_namespace(struct pcache *pcache, char *path)
 	} else {
 
 	}
-	spin_unlock(loc_ns->spinlock);
+	pthread_rwlock_unlock(loc_ns->rwlock);
 }
 
 int readdir_local(struct pcache *pcache, void *buf, fuse_fill_dir_t filler, char *p_path)

@@ -53,10 +53,6 @@ int main(int argc, char * argv[])
 		return -1;
 	}*/
 	clstat->parea_number = 1;
-	clstat->
-
-	// Initial redis clusters, call the script
-
 
 	ret = launch_pcache(argc, argv, clstat);
 	if (ret != 0)

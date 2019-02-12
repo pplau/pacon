@@ -5,14 +5,21 @@
 #define FS_H
 
 #include <fuse.h>
+#include <errno.h>
 #include "pcache.h"
 
 #define DIR_META 0
 #define FILE_META 1
 #define SMALL_FILE_SIZE 4096
 
+// general return state
 #define SUCCESS 0
 #define ERROR -1
+
+// lookup state
+#define COMP_HIT 0
+#define SIMP_HIT 1
+#define LOOKUP_MISS -1
 
 
 enum metadataflags

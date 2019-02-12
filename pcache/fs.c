@@ -134,13 +134,20 @@ int lookup(struct pcache *pcache, const char *path, struct metadata *md)
 	if (reply->integer == 0)
 	{
 		printf("lookup entry miss\n");
-		return -1;
+		freeReplyObject(reply);
+		return LOOKUP_MISS;
 	}
-
-	md = (struct metadata *)(reply->str);
-out:
-	freeReplyObject(reply);
-	return 0;
+	if (reply->len > SMALL_FILE_SIZE)
+	{
+		md = (struct metadata *)(reply->str);
+		freeReplyObject(reply);
+		return COMP_HIT;
+	}
+	if (reply->len <= SMALL_FILE_SIZE)
+	{
+		freeReplyObject(reply);
+		return SIMP_HIT;
+	}
 }
 
 struct entry_info* init_entry_info(char *path)
@@ -324,35 +331,37 @@ int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 	ret = lookup(fs->pcache, path, md);
 
 	// entry exist
-	if (ret == 0)
+	if (ret == COMP_HIT)
 	{
-		if (reply->len <= SIMPLE_MD_SIZE)
-		{
-			// if len > SIMPLE_MD_SIZE means that complete metdata if the target entry is cached
-			// if not, means that we only cache the simple version, then get full version from the DFS
-			struct stat buf;
-			char *abs_path;
-			abs_path = get_abs_path();
-			if ( stat(abs_path, &buf) != 0 )
-				return -1;
-			md->id = 0;
-			md->flags = 0;
-			md->mode = buf.st_mode;
-			md->ctime = buf.st_ctime;
-			md->atime = buf.st_atime;
-			md->mtime = buf.st_mtime;
-			md->size = buf.st_size;
-			md->uid = buf.st_uid;
-			md->gid = buf.st_gid;
-			md->nlink = 0;
-			pcache_set(pcache, path, (char *) md);
-			return SUCCESSS;
-		}
-	} else {
-		// entry is not exist
+		goto out;
+	}
+	if (ret == SIMP_HIT)
+	{
+		// if len > SIMPLE_MD_SIZE means that complete metdata if the target entry is cached
+		// if not, means that we only cache the simple version, then get full version from the DFS
+		struct stat buf;
+		char *abs_path = (char *)malloc(strlen(fs->mount_point) + strlen(path));
+		sprintf(abs_path, "%s%s", fs->mount_point, path);
+		if ( stat(abs_path, &buf) != 0 )
+			return -1;
+		md->id = 0;
+		md->flags = 0;
+		md->mode = buf.st_mode;
+		md->ctime = buf.st_ctime;
+		md->atime = buf.st_atime;
+		md->mtime = buf.st_mtime;
+		md->size = buf.st_size;
+		md->uid = buf.st_uid;
+		md->gid = buf.st_gid;
+		md->nlink = 0;
+		pcache_set(pcache, path, (char *) md);
+		return SUCCESS;
+	}
+	if (ret == LOOKUP_MISS)
+	{
 		return -ENOENT;
 	}
-
+out:
 	st->st_nlink = md->nlink;
 	st->st_size = md->size;
 	st->st_ctime = md->ctime;

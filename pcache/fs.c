@@ -131,23 +131,10 @@ int lookup(struct pcache *pcache, const char *path, struct metadata *md)
 	int ret;
 	redisReply *reply;
 	reply = pcache_get(pcache, path);
-	if (reply->len > SIMPLE_MD_SIZE)
+	if (reply->integer == 0)
 	{
-		struct stat buf;
-		if ( stat(path, &buf) != 0 )
-			return -1;
-		md->id = 0;
-		md->flags = 0;
-		md->mode = buf.st_mode;
-		md->ctime = buf.st_ctime;
-		md->atime = buf.st_atime;
-		md->mtime = buf.st_mtime;
-		md->size = buf.st_size;
-		md->uid = buf.st_uid;
-		md->gid = buf.st_gid;
-		md->nlink = 0;
-		pcache_set(pcache, path, (char *) md);
-		goto out;
+		printf("lookup entry miss\n");
+		return -1;
 	}
 
 	md = (struct metadata *)(reply->str);
@@ -203,9 +190,9 @@ int add_to_local_namespace(struct pcache *pcache, char *path)
 
 int remove_from_local_namespace(struct pcache *pcache, char *path)
 {
-	struct local_namespace *loc_ns = pcache->loc_ns;
+	/*struct local_namespace *loc_ns = pcache->loc_ns;
 	pthread_rwlock_wrlock(&(loc_ns->rwlock));
-	struct entry_info *preentry_info = search_preentry_in_local_namespace(path);
+	struct entry_info *entry_info = search_preentry_in_local_namespace(path);
 	if (loc_ns->entry_count == 1)
 	{
 		free_entry_info(entry_info);
@@ -215,7 +202,7 @@ int remove_from_local_namespace(struct pcache *pcache, char *path)
 	} else {
 
 	}
-	pthread_rwlock_unlock(&(loc_ns->rwlock));
+	pthread_rwlock_unlock(&(loc_ns->rwlock));*/
 }
 
 int readdir_local(struct pcache *pcache, void *buf, fuse_fill_dir_t filler, char *p_path)
@@ -276,12 +263,12 @@ int fs_init(struct fs *fs, char *node_list, char *mount_point)
 	{
 		printf("fs init error\n");
 		pcache_free(new_pcache);
-		return -1;
+		return ERROR;
 	}
 
 	fs->mount_point = mount_point;
 	fs->pcache = new_pcache;
-	return 0;
+	return SUCCESS;
 }
 
 int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
@@ -305,15 +292,15 @@ int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
 	// put the new metadata into pcache
 	redisReply *reply;
 	char *value = (char *)md;
-	reply = pcache_set(fs->pcache, key, value);
+	reply = pcache_set(fs->pcache, path, value);
 	if (reply->integer == 0)
 	{
 		printf("mkdir: set %s to redis fail\n", path);
-		return -1;
+		return ERROR;
 	}
 	ret = add_to_local_namespace(fs->pcache, path);
 
-	return 0;
+	return SUCCESSS;
 }
 
 /* 
@@ -335,11 +322,37 @@ int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 	struct metadata *md;
 	md = (struct metadata *)malloc(sizeof(struct metadata));
 	ret = lookup(fs->pcache, path, md);
-	if (ret != 0)
+
+	// entry exist
+	if (ret == 0)
 	{
-		printf("getattar fail\n");
-		return -1;
+		if (reply->len <= SIMPLE_MD_SIZE)
+		{
+			// if len > SIMPLE_MD_SIZE means that complete metdata if the target entry is cached
+			// if not, means that we only cache the simple version, then get full version from the DFS
+			struct stat buf;
+			char *abs_path;
+			abs_path = get_abs_path();
+			if ( stat(abs_path, &buf) != 0 )
+				return -1;
+			md->id = 0;
+			md->flags = 0;
+			md->mode = buf.st_mode;
+			md->ctime = buf.st_ctime;
+			md->atime = buf.st_atime;
+			md->mtime = buf.st_mtime;
+			md->size = buf.st_size;
+			md->uid = buf.st_uid;
+			md->gid = buf.st_gid;
+			md->nlink = 0;
+			pcache_set(pcache, path, (char *) md);
+			return SUCCESSS;
+		}
+	} else {
+		// entry is not exist
+		return -ENOENT;
 	}
+
 	st->st_nlink = md->nlink;
 	st->st_size = md->size;
 	st->st_ctime = md->ctime;
@@ -347,7 +360,7 @@ int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 	st->st_gid = md->gid;
 	st->st_atime = md->atime;
 	st->st_mtime = md->mtime;
-	return ret;
+	return SUCCESS;
 }
 
 int fs_rmdir(struct fs *fs, const char *path)

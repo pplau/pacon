@@ -165,24 +165,23 @@ int launch_pcache(int argc, char * argv[], struct clstat *clstat)
 	}
 
 	int fuse_argc = 0;
-	char * fuse_argv[argc];
+	char * fuse_argv[argc+4];
 	for (i = 0; i < argc; i++) {
 		if (argv[i] != NULL) {
 			fuse_argv[fuse_argc++] = argv[i];
 		}
 	}
+	fuse_argv[fuse_argc++] = "-odirect_io";
+	fuse_argv[fuse_argc++] = "-oattr_timeout=0";
+	fuse_argv[fuse_argc++] = "-oentry_timeout=0";
+	fuse_argv[fuse_argc++] = "-ononempty";
 
-	struct fuse_args args = FUSE_ARGS_INIT(argc, argv);
-   	fuse_opt_insert_arg( &args, 1, "-odirect_io");
-   	fuse_opt_insert_arg( &args, 1, "-oattr_timeout=0");
-   	fuse_opt_insert_arg( &args, 1, "-oattr_timeout=0");
-   	fuse_opt_insert_arg( &args, 1, "-ononempty");
    	
 	fs = (struct fs *)malloc(sizeof(struct fs));
 	fs_init(fs, NULL, argv[1]);
 	printf("starting pcache...\n");
-	//ret = fuse_main(fuse_argc, fuse_argv, &fuse_ops, NULL);
-	ret = start_fuse(&args);
+	ret = fuse_main(fuse_argc, fuse_argv, &fuse_ops, NULL);
+	//ret = start_fuse(&args);
 	printf("pcache finished, ret %d\n", ret);
 	fs_destroy(fs);
 	//freeifaddrs(id);

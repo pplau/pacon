@@ -11,6 +11,9 @@
 #define FILE_META 1
 #define SMALL_FILE_SIZE 4096
 
+#define SUCCESS 0
+#define ERROR -1
+
 
 enum metadataflags
 {

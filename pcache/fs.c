@@ -129,21 +129,20 @@ int child_cmp(char *path, char *p_path, int recursive)
 int lookup(struct pcache *pcache, const char *path, struct metadata *md)
 {
 	int ret;
-	redisReply *reply;
-	reply = pcache_get(pcache, path);
-	if (reply->integer == 0)
+	ret = pcache_get(pcache, path, md);
+	if (ret == 0)
 	{
 		printf("lookup entry miss\n");
 		freeReplyObject(reply);
 		return LOOKUP_MISS;
 	}
-	if (reply->len > SMALL_FILE_SIZE)
+	if (ret > SMALL_FILE_SIZE)
 	{
 		md = (struct metadata *)(reply->str);
 		freeReplyObject(reply);
 		return COMP_HIT;
 	}
-	if (reply->len <= SMALL_FILE_SIZE)
+	if (ret <= SMALL_FILE_SIZE)
 	{
 		freeReplyObject(reply);
 		return SIMP_HIT;

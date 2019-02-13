@@ -9,6 +9,7 @@
 #include <hiredis-vip/hiredis.h>
 #include <hiredis-vip/hircluster.h>
 #include "fs.h"
+#include "../lib/cJSON.h"
 
 
 // 
@@ -58,7 +59,7 @@ redisReply* pcache_set(struct pcache *pcache, char *key, struct metadata *md);
 
 redisReply* pcache_update(struct pcache *pcache, char *key, struct metadata *md);
 
-redisReply* pcache_get(struct pcache *pcache, char *key);
+int pcache_get(struct pcache *pcache, char *key, struct metadata *md);
 
 redisReply* pcache_del(struct pcache *pcache, char *key);
 

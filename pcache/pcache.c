@@ -4,7 +4,6 @@
 
 #include <stdio.h>
 #include "pcache.h"
-#include "lib/cJSON.h"
 
 
 static char *node_list = "10.182.171.1:6379,10.182.171.2:6379,10.182.171.3:6379,10.182.171.4:6379,\
@@ -103,15 +102,59 @@ redisReply* pcache_set(struct pcache *pcache, char *key, struct metadata *md)
 
 redisReply* pcache_update(struct pcache *pcache, char *key, struct metadata *md)
 {
-	int len = sizeof(struct metadata);
-	char value[len];
-	memcpy(value, md, len);
+	cJSON *j_body;
+	j_body = cJSON_CreateObject();
+	cJSON_AddNumberToObject(j_body, "id", md->id);
+	cJSON_AddNumberToObject(j_body, "flags", md->flags);
+	cJSON_AddNumberToObject(j_body, "mode", md->mode);
+	cJSON_AddNumberToObject(j_body, "ctime", md->ctime);
+	cJSON_AddNumberToObject(j_body, "atime", md->atime);
+	cJSON_AddNumberToObject(j_body, "mtime", md->mtime);
+	cJSON_AddNumberToObject(j_body, "size", md->size);
+	cJSON_AddNumberToObject(j_body, "uid", md->uid);
+	cJSON_AddNumberToObject(j_body, "gid", md->gid);
+	cJSON_AddNumberToObject(j_body, "nlink", md->nlink);
+	cJSON_AddNumberToObject(j_body, "fd", md->fd);
+	cJSON_AddNumberToObject(j_body, "opt", md->opt);
+	char *value = cJSON_Print(j_body);
 	return redisClusterCommand(pcache->redis,"SET %s %s", key, value);
 }
 
-redisReply* pcache_get(struct pcache *pcache, char *key)
+int pcache_get(struct pcache *pcache, char *key, struct metadata *md)
 {
-	return redisClusterCommand(pcache->redis,"GET %s", key);
+	redisReply *reply;
+	reply = redisClusterCommand(pcache->redis,"GET %s", key);
+	if (reply->integer == 0)
+		return 0;
+
+	cJSON *j_body, *j_id, *j_flags, *j_mode, *j_ctime, *j_atime, *j_mtime, *j_size, *j_uid, *j_gid, *j_nlink, *j_fd, *j_opt;
+	j_body = cJSON_Parse(reply);
+	j_id = cJSON_GetObjectItem(j_body, "id");
+	j_flags = cJSON_GetObjectItem(j_body, "flags");
+	j_mode = cJSON_GetObjectItem(j_body, "mode");
+	j_ctime = cJSON_GetObjectItem(j_body, "ctime");
+	j_atime = cJSON_GetObjectItem(j_body, "atime");
+	j_mtime = cJSON_GetObjectItem(j_body, "mtime");
+	j_size = cJSON_GetObjectItem(j_body, "size");
+	j_uid = cJSON_GetObjectItem(j_body, "uid");
+	j_gid = cJSON_GetObjectItem(j_body, "gid");
+	j_nlink = cJSON_GetObjectItem(j_body, "nlink");
+	j_fd = cJSON_GetObjectItem(j_body, "fd");
+	j_opt = cJSON_GetObjectItem(j_body, "opt");
+
+	md->id = j_id;
+	md->flags = j_flags;
+	md->mode = j_mode;
+	md->ctime = j_ctime;
+	md->atime = j_atime;
+	md->mtime = j_mtime;
+	md->size = j_size;
+	md->uid = j_uid;
+	md->gid = j_gid;
+	md->nlink = j_nlink;
+	md->fd = j_fd;
+	md->opt = j_opt;
+	return reply->len;
 }
 
 redisReply* pcache_del(struct pcache *pcache, char *key)

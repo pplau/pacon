@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include "pcache.h"
+#include "lib/cJSON.h"
 
 
 static char *node_list = "10.182.171.1:6379,10.182.171.2:6379,10.182.171.3:6379,10.182.171.4:6379,\
@@ -82,17 +83,29 @@ int pcache_free(struct pcache *pcache)
 
 redisReply* pcache_set(struct pcache *pcache, char *key, struct metadata *md)
 {
-	int len = sizeof(struct metadata);
-	char value[len];
-	memcpy(value, metadata, len);
-	return redisClusterCommand(pcache->redis,"SETNX %s %s", key, &value);
+	cJSON *j_body;
+	j_body = cJSON_CreateObject();
+	cJSON_AddNumberToObject(j_body, "id", md->id);
+	cJSON_AddNumberToObject(j_body, "flags", md->flags);
+	cJSON_AddNumberToObject(j_body, "mode", md->mode);
+	cJSON_AddNumberToObject(j_body, "ctime", md->ctime);
+	cJSON_AddNumberToObject(j_body, "atime", md->atime);
+	cJSON_AddNumberToObject(j_body, "mtime", md->mtime);
+	cJSON_AddNumberToObject(j_body, "size", md->size);
+	cJSON_AddNumberToObject(j_body, "uid", md->uid);
+	cJSON_AddNumberToObject(j_body, "gid", md->gid);
+	cJSON_AddNumberToObject(j_body, "nlink", md->nlink);
+	cJSON_AddNumberToObject(j_body, "fd", md->fd);
+	cJSON_AddNumberToObject(j_body, "opt", md->opt);
+	char *value = cJSON_Print(j_body);
+	return redisClusterCommand(pcache->redis,"SETNX %s %s", key, value);
 }
 
 redisReply* pcache_update(struct pcache *pcache, char *key, struct metadata *md)
 {
 	int len = sizeof(struct metadata);
 	char value[len];
-	memcpy(value, metadata, len);
+	memcpy(value, md, len);
 	return redisClusterCommand(pcache->redis,"SET %s %s", key, value);
 }
 

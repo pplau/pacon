@@ -8,6 +8,7 @@
 #include <pthread.h>
 #include <hiredis-vip/hiredis.h>
 #include <hiredis-vip/hircluster.h>
+#include "fs.h"
 
 
 // 

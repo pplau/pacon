@@ -53,7 +53,9 @@ int find_parea(char *ipaddr);
 
 int pcache_init(struct pcache *new_pcache);
 
-redisReply* pcache_set(struct pcache *pcache, char *key, char *value);
+redisReply* pcache_set(struct pcache *pcache, char *key, struct metadata *md);
+
+redisReply* pcache_update(struct pcache *pcache, char *key, struct metadata *md);
 
 redisReply* pcache_get(struct pcache *pcache, char *key);
 

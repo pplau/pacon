@@ -307,7 +307,7 @@ int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
 	}
 	ret = add_to_local_namespace(fs->pcache, path);
 
-	return SUCCESSS;
+	return SUCCESS;
 }
 
 /* 
@@ -354,7 +354,7 @@ int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 		md->uid = buf.st_uid;
 		md->gid = buf.st_gid;
 		md->nlink = 0;
-		pcache_set(pcache, path, (char *) md);
+		pcache_set(fs->pcache, path, (char *)md);
 		return SUCCESS;
 	}
 	if (ret == LOOKUP_MISS)
@@ -362,6 +362,14 @@ int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 		return -ENOENT;
 	}
 out:
+	if (md == NULL)
+		return -ENOENT;
+
+	if (strcmp(path, "/") == 0) {
+		st->st_mode = S_IFDIR | 0755;    // for the first dentry
+	} else {
+		st->st_mode = md->mode;
+	}	
 	st->st_nlink = md->nlink;
 	st->st_size = md->size;
 	st->st_ctime = md->ctime;

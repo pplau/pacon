@@ -67,7 +67,7 @@ out:
 
 int pcache_clean(struct pcache *pcache)
 {
-
+	return 0;
 }
 
 int pcache_free(struct pcache *pcache)
@@ -80,13 +80,19 @@ int pcache_free(struct pcache *pcache)
 	return 0;
 }
 
-redisReply* pcache_set(struct pcache *pcache, char *key, char *value)
+redisReply* pcache_set(struct pcache *pcache, char *key, struct metadata *md)
 {
-	return redisClusterCommand(pcache->redis,"SETNX %s %s", key, value);
+	int len = sizeof(struct metadata);
+	char value[len];
+	memcpy(value, metadata, len);
+	return redisClusterCommand(pcache->redis,"SETNX %s %s", key, &value);
 }
 
-redisReply* pcache_update(struct pcache *pcache, char *key, char *value)
+redisReply* pcache_update(struct pcache *pcache, char *key, struct metadata *md)
 {
+	int len = sizeof(struct metadata);
+	char value[len];
+	memcpy(value, metadata, len);
 	return redisClusterCommand(pcache->redis,"SET %s %s", key, value);
 }
 

@@ -130,21 +130,17 @@ int lookup(struct pcache *pcache, const char *path, struct metadata *md)
 {
 	int ret;
 	ret = pcache_get(pcache, path, md);
-	if (ret == 0)
+	if (ret == LOOKUP_MISS)
 	{
 		printf("lookup entry miss\n");
-		freeReplyObject(reply);
 		return LOOKUP_MISS;
 	}
-	if (ret > SMALL_FILE_SIZE)
+	if (ret == COMP_HIT)
 	{
-		md = (struct metadata *)(reply->str);
-		freeReplyObject(reply);
 		return COMP_HIT;
 	}
-	if (ret <= SMALL_FILE_SIZE)
+	if (ret == SIMP_HIT)
 	{
-		freeReplyObject(reply);
 		return SIMP_HIT;
 	}
 }

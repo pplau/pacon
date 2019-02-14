@@ -124,11 +124,11 @@ int pcache_get(struct pcache *pcache, char *key, struct metadata *md)
 {
 	redisReply *reply;
 	reply = redisClusterCommand(pcache->redis,"GET %s", key);
-	if (reply->integer == 0)
+	if (reply->str == NULL)
 		return 0;
 
 	cJSON *j_body, *j_id, *j_flags, *j_mode, *j_ctime, *j_atime, *j_mtime, *j_size, *j_uid, *j_gid, *j_nlink, *j_fd, *j_opt;
-	j_body = cJSON_Parse(reply);
+	j_body = cJSON_Parse(reply->str);
 	j_id = cJSON_GetObjectItem(j_body, "id");
 	j_flags = cJSON_GetObjectItem(j_body, "flags");
 	j_mode = cJSON_GetObjectItem(j_body, "mode");
@@ -142,18 +142,18 @@ int pcache_get(struct pcache *pcache, char *key, struct metadata *md)
 	j_fd = cJSON_GetObjectItem(j_body, "fd");
 	j_opt = cJSON_GetObjectItem(j_body, "opt");
 
-	md->id = j_id;
-	md->flags = j_flags;
-	md->mode = j_mode;
-	md->ctime = j_ctime;
-	md->atime = j_atime;
-	md->mtime = j_mtime;
-	md->size = j_size;
-	md->uid = j_uid;
-	md->gid = j_gid;
-	md->nlink = j_nlink;
-	md->fd = j_fd;
-	md->opt = j_opt;
+	md->id = j_id->valueint;
+	md->flags = j_flags->valueint;
+	md->mode = j_mode->valueint;
+	md->ctime = j_ctime->valueint;
+	md->atime = j_atime->valueint;
+	md->mtime = j_mtime->valueint;
+	md->size = j_size->valueint;
+	md->uid = j_uid->valueint;
+	md->gid = j_gid->valueint;
+	md->nlink = j_nlink->valueint;
+	md->fd = j_fd->valueint;
+	md->opt = j_opt->valueint;
 	return reply->len;
 }
 

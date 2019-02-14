@@ -125,10 +125,13 @@ int pcache_get(struct pcache *pcache, char *key, struct metadata *md)
 	redisReply *reply;
 	reply = redisClusterCommand(pcache->redis,"GET %s", key);
 	if (reply->str == NULL)
-		return 0;
+		return LOOKUP_MISS;
 
 	cJSON *j_body, *j_id, *j_flags, *j_mode, *j_ctime, *j_atime, *j_mtime, *j_size, *j_uid, *j_gid, *j_nlink, *j_fd, *j_opt;
 	j_body = cJSON_Parse(reply->str);
+	if (cJSON_GetObjectItem(j_body, "simple_flag");)
+		return SIMP_HIT;
+
 	j_id = cJSON_GetObjectItem(j_body, "id");
 	j_flags = cJSON_GetObjectItem(j_body, "flags");
 	j_mode = cJSON_GetObjectItem(j_body, "mode");
@@ -154,7 +157,7 @@ int pcache_get(struct pcache *pcache, char *key, struct metadata *md)
 	md->nlink = j_nlink->valueint;
 	md->fd = j_fd->valueint;
 	md->opt = j_opt->valueint;
-	return reply->len;
+	return COMP_HIT;
 }
 
 redisReply* pcache_del(struct pcache *pcache, char *key)

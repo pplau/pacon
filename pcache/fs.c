@@ -150,14 +150,15 @@ struct entry_info* init_entry_info(char *path)
 	struct entry_info *entry_info;
 	entry_info = (struct entry_info *)malloc(sizeof(struct entry_info));
 	int len = strlen(path);
-	char *entry_name = (char *)malloc(len);
+	char *entry_name = (char *)malloc(len+1);
 	int i;
 	char *cur = entry_name;
 	for (i = 0; i < len; ++i)
 	{
-		*cur = *(path + 1);
+		*cur = *(path + i);
 		cur++;
 	}
+	*cur = '\0';
 	entry_info->next = NULL;
 	return entry_info;
 }
@@ -215,7 +216,16 @@ int readdir_local(struct pcache *pcache, void *buf, fuse_fill_dir_t filler, char
 	{
 		if (child_cmp(ptr->entry_name, p_path, 0) == 1)
 		{
-			if (filler(buf, basename(ptr->entry_name), NULL, 0) < 0) 
+			int i;
+			char *dir_name;
+			for (i = strlen(ptr->entry_name)-1; i>=0; --i)
+			{
+				if (ptr->entry_name[i] == '/')
+					break;
+			}
+			dir_name = ptr->entry_name+i+1;
+
+			if (filler(buf, dir_name, NULL, 0) < 0) 
 			{
 				printf("filler %s error in func = %s\n", ptr->entry_name, __FUNCTION__);
 				return -1;
@@ -418,7 +428,7 @@ out:
 
 int fs_opendir(struct fs *fs, const char *path, struct fuse_file_info *fileInfo)
 {
-
+	return 0;
 }
 
 int fs_read(struct fs *fs, const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fileInfo)
@@ -438,7 +448,34 @@ int fs_release(struct fs *fs, const char *path, struct fuse_file_info *fileInfo)
 
 int fs_create(struct fs *fs, const char * path, mode_t mode, struct fuse_file_info * info)
 {
+	int ret;
+	struct metadata *md;
+	md = (struct metadata *)malloc(sizeof(struct metadata));
+	md->id = 0;
+	md->flags = 0;
+	md->mode = S_IFREG | 0644;
+	md->ctime = time(NULL);
+	md->atime = time(NULL);
+	md->mtime = time(NULL);
+	md->size = 0;
+	md->uid = getuid();
+	md->gid = getgid();
+	md->nlink = 0;
+	//strcpy(metadata->key, path);
+	set_opt_flag(md, OP_create, 1);
 
+	// put the new metadata into pcache
+	redisReply *reply;
+	char *value = (char *)md;
+	reply = pcache_set(fs->pcache, path, value);
+	if (reply->integer == 0)
+	{
+		printf("create file: set %s to redis fail\n", path);
+		return ERROR;
+	}
+	ret = add_to_local_namespace(fs->pcache, path);
+
+	return SUCCESS;
 }
 
 int fs_releasedir(struct fs *fs, const char * path, struct fuse_file_info * info)

@@ -129,7 +129,7 @@ int pcache_get(struct pcache *pcache, char *key, struct metadata *md)
 
 	cJSON *j_body, *j_id, *j_flags, *j_mode, *j_ctime, *j_atime, *j_mtime, *j_size, *j_uid, *j_gid, *j_nlink, *j_fd, *j_opt;
 	j_body = cJSON_Parse(reply->str);
-	if (cJSON_GetObjectItem(j_body, "simple_flag");)
+	if (cJSON_GetObjectItem(j_body, "simple_flag"))
 		return SIMP_HIT;
 
 	j_id = cJSON_GetObjectItem(j_body, "id");

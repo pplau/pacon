@@ -47,19 +47,19 @@ struct fs
 
 struct metadata
 {
-	int id;
-	int flags;   //  including the metadata type
+	uint32_t id;
+	uint32_t flags;   //  including the metadata type
 	//char key[MAX_DENTRY_NAME];  // full path
-	int mode;
-	int ctime;
-	int atime;
-	int mtime;
-	int size;
-	int uid;
-	int gid;
-	int nlink;
-	int fd;
-	int opt;
+	uint32_t mode;
+	uint32_t ctime;
+	uint32_t atime;
+	uint32_t mtime;
+	uint32_t size;
+	uint32_t uid;
+	uint32_t gid;
+	uint32_t nlink;
+	uint32_t fd;
+	uint32_t opt;
 };
 
 struct simple_metadata

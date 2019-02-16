@@ -151,6 +151,7 @@ struct entry_info* init_entry_info(char *path)
 	entry_info = (struct entry_info *)malloc(sizeof(struct entry_info));
 	int len = strlen(path);
 	char *entry_name = (char *)malloc(len+1);
+	entry_info->entry_name = entry_name;
 	int i;
 	char *cur = entry_name;
 	for (i = 0; i < len; ++i)
@@ -463,6 +464,7 @@ int fs_create(struct fs *fs, const char * path, mode_t mode, struct fuse_file_in
 	md->nlink = 0;
 	//strcpy(metadata->key, path);
 	set_opt_flag(md, OP_create, 1);
+	set_md_flag(md, MD_type, 1);
 
 	// put the new metadata into pcache
 	redisReply *reply;

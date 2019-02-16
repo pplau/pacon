@@ -145,18 +145,18 @@ int pcache_get(struct pcache *pcache, char *key, struct metadata *md)
 	j_fd = cJSON_GetObjectItem(j_body, "fd");
 	j_opt = cJSON_GetObjectItem(j_body, "opt");
 
-	md->id = j_id->valueint;
-	md->flags = j_flags->valueint;
-	md->mode = j_mode->valueint;
-	md->ctime = j_ctime->valueint;
-	md->atime = j_atime->valueint;
-	md->mtime = j_mtime->valueint;
-	md->size = j_size->valueint;
-	md->uid = j_uid->valueint;
-	md->gid = j_gid->valueint;
-	md->nlink = j_nlink->valueint;
-	md->fd = j_fd->valueint;
-	md->opt = j_opt->valueint;
+	md->id = (uint32_t)j_id->valueint;
+	md->flags = (uint32_t)j_flags->valueint;
+	md->mode = (uint32_t)j_mode->valueint;
+	md->ctime = (uint32_t)j_ctime->valueint;
+	md->atime = (uint32_t)j_atime->valueint;
+	md->mtime = (uint32_t)j_mtime->valueint;
+	md->size = (uint32_t)j_size->valueint;
+	md->uid = (uint32_t)j_uid->valueint;
+	md->gid = (uint32_t)j_gid->valueint;
+	md->nlink = (uint32_t)j_nlink->valueint;
+	md->fd = (uint32_t)j_fd->valueint;
+	md->opt = (uint32_t)j_opt->valueint;
 	return COMP_HIT;
 }
 

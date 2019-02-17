@@ -13,6 +13,11 @@
 #define MD_SIZE 52
 #define SIMPLE_MD_SIZE 4
 
+// return of search entry in local
+#define IS_DIR 0
+#define IS_FILE 1
+#define LOCAL_ENTRY_MISS -1
+
 
 /*********************** tools *************************/
 
@@ -145,7 +150,7 @@ int lookup(struct pcache *pcache, const char *path, struct metadata *md)
 	}
 }
 
-struct entry_info* init_entry_info(char *path)
+struct entry_info* init_entry_info(char *path, int entry_type)
 {
 	struct entry_info *entry_info;
 	entry_info = (struct entry_info *)malloc(sizeof(struct entry_info));
@@ -160,6 +165,7 @@ struct entry_info* init_entry_info(char *path)
 		cur++;
 	}
 	*cur = '\0';
+	entry_info->type = entry_type;
 	entry_info->next = NULL;
 	return entry_info;
 }
@@ -171,11 +177,11 @@ void free_entry_info(struct entry_info *entry_info)
 }
 
 // add the new entry to the tail
-int add_to_local_namespace(struct pcache *pcache, char *path)
+int add_to_local_namespace(struct pcache *pcache, char *path, int entry_type)
 {
 	struct local_namespace *loc_ns = pcache->loc_ns;
 	struct entry_info *entry_info;
-	entry_info = init_entry_info(path);
+	entry_info = init_entry_info(path, entry_type);
 
 	pthread_rwlock_wrlock(&(loc_ns->rwlock));
 	if (loc_ns->head == NULL && loc_ns->tail == NULL)
@@ -247,6 +253,24 @@ int readdir_merge()
 
 }
 
+int search_entry_local(struct pcache *pcache, char *path)
+{
+	struct local_namespace *loc_ns = pcache->loc_ns;
+	struct entry_info *ptr = loc_ns->head;
+	while (ptr != NULL)
+	{
+		if (strcmp(ptr->entry_name, path) == 0)
+		{
+			if (ptr->type == IS_DIR)
+				return IS_DIR;
+			if (ptr->type == IS_FILE)
+				return IS_FILE;
+		}
+		ptr = ptr->next;
+	}
+	return LOCAL_ENTRY_MISS;
+}
+
 
 // *********************** fuse interfaces ****************************
 int fs_init(struct fs *fs, char *node_list, char *mount_point)
@@ -281,6 +305,31 @@ int fs_init(struct fs *fs, char *node_list, char *mount_point)
 
 	fs->mount_point = mount_point;
 	fs->pcache = new_pcache;
+
+	// create the '/'
+	struct metadata *md;
+	md = (struct metadata *)malloc(sizeof(struct metadata));
+	md->id = 0;
+	md->flags = 0;
+	md->mode = S_IFDIR | 0755;
+	md->ctime = time(NULL);
+	md->atime = time(NULL);
+	md->mtime = time(NULL);
+	md->size = 0;
+	md->uid = getuid();
+	md->gid = getgid();
+	md->nlink = 0;
+	set_opt_flag(md, OP_mkdir, 1);
+	redisReply *reply;
+	char *value = (char *)md;
+	char *path = "/";
+	reply = pcache_set(fs->pcache, path, value);
+	if (reply->integer == 0)
+	{
+		printf("mkdir: set %s to redis fail\n", path);
+		return ERROR;
+	}
+	ret = add_to_local_namespace(fs->pcache, path, IS_DIR);
 	return SUCCESS;
 }
 
@@ -311,7 +360,7 @@ int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
 		printf("mkdir: set %s to redis fail\n", path);
 		return ERROR;
 	}
-	ret = add_to_local_namespace(fs->pcache, path);
+	ret = add_to_local_namespace(fs->pcache, path, IS_DIR);
 
 	return SUCCESS;
 }
@@ -332,6 +381,22 @@ int fs_readdir(struct fs *fs, const char *path, void *buf, fuse_fill_dir_t fille
 int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 {
 	int ret;
+	// check the local entry cache first
+	if (CACHE == 1)
+	{
+		ret = search_entry_local(fs->pcache, path);
+		if (ret == IS_DIR)
+		{
+			st->st_mode = S_IFDIR | 0755;
+			return SUCCESS;
+		}
+		if (ret == IS_FILE)
+		{
+			st->st_mode = S_IFREG | 0644;
+			return SUCCESS;
+		}
+	}
+
 	struct metadata *md;
 	md = (struct metadata *)malloc(sizeof(struct metadata));
 	ret = lookup(fs->pcache, path, md);
@@ -361,7 +426,7 @@ int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 		md->gid = buf.st_gid;
 		md->nlink = 0;
 		pcache_set(fs->pcache, path, (char *)md);
-		return SUCCESS;
+		return out;
 	}
 	if (ret == LOOKUP_MISS)
 	{
@@ -475,7 +540,7 @@ int fs_create(struct fs *fs, const char * path, mode_t mode, struct fuse_file_in
 		printf("create file: set %s to redis fail\n", path);
 		return ERROR;
 	}
-	ret = add_to_local_namespace(fs->pcache, path);
+	ret = add_to_local_namespace(fs->pcache, path, IS_FILE);
 
 	return SUCCESS;
 }
@@ -492,7 +557,7 @@ int fs_destroy(struct fs *fs)
 
 int fs_utimens(struct fs *fs, const char * path, const struct timespec tv[2])
 {
-
+	return SUCCESS;
 }
 
 int fs_truncate(struct fs *fs, const char * path, off_t length)
@@ -507,7 +572,45 @@ int fs_unlink(struct fs *fs, const char * path)
 
 int fs_chmod(struct fs *fs, const char * path, mode_t mode)
 {
+	int ret;
+	struct metadata *md;
+	md = (struct metadata *)malloc(sizeof(struct metadata));
+	ret = lookup(fs->pcache, path, md);
 
+	// entry exist
+	if (ret == COMP_HIT)
+	{
+		goto out;
+	}
+	if (ret == SIMP_HIT)
+	{
+		// if len > SIMPLE_MD_SIZE means that complete metdata if the target entry is cached
+		// if not, means that we only cache the simple version, then get full version from the DFS
+		struct stat buf;
+		char *abs_path = (char *)malloc(strlen(fs->mount_point) + strlen(path));
+		sprintf(abs_path, "%s%s", fs->mount_point, path);
+		if ( stat(abs_path, &buf) != 0 )
+			return -1;
+		md->id = 0;
+		md->flags = 0;
+		md->mode = buf.st_mode;
+		md->ctime = buf.st_ctime;
+		md->atime = buf.st_atime;
+		md->mtime = buf.st_mtime;
+		md->size = buf.st_size;
+		md->uid = buf.st_uid;
+		md->gid = buf.st_gid;
+		md->nlink = 0;
+		pcache_set(fs->pcache, path, (char *)md);
+		return SUCCESS;
+	}
+	if (ret == LOOKUP_MISS)
+	{
+		return -ENOENT;
+	}
+out:
+	md->mode = mode;
+	pcache_update(fs->pcache, path, (char *)md);
 }
 
 int fs_chown(struct fs *fs, const char * path, uid_t owner, gid_t group)
@@ -517,7 +620,7 @@ int fs_chown(struct fs *fs, const char * path, uid_t owner, gid_t group)
 
 int fs_access(struct fs *fs, const char * path, int amode)
 {
-
+	return SUCCESS;
 }
 
 int fs_symlink(struct fs *fs, const char * oldpath, const char * newpath)

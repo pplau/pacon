@@ -16,6 +16,7 @@
 struct entry_info
 {
 	char *entry_name;
+	int type;
 	struct entry_info *next;
 };
 

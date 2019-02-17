@@ -21,6 +21,9 @@
 #define SIMP_HIT 1
 #define LOOKUP_MISS -1
 
+// cache
+#define CACHE 1 // 0 is close, 1 is open
+
 
 enum metadataflags
 {

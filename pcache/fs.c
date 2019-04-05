@@ -426,7 +426,7 @@ int fs_getattr(struct fs *fs, const char* path, struct stat* st)
 		md->gid = buf.st_gid;
 		md->nlink = 0;
 		pcache_set(fs->pcache, path, (char *)md);
-		return out;
+		goto out;
 	}
 	if (ret == LOOKUP_MISS)
 	{

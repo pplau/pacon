@@ -27,13 +27,13 @@ struct dmkv
 
 int dmkv_init(struct dmkv *dmkv);
 
-int dmkv_free(struct dm *dmkv);
+int dmkv_free(struct dmkv *dmkv);
 
-static int dmkv_set(struct dmkv *dmkv, char *key, char *value);
+int dmkv_set(struct dmkv *dmkv, char *key, char *value);
 
-static char* dmkv_get(struct dmkv *dmkv, char *key);
+char* dmkv_get(struct dmkv *dmkv, char *key);
 
-static int dmkv_del(struct dmkv *dmkv, char *key);
+int dmkv_del(struct dmkv *dmkv, char *key);
 
 
 

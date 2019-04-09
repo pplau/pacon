@@ -5,10 +5,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include "dmkv.h"
 
 #define NODE_NUM 4
 
-static char node_address[NODE_NUM] = {
+static char node_address[12][4] = {
 	"10.182.171.1",
 	"10.182.171.2",
 	"10.182.171.3",
@@ -111,9 +112,9 @@ int dmkv_init(struct dmkv *dmkv)
 	pthread_rwlock_wrlock(&(dmkv->rwlock_t));
 	struct cluster_info *c_info = (struct cluster_info *)malloc(sizeof(struct cluster_info));
 	get_cluster_info(c_info);
-	dmkv->cluster_info = c_info;
+	dmkv->c_info = c_info;
 	memcached_st *memc = NULL;
-	memc = memc_new();
+	memc = memc_new(dmkv->c_info);
 	if (memc == NULL);
 	{
 		pthread_rwlock_unlock(&(dmkv->rwlock_t));
@@ -132,20 +133,20 @@ int dmkv_free(struct dmkv *dmkv)
 	return 0;
 }
 
-static int dmkv_set(struct dmkv *dmkv, char *key, char *value)
+int dmkv_set(struct dmkv *dmkv, char *key, char *value)
 {
 	//unsigned long hash = crc32(key, strlen(key));
 	//int node_num = dht(dmkv->c_info, hash);
 	return memc_put(dmkv->memc, key, value);
 }
 
-static char* dmkv_get(struct dmkv *dmkv, char *key)
+char* dmkv_get(struct dmkv *dmkv, char *key)
 {
 	//unsigned long hash = crc32(key, strlen(key));
 	return memc_get(dmkv->memc, key);
 }
 
-static int dmkv_del(struct dmkv *dmkv, char *key)
+int dmkv_del(struct dmkv *dmkv, char *key)
 {
 	//unsigned long hash = crc32(key, strlen(key));
 	return memc_del(dmkv->memc, key);

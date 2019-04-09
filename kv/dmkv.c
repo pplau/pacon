@@ -19,24 +19,28 @@ static char node_address[12][4] = {
 
 /************* memc3 wrapper **************/
 
-static memcached_st *memc_new(struct cluster_info *c_info)
+int memc_new(struct dmkv *dmkv)
 {
-	int i, node_num = c_info->node_num;
+	int i, node_num = dmkv->c_info->node_num;
 	char config_string[1024];
-	memcached_st *memc = NULL;
 	memcached_return rc;
 	memcached_server_st *servers;
-	memc = memcached_create(NULL);
-	memcached_behavior_set(memc,MEMCACHED_BEHAVIOR_DISTRIBUTION,MEMCACHED_DISTRIBUTION_CONSISTENT);
+	dmkv->memc = memcached_create(NULL);
+	if (dmkv->memc == NULL)
+	{
+		printf("memc is NULL\n")
+		return -1;
+	}
+	memcached_behavior_set(dmkv->memc,MEMCACHED_BEHAVIOR_DISTRIBUTION,MEMCACHED_DISTRIBUTION_CONSISTENT);
 	servers = memcached_server_list_append(NULL, node_address[0], 11211, &rc);
 	for (i = 1; i < node_num; ++i)
 	{
 		servers = memcached_server_list_append(servers, node_address[i], 11211, &rc);
 	}
 
-	rc = memcached_server_push(memc, servers);
+	rc = memcached_server_push(dmkv->memc, servers);
 	memcached_server_free(servers);
-	return memc;
+	return 0;
 }
 
 static int memc_put(memcached_st *memc, char *key, char *val) 
@@ -108,20 +112,19 @@ int get_cluster_info(struct cluster_info *c_info)
 
 int dmkv_init(struct dmkv *dmkv)
 {
+	int ret;
 	pthread_rwlock_init(&(dmkv->rwlock_t), NULL);
 	pthread_rwlock_wrlock(&(dmkv->rwlock_t));
 	struct cluster_info *c_info = (struct cluster_info *)malloc(sizeof(struct cluster_info));
 	get_cluster_info(c_info);
 	dmkv->c_info = c_info;
-	memcached_st *memc = NULL;
-	memc = memc_new(dmkv->c_info);
-	if (memc == NULL);
+	ret = memc_new(dmkv);
+	pthread_rwlock_unlock(&(dmkv->rwlock_t));
+	if (ret != 0);
 	{
-		pthread_rwlock_unlock(&(dmkv->rwlock_t));
+		printf("dmkc init error\n");
 		return -1;
 	}
-	dmkv->memc = memc;
-	pthread_rwlock_unlock(&(dmkv->rwlock_t));
 	return 0;
 }
 

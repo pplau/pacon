@@ -50,7 +50,7 @@ int test(struct dmkv *kv)
 			printf("get error, %d\n", i);
 			return -1;
 		} else {
-			printf("get success, val = %s\n", );
+			printf("get success, val = %s\n");
 		}
 	}
 

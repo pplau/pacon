@@ -5,16 +5,15 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
-#include <pthread.h>
 
 #define NODE_NUM 4
 
-static char node_address[MAX_NODES] = {
+static char node_address[NODE_NUM] = {
 	"10.182.171.1",
 	"10.182.171.2",
 	"10.182.171.3",
 	"10.182.171.4",
-}
+};
 
 
 /************* memc3 wrapper **************/
@@ -78,6 +77,7 @@ static int memc_del(memcached_st *memc, char *key)
 
 /************* cluster interfaces ***************/
 
+/*
 unsigned long crc32(const unsigned char *s, unsigned int len)
 {
 	unsigned int i;
@@ -93,11 +93,11 @@ unsigned long crc32(const unsigned char *s, unsigned int len)
 	return crc32val;
 }
 
-/* reture a target node id */
 int dht(struct cluster_info *c_info, unsigned long hash)
 {
 	return hash % c_info->node_num;
 }
+*/
 
 int get_cluster_info(struct cluster_info *c_info)
 {
@@ -107,14 +107,20 @@ int get_cluster_info(struct cluster_info *c_info)
 
 int dmkv_init(struct dmkv *dmkv)
 {
+	pthread_rwlock_init(&(dmkv->rwlock_t), NULL);
+	pthread_rwlock_wrlock(&(dmkv->rwlock_t));
 	struct cluster_info *c_info = (struct cluster_info *)malloc(sizeof(struct cluster_info));
 	get_cluster_info(c_info);
 	dmkv->cluster_info = c_info;
 	memcached_st *memc = NULL;
 	memc = memc_new();
 	if (memc == NULL);
+	{
+		pthread_rwlock_unlock(&(dmkv->rwlock_t));
 		return -1;
+	}
 	dmkv->memc = memc;
+	pthread_rwlock_unlock(&(dmkv->rwlock_t));
 	return 0;
 }
 

@@ -7,7 +7,7 @@
 #include <malloc.h>
 #include "dmkv.h"
 
-#define NODE_NUM 4
+#define NODE_NUM 1
 
 static char node_address[12][4] = {
 	"10.182.171.1",
@@ -16,6 +16,7 @@ static char node_address[12][4] = {
 	"10.182.171.4",
 };
 
+static char test_node_address_1 = "10.182.171.2";
 
 /************* memc3 wrapper **************/
 
@@ -28,11 +29,11 @@ int memc_new(struct dmkv *dmkv)
 	dmkv->memc = memcached_create(NULL);
 	if (dmkv->memc == NULL)
 	{
-		printf("memc is NULL\n")
+		printf("memc is NULL\n");
 		return -1;
 	}
 	memcached_behavior_set(dmkv->memc,MEMCACHED_BEHAVIOR_DISTRIBUTION,MEMCACHED_DISTRIBUTION_CONSISTENT);
-	servers = memcached_server_list_append(NULL, node_address[0], 11211, &rc);
+	servers = memcached_server_list_append(NULL, test_node_address_1, 11211, &rc);
 	for (i = 1; i < node_num; ++i)
 	{
 		servers = memcached_server_list_append(servers, node_address[i], 11211, &rc);
@@ -43,7 +44,7 @@ int memc_new(struct dmkv *dmkv)
 	return 0;
 }
 
-static int memc_put(memcached_st *memc, char *key, char *val) 
+int memc_put(memcached_st *memc, char *key, char *val) 
 {
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
@@ -54,24 +55,24 @@ static int memc_put(memcached_st *memc, char *key, char *val)
 	return 0;
 }
 
-static char* memc_get(memcached_st *memc, char *key) 
+char* memc_get(memcached_st *memc, char *key) 
 {
 	memcached_return_t rc;
 	char *val;
-	size_t len;
-	uint32_t flag;
-	size_t key_len = strlen(key);
-	val = memcached_get(memc, key, key_len, &len, &flag, &rc);
+	size_t val_len;
+	uint32_t flag = 0;
+	size_t key_len = strlen(key)-1;
+	val = memcached_get(memc, key, key_len, &val_len, &flag, &rc);
 	if (rc != MEMCACHED_SUCCESS)
 		return NULL;
 	return val;
 }
 
-static int memc_del(memcached_st *memc, char *key)
+int memc_del(memcached_st *memc, char *key)
 {
 	memcached_return_t rc;
-	size_t key_len = strlen(key);
-	time_t expiration = 180;
+	size_t key_len = strlen(key)-1;
+	time_t expiration = 0;
 	rc = memcached_delete(memc, key, key_len, expiration);
 	if (rc == MEMCACHED_SUCCESS)
 		return 0;
@@ -120,7 +121,7 @@ int dmkv_init(struct dmkv *dmkv)
 	dmkv->c_info = c_info;
 	ret = memc_new(dmkv);
 	pthread_rwlock_unlock(&(dmkv->rwlock_t));
-	if (ret != 0);
+	if (ret != 0)
 	{
 		printf("dmkc init error\n");
 		return -1;

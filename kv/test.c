@@ -20,18 +20,18 @@ int test(struct dmkv *kv)
 {
 	int set_num = 10;
 	int i;
-	static int ret;
+	int ret;
 	char *val = "test_val";
 
 	// set test
 	printf("/********** set test **********/\n");
 	for (i = 0; i < set_num; ++i)
 	{
-		char key = (char) i;
+		char key = i + '0';
 		ret = dmkv_set(kv, &key, val);
 		if (ret < 0)
 		{
-			printf("set error, key = \n");
+			printf("set error, key = %s\n", &key);
 			return -1;
 		} else {
 			printf("set success\n");
@@ -42,15 +42,15 @@ int test(struct dmkv *kv)
 	printf("/********** get test **********/\n");
 	for (i = 0; i < set_num; ++i)
 	{
-		char key = (char) i;
-		static char *res;
-		res = dmkv_get(kv, &key);
-		if (ret < 0)
+		char key = i + '0';
+		char *res_val;
+		res_val = dmkv_get(kv, &key);
+		if (res_val == NULL)
 		{
 			printf("get error, %d\n", i);
 			return -1;
 		} else {
-			printf("get success, val = %s\n");
+			printf("get success, val = %s\n", res_val);
 		}
 	}
 
@@ -58,12 +58,14 @@ int test(struct dmkv *kv)
 	printf("/********** del test **********/\n");
 	for (i = 0; i < set_num; ++i)
 	{
-		char key = (char) i;
-		ret = dmkv_del(kv, key);
+		char key = i + '0';
+		ret = dmkv_del(kv, &key);
 		if (ret < 0)
 		{
 			printf("del error, key = %d\n", i);
 			return -1;
+		} else {
+			printf("del success, key = %s\n", &key);
 		}
 	}
 	return 0;

@@ -61,7 +61,7 @@ char* memc_get(memcached_st *memc, char *key)
 	char *val;
 	size_t val_len;
 	uint32_t flag = 0;
-	size_t key_len = strlen(key)-1;
+	size_t key_len = strlen(key);
 	val = memcached_get(memc, key, key_len, &val_len, &flag, &rc);
 	if (rc != MEMCACHED_SUCCESS)
 		return NULL;
@@ -71,7 +71,7 @@ char* memc_get(memcached_st *memc, char *key)
 int memc_del(memcached_st *memc, char *key)
 {
 	memcached_return_t rc;
-	size_t key_len = strlen(key)-1;
+	size_t key_len = strlen(key);
 	time_t expiration = 0;
 	rc = memcached_delete(memc, key, key_len, expiration);
 	if (rc == MEMCACHED_SUCCESS)

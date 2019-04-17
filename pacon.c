@@ -53,9 +53,25 @@ int pacon_open(const char *path)
 	return 0;
 }
 
-int pacon_create(const char * path, mode_t mode)
+int pacon_create(const char *path, mode_t mode)
 {
-	return fs_create(fs, path, mode);
+	int ret;
+	cJSON *j_body;
+	j_body = cJSON_CreateObject();
+	cJSON_AddNumberToObject(j_body, "flags", 0);
+	cJSON_AddNumberToObject(j_body, "mode", mode);
+	cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
+	cJSON_AddNumberToObject(j_body, "atime", time(NULL));
+	cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
+	cJSON_AddNumberToObject(j_body, "size", 0);
+	cJSON_AddNumberToObject(j_body, "uid", getuid());
+	cJSON_AddNumberToObject(j_body, "gid", getgid());
+	cJSON_AddNumberToObject(j_body, "nlink", 0);
+	//cJSON_AddNumberToObject(j_body, "opt", 0);
+	//set_opt_flag(md, OP_mkdir, 1);
+	char *value = cJSON_Print(j_body);
+	ret = dmkv_set(kv_handle, path, value);	
+	return ret;
 }
 
 int pacon_mkdir(const char *path, mode_t mode)
@@ -92,7 +108,38 @@ int pacon_readdir(const char *path, void *buf, off_t offset)
 
 int pacon_getattr(const char* path, struct stat* st)
 {
-	return fs_getattr(fs, path, st);
+	char *val;
+	val = redisClusterCommand(pcache->redis,"GET %s", key);
+	if (val == NULL)
+		return -1;
+
+	cJSON *j_body, *j_flags, *j_mode, *j_ctime, *j_atime, *j_mtime, *j_size, *j_uid, *j_gid, *j_nlink, *j_fd;
+	j_body = cJSON_Parse(val);
+
+	j_flags = cJSON_GetObjectItem(j_body, "flags");
+	j_mode = cJSON_GetObjectItem(j_body, "mode");
+	j_ctime = cJSON_GetObjectItem(j_body, "ctime");
+	j_atime = cJSON_GetObjectItem(j_body, "atime");
+	j_mtime = cJSON_GetObjectItem(j_body, "mtime");
+	j_size = cJSON_GetObjectItem(j_body, "size");
+	j_uid = cJSON_GetObjectItem(j_body, "uid");
+	j_gid = cJSON_GetObjectItem(j_body, "gid");
+	j_nlink = cJSON_GetObjectItem(j_body, "nlink");
+	j_fd = cJSON_GetObjectItem(j_body, "fd");
+	//j_opt = cJSON_GetObjectItem(j_body, "opt");
+
+	st->flags = (uint32_t)j_flags->valueint;
+	st->mode = (uint32_t)j_mode->valueint;
+	st->ctime = (uint32_t)j_ctime->valueint;
+	st->atime = (uint32_t)j_atime->valueint;
+	st->mtime = (uint32_t)j_mtime->valueint;
+	st->size = (uint32_t)j_size->valueint;
+	st->uid = (uint32_t)j_uid->valueint;
+	st->gid = (uint32_t)j_gid->valueint;
+	st->nlink = (uint32_t)j_nlink->valueint;
+	st->fd = (uint32_t)j_fd->valueint;
+	//st->opt = (uint32_t)j_opt->valueint;
+	return 0;
 }
 
 int pacon_rmdir(const char *path)

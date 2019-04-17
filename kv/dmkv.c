@@ -138,7 +138,7 @@ int dmkv_init(struct dmkv *dmkv)
 	pthread_rwlock_unlock(&(dmkv->rwlock_t));
 	if (ret != 0)
 	{
-		printf("dmkc init error\n");
+		printf("dmkv init error\n");
 		return -1;
 	}
 	return 0;

@@ -3,21 +3,22 @@
  */
 
 #include <stdio.h>
+#include <sys/stat.h>
 #include "pacon.h"
 
-int init_pacon()
+int init_pacon(struct pacon *pacon)
 {
-	return 0;
+	return init_pacon(pacon);
 }
 
-int free_pacon()
+int free_pacon(struct pacon *pacon)
 {
-	return 0;
+	return free_pacon(pacon);
 }
 
-int test_mkdir()
+int test_mkdir(char *path, mode_t mode)
 {
-	return 0;
+	return pacon_mkdir(path, mode);
 }
 
 int test_create()
@@ -58,6 +59,35 @@ int exc_test()
 int main(int argc, char const *argv[])
 {
 	int ret;
+	struct pacon *pacon = (struct pacon *)malloc(sizeof(struct pacon));
+	ret = init_pacon(pacon);
+	if (ret != 0)
+	{
+		printf("init pacon error\n");
+		return -1;
+	}
 
+	printf("mkdir test\n");
+	ret = test_mkdir("/test", S_IFDIR | 0755);
+	if (ret != 0)
+	{
+		printf("mkdir error\n");
+		return -1;
+	}
+
+	printf("create file test\n");
+	ret = test_create("/file", S_IFREG | 0644);
+	if (ret != 0)
+	{
+		printf("create error\n");
+		return -1;
+	}
+
+	ret = free_pacon(pacon);
+	if (ret != 0)
+	{
+		printf("free pacon error\n");
+		return -1;
+	}
 	return 0;
 }

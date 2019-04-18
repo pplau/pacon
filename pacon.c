@@ -38,7 +38,11 @@ int init_pacon(struct pacon *pacon)
 
 	// build namespace
 	ret = build_namespace(pacon->mount_path);
-
+	if (ret != 0)
+	{
+		printf("build namespace error\n");
+		return -1;
+	}
 	return 0;
 }
 

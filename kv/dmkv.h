@@ -1,14 +1,14 @@
 /*
  *  written by Yubo
  */
+#ifndef DMKV_H
+#define DMKV_H
 
 #include <pthread.h>
 #include <libmemcached/memcached.h>
 #include "../pacon.h"
 
-#ifndef DMKV_H
-#define DMKV_H
-
+#define NODE_MAX 64
 
 
 struct cluster_info

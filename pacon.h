@@ -11,7 +11,6 @@
 
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
 #define MOUNT_PATH_MAX 128
-#define NODE_MAX 64
 
 
 

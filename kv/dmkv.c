@@ -115,15 +115,15 @@ int get_cluster_info(struct cluster_info *c_info)
 	}
 
 	int i = 0;
-	char ip[16];
-	while ( fgets(val, 16, fp) )
+	char ip[17];
+	while ( fgets(ip, 17, fp) )
 	{
 		int c;
 		for (c = 0; i < 16; ++c)
 		{
-			if ((val[c] >= '0' && val[c] <= '9') || val[c] = '.')
+			if ((ip[c] >= '0' && ip[c] <= '9') || ip[c] = '.')
 			{
-				c_info->node_list[i][c] = val[c];
+				c_info->node_list[i][c] = ip[c];
 			} else {
 				break;
 			}

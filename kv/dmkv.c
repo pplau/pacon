@@ -6,17 +6,18 @@
 #include <string.h>
 #include <malloc.h>
 #include "dmkv.h"
+#include "../pacon.h"
 
 #define NODE_NUM 1
 
+/*
 static char node_address[12][4] = {
 	"10.182.171.1",
 	"10.182.171.2",
 	"10.182.171.3",
 	"10.182.171.4",
 };
-
-static char test_node_address_1 = "10.182.171.2";
+*/
 
 /************* memc3 wrapper **************/
 

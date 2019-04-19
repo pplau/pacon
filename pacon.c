@@ -5,7 +5,7 @@
 #include <malloc.h>
 #include "pacon.h"
 #include "kv/dmkv.h"
-#include "../lib/cJSON.h"
+#include "./lib/cJSON.h"
 
 static struct dmkv *kv_handle;
 
@@ -53,7 +53,7 @@ int free_pacon(struct pacon *pacon)
 	return 0;
 } 
 
-int pacon_open(const char *path)
+int pacon_open(const char *path, int flag, mode_t mode)
 {
 	return 0;
 }
@@ -103,7 +103,7 @@ int pacon_mkdir(const char *path, mode_t mode)
 int pacon_getattr(const char* path, struct pacon_stat* st)
 {
 	char *val;
-	val = redisClusterCommand(pcache->redis,"GET %s", key);
+	val = dmkv_get(kv_handle, path);
 	if (val == NULL)
 		return -1;
 

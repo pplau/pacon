@@ -11,13 +11,14 @@
 
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
 #define MOUNT_PATH_MAX 128
+#define NODE_MAX 64
 
 
 
 struct pacon
 {
 	uint32_t node_num;
-	char node_list[];
+	char node_list[NODE_MAX];
 	uint32_t kv_type;
 	char mount_path[MOUNT_PATH_MAX];
 };

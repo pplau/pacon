@@ -26,6 +26,11 @@ int test_create(char *path, mode_t mode)
 	return pacon_create(path, mode);
 }
 
+int test_stat(char *path, struct pacon_stat* st)
+{
+	return pacon_getattr(path, st);
+}
+
 /*
 int test_readdir()
 {
@@ -86,6 +91,18 @@ int main(int argc, char const *argv[])
 	{
 		printf("create error\n");
 		return -1;
+	}
+
+	printf("stat test\n");
+	struct pacon_stat* st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
+	ret = test_stat("/file", st);
+	if (ret != 0)
+	{
+		printf("stat error\n");
+		return -1;
+	} else {
+		printf("mode: %d\n", st->mode);
+		printf("size: %d\n", st->size);
 	}
 
 	ret = test_free(pacon);

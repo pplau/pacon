@@ -14,7 +14,7 @@
 struct cluster_info
 {
 	int node_num;
-	int node_list[NODE_MAX][17];
+	char node_list[NODE_MAX][17];
 };
 
 struct dmkv

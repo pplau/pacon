@@ -32,8 +32,8 @@ int memc_new(struct dmkv *dmkv)
 		return -1;
 	}
 	memcached_behavior_set(dmkv->memc,MEMCACHED_BEHAVIOR_DISTRIBUTION,MEMCACHED_DISTRIBUTION_CONSISTENT);
-	//servers = memcached_server_list_append(NULL, test_node_address_1, 11211, &rc);
-	for (i = 0; i < node_num; ++i)
+	servers = memcached_server_list_append(NULL, test_node_address_1, 11211, &rc);
+	for (i = 1; i < node_num; ++i)
 	{
 		servers = memcached_server_list_append(servers, dmkv->c_info->node_list[i], 11211, &rc);
 	}
@@ -121,7 +121,7 @@ int get_cluster_info(struct cluster_info *c_info)
 		int c;
 		for (c = 0; i < 16; ++c)
 		{
-			if ((ip[c] >= '0' && ip[c] <= '9') || ip[c] = '.')
+			if ((ip[c] >= '0' && ip[c] <= '9') || ip[c] == '.')
 			{
 				c_info->node_list[i][c] = ip[c];
 			} else {

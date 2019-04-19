@@ -320,13 +320,13 @@ int fs_init(struct fs *fs, char *node_list, char *mount_point)
 	md->gid = getgid();
 	md->nlink = 0;
 	set_opt_flag(md, OP_mkdir, 1);
-	redisReply *reply;
+
 	char *value = (char *)md;
 	char *path = "/";
 	reply = pcache_set(fs->pcache, path, value);
 	if (reply->integer == 0)
 	{
-		printf("mkdir: set %s to redis fail\n", path);
+		printf("mkdir: set %s to memc3 fail\n", path);
 		return ERROR;
 	}
 	ret = add_to_local_namespace(fs->pcache, path, IS_DIR);
@@ -352,12 +352,11 @@ int fs_mkdir(struct fs *fs, const char *path, mode_t mode)
 	set_opt_flag(md, OP_mkdir, 1);
 
 	// put the new metadata into pcache
-	redisReply *reply;
 	char *value = (char *)md;
 	reply = pcache_set(fs->pcache, path, value);
 	if (reply->integer == 0)
 	{
-		printf("mkdir: set %s to redis fail\n", path);
+		printf("mkdir: set %s to memc3 fail\n", path);
 		return ERROR;
 	}
 	ret = add_to_local_namespace(fs->pcache, path, IS_DIR);
@@ -532,12 +531,11 @@ int fs_create(struct fs *fs, const char * path, mode_t mode, struct fuse_file_in
 	set_md_flag(md, MD_type, 1);
 
 	// put the new metadata into pcache
-	redisReply *reply;
 	char *value = (char *)md;
 	reply = pcache_set(fs->pcache, path, value);
 	if (reply->integer == 0)
 	{
-		printf("create file: set %s to redis fail\n", path);
+		printf("create file: set %s to memc3 fail\n", path);
 		return ERROR;
 	}
 	ret = add_to_local_namespace(fs->pcache, path, IS_FILE);

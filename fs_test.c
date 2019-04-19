@@ -21,6 +21,7 @@ int test_mkdir(char *path, mode_t mode)
 	return pacon_mkdir(path, mode);
 }
 
+/*
 int test_create()
 {
 	return 0;
@@ -55,11 +56,15 @@ int exc_test()
 {
 	return 0;
 }
+*/
 
 int main(int argc, char const *argv[])
 {
 	int ret;
 	struct pacon *pacon = (struct pacon *)malloc(sizeof(struct pacon));
+	pacon->mount_path[0] = '/';
+	pacon->mount_path[1] = '\0';
+	pacon->kv_type = 0;
 	ret = init_pacon(pacon);
 	if (ret != 0)
 	{

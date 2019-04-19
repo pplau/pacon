@@ -5,6 +5,7 @@
 #include <malloc.h>
 #include "pacon.h"
 #include "kv/dmkv.h"
+#include "../lib/cJSON.h"
 
 static struct dmkv *kv_handle;
 
@@ -99,18 +100,7 @@ int pacon_mkdir(const char *path, mode_t mode)
 	return ret;
 }
 
-int pacon_opendir(const char *path)
-{
-	return fs_opendir(fs, path);
-}
-
-int pacon_readdir(const char *path, void *buf, off_t offset)
-{
-	// need implement a filler function
-	return fs_readdir(fs, path, buf, filler, offset);
-}
-
-int pacon_getattr(const char* path, struct stat* st)
+int pacon_getattr(const char* path, struct pacon_stat* st)
 {
 	char *val;
 	val = redisClusterCommand(pcache->redis,"GET %s", key);
@@ -144,6 +134,18 @@ int pacon_getattr(const char* path, struct stat* st)
 	st->fd = (uint32_t)j_fd->valueint;
 	//st->opt = (uint32_t)j_opt->valueint;
 	return 0;
+}
+
+/*
+int pacon_opendir(const char *path)
+{
+	return fs_opendir(fs, path);
+}
+
+int pacon_readdir(const char *path, void *buf, off_t offset)
+{
+	// need implement a filler function
+	return fs_readdir(fs, path, buf, filler, offset);
 }
 
 int pacon_rmdir(const char *path)
@@ -215,5 +217,5 @@ int pacon_readlink(const char * path, char * buf, size_t size)
 {
 	return fs_readlink(fs, path, buf, size);
 }
-
+*/
 

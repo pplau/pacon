@@ -17,7 +17,7 @@
 struct pacon
 {
 	uint32_t node_num;
-	char node_list[]
+	char node_list[];
 	uint32_t kv_type;
 	char mount_path[MOUNT_PATH_MAX];
 };

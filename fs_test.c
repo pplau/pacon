@@ -6,12 +6,12 @@
 #include <sys/stat.h>
 #include "pacon.h"
 
-int init_pacon(struct pacon *pacon)
+int test_init(struct pacon *pacon)
 {
 	return init_pacon(pacon);
 }
 
-int free_pacon(struct pacon *pacon)
+int test_free(struct pacon *pacon)
 {
 	return free_pacon(pacon);
 }
@@ -21,12 +21,12 @@ int test_mkdir(char *path, mode_t mode)
 	return pacon_mkdir(path, mode);
 }
 
-/*
-int test_create()
+int test_create(char *path, mode_t mode)
 {
-	return 0;
+	return pacon_create(path, mode);
 }
 
+/*
 int test_readdir()
 {
 	return 0;
@@ -65,7 +65,7 @@ int main(int argc, char const *argv[])
 	pacon->mount_path[0] = '/';
 	pacon->mount_path[1] = '\0';
 	pacon->kv_type = 0;
-	ret = init_pacon(pacon);
+	ret = test_init(pacon);
 	if (ret != 0)
 	{
 		printf("init pacon error\n");
@@ -88,7 +88,7 @@ int main(int argc, char const *argv[])
 		return -1;
 	}
 
-	ret = free_pacon(pacon);
+	ret = test_free(pacon);
 	if (ret != 0)
 	{
 		printf("free pacon error\n");

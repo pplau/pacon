@@ -4,18 +4,17 @@
 
 #include <pthread.h>
 #include <libmemcached/memcached.h>
+#include "../pacon.h"
 
 #ifndef DMKV_H
 #define DMKV_H
-
-#define MAX_NODES 64
 
 
 
 struct cluster_info
 {
 	int node_num;
-	int node_list[MAX_NODES][16];
+	int node_list[NODE_MAX][17];
 };
 
 struct dmkv

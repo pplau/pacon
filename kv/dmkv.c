@@ -6,9 +6,7 @@
 #include <string.h>
 #include <malloc.h>
 #include "dmkv.h"
-#include "../pacon.h"
 
-#define NODE_NUM 1
 
 /*
 static char node_address[12][4] = {
@@ -108,21 +106,42 @@ int dht(struct cluster_info *c_info, unsigned long hash)
 
 int get_cluster_info(struct cluster_info *c_info)
 {
-	c_info->node_num = NODE_NUM;
 	FILE *fp;
-	fp = fopen("../config");
-	int i = 0;
-	while ( !feof(fp) )
+	fp = fopen("./config", "r");
+	if (fp == NULL)
 	{
-		fgets(c_info->node_list[i], 16, fp);
+		printf("cannot open config file\n");
+		return -1;
+	}
+
+	int i = 0;
+	char ip[16];
+	while ( fgets(val, 16, fp) )
+	{
+		int c;
+		for (c = 0; i < 16; ++c)
+		{
+			if ((val[c] >= '0' && val[c] <= '9') || val[c] = '.')
+			{
+				c_info->node_list[i][c] = val[c];
+			} else {
+				break;
+			}
+		}
+		c_info->node_list[i][c] = '\0';
 		i++;
-		if (i >= MAX_NODES)
+		if (i >= NODE_MAX)
 		{
 			printf("kv cluster overflow\n");
 			return -1;
 		}
 	}
 	fclose(fp);
+	if (i == 0)
+	{
+		printf("read config error\n");
+		return -1;
+	}
 	c_info->node_num = i;
 	return 0;
 }

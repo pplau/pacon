@@ -25,6 +25,7 @@ struct pacon
 struct pacon_file
 {
 	int hit; // 0 is miss in pacon, 1 is hit in pacon
+	int fd; // fd only is used when the file data does not be cached in pacon
 	char *buf;
 };
 
@@ -50,6 +51,8 @@ int free_pacon(struct pacon *pacon);
 /**************** fs interfaces ****************/
 
 int pacon_open(const char *path, int flag, mode_t mode);
+
+int pacon_close(struct pacon_file *p_file);
 
 int pacon_create(const char *path, mode_t mode);
 

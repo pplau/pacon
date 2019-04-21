@@ -31,17 +31,18 @@ int test_stat(char *path, struct pacon_stat* st)
 	return pacon_getattr(path, st);
 }
 
+
+int test_readdir(char *path)
+{
+	return 0;
+}
+
+int test_open(char *path, int flag, mode_t mode)
+{
+	return pacon_open(path, flag, mode);
+}
+
 /*
-int test_readdir()
-{
-	return 0;
-}
-
-int test_open()
-{
-	return 0;
-}
-
 int test_rm()
 {
 	return 0;

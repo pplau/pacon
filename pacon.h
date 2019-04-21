@@ -24,7 +24,8 @@ struct pacon
 
 struct pacon_file
 {
-	
+	int hit; // 0 is miss in pacon, 1 is hit in pacon
+	char *buf;
 };
 
 struct pacon_stat

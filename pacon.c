@@ -3,11 +3,17 @@
  */
 #include <stdio.h>
 #include <malloc.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include "pacon.h"
 #include "kv/dmkv.h"
 #include "./lib/cJSON.h"
 
+
 static struct dmkv *kv_handle;
+static char mount_path[MOUNT_PATH_MAX];
 
 struct commit_queue
 {
@@ -15,8 +21,55 @@ struct commit_queue
 };
 
 
+/* 
+ * ret = 0 means recursive sub file/dir, 1 means not recursive sub file/dir,  
+ * recursive = 0 means not recursive, =1 means recursive search all sub dir 
+ */
+int child_cmp(char *path, char *p_path, int recursive)
+{
+	int len = strlen(path);
+	int p_len = strlen(p_path); 
+	if (len <= p_len)
+		return 0;    // not the child dentry
 
-int build_namespace(char *mount_path)
+	int i;
+	if (recursive == 0)
+	{
+		for (i = 0; i < p_len; ++i)
+		{
+			if (path[i] == p_path[i])
+				continue;
+			if (path[i] != p_path[i])
+				return 0;
+		}
+		if (p_len > 1 && path[i] != '/')    // just name prefix is the same and not the root
+			return 0;
+		i++;
+		for (; i < len; ++i)
+		{
+			if (path[i] == '/')
+				return 0;
+		}
+		return 1;
+	} 
+	if (recursive == 1)
+	{
+		for (i = 0; i < p_len; ++i)
+		{
+			if (path[i] == p_path[i])
+				continue;
+			if (path[i] != p_path[i])
+				return 0;
+		}
+		if (path[i] != '/')
+			return 0;
+		return 1;
+	}		
+	return -1;
+}
+
+
+int init_pcheck_info(char *mount_path)
 {
 	return 0;
 }
@@ -37,13 +90,26 @@ int init_pacon(struct pacon *pacon)
 	}
 	kv_handle = kv;
 
-	// build namespace
-	ret = build_namespace(pacon->mount_path);
+	// inital permission check info
+	ret = init_pcheck_info(pacon->mount_path);
 	if (ret != 0)
 	{
-		printf("build namespace error\n");
+		printf("inital permission check info error\n");
 		return -1;
 	}
+
+	int i;
+	for (i = 0; i < MOUNT_PATH_MAX-1; ++i)
+	{
+		if (pacon->mount_path != '\0')
+		{
+			mount_path[i] = pacon->mount_path[i];
+		} else {
+			break;
+		}
+	}
+	mount_path[i] = '\0';
+
 	return 0;
 }
 
@@ -53,7 +119,45 @@ int free_pacon(struct pacon *pacon)
 	return 0;
 } 
 
-int pacon_open(const char *path, int flag, mode_t mode)
+int pacon_open(const char *path, int flags, mode_t mode, struct pacon_file *p_file)
+{
+	int ret;
+	ret = child_cmp(path, mount_path, 1);
+	if (ret != 1)
+	{
+		p_file->hit = 0;
+		return open(path, flags, mode);
+	}
+
+	struct pacon_stat *st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
+	ret = pacon_getattr(path, st);
+	if (ret == -1)
+	{
+		int fd = open(path, flags, mode);
+		// cache in pacon
+		int res;
+		cJSON *j_body;
+		j_body = cJSON_CreateObject();
+		cJSON_AddNumberToObject(j_body, "flags", 0);
+		cJSON_AddNumberToObject(j_body, "mode", mode);
+		cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "atime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "size", 0);
+		cJSON_AddNumberToObject(j_body, "uid", getuid());
+		cJSON_AddNumberToObject(j_body, "gid", getgid());
+		cJSON_AddNumberToObject(j_body, "nlink", 0);
+		//cJSON_AddNumberToObject(j_body, "opt", 0);
+		//set_opt_flag(md, OP_mkdir, 1);
+		char *value = cJSON_Print(j_body);
+		res = dmkv_set(kv_handle, path, value);	
+		p_file->fd = fd;
+	}
+	p_file->hit = 1;
+	return 0;
+}
+
+int pacon_close(struct pacon_file *p_file)
 {
 	return 0;
 }

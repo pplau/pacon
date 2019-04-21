@@ -32,7 +32,7 @@ int memc_new(struct dmkv *dmkv)
 		return -1;
 	}
 	memcached_behavior_set(dmkv->memc,MEMCACHED_BEHAVIOR_DISTRIBUTION,MEMCACHED_DISTRIBUTION_CONSISTENT);
-	servers = memcached_server_list_append(NULL, test_node_address_1, 11211, &rc);
+	servers = memcached_server_list_append(NULL, dmkv->c_info->node_list[0], 11211, &rc);
 	for (i = 1; i < node_num; ++i)
 	{
 		servers = memcached_server_list_append(servers, dmkv->c_info->node_list[i], 11211, &rc);

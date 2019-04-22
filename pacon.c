@@ -11,6 +11,7 @@
 #include "kv/dmkv.h"
 #include "./lib/cJSON.h"
 
+#define BUFFER_SIZE 64
 
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
@@ -240,6 +241,23 @@ int pacon_getattr(const char* path, struct pacon_stat* st)
 	return 0;
 }
 
+int pacon_read(const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
+{
+	int ret;
+	if (p_file->hit == 1 && size <= BUFFER_SIZE && offset == 0)
+	{
+		buf = p_file->buf;
+		return 0;
+	} 
+	ret = read(p_file->fd, buf, size);
+	return ret;
+}
+
+int pacon_write(const char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
+{
+	return 0;
+}	
+
 /*
 int pacon_opendir(const char *path)
 {
@@ -261,16 +279,6 @@ int pacon_rename(const char *path, const char *newpath)
 {
 	return fs_rename(fs, path, newpath);
 }
-
-int pacon_read(const char *path, char *buf, size_t size, off_t offset)
-{
-	return fs_read(fs, path, buf, size, offset, file_info);
-}
-
-int pacon_write(const char *path, const char *buf, size_t size, off_t offset)
-{
-	return fs_write(fs, path, buf, size, offset, file_info);
-}	
 
 int pacon_release(const char *path)
 {

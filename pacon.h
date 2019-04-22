@@ -68,9 +68,9 @@ int pacon_rmdir(const char *path);
 
 int pacon_rename(const char *path, const char *newpath);
 
-int pacon_read(const char *path, char *buf, size_t size, off_t offset);
+int pacon_read(const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset);
 
-int pacon_write(const char *path, const char *buf, size_t size, off_t offset);
+int pacon_write(const char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset);
 
 int pacon_release(const char *path);
 

@@ -16,10 +16,6 @@
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
 
-struct commit_queue
-{
-	
-};
 
 
 /* 
@@ -224,7 +220,7 @@ int pacon_getattr(const char* path, struct pacon_stat* st)
 	j_uid = cJSON_GetObjectItem(j_body, "uid");
 	j_gid = cJSON_GetObjectItem(j_body, "gid");
 	j_nlink = cJSON_GetObjectItem(j_body, "nlink");
-	j_fd = cJSON_GetObjectItem(j_body, "fd");
+	//j_fd = cJSON_GetObjectItem(j_body, "fd");
 	//j_opt = cJSON_GetObjectItem(j_body, "opt");
 
 	st->flags = (uint32_t)j_flags->valueint;
@@ -236,7 +232,7 @@ int pacon_getattr(const char* path, struct pacon_stat* st)
 	st->uid = (uint32_t)j_uid->valueint;
 	st->gid = (uint32_t)j_gid->valueint;
 	st->nlink = (uint32_t)j_nlink->valueint;
-	st->fd = (uint32_t)j_fd->valueint;
+	//st->fd = (uint32_t)j_fd->valueint;
 	//st->opt = (uint32_t)j_opt->valueint;
 	return 0;
 }

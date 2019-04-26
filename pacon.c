@@ -237,6 +237,20 @@ int pacon_getattr(const char* path, struct pacon_stat* st)
 	return 0;
 }
 
+int pacon_rm(const char *path)
+{
+	int ret;
+	ret = dmkv_del(kv_handle, path);
+	return ret;
+}
+
+int pacon_rmdir(const char *path)
+{
+	int ret;
+	ret = dmkv_del(kv_handle, path);
+	return ret;
+}
+
 int pacon_read(const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
 {
 	int ret;
@@ -254,18 +268,9 @@ int pacon_write(const char *path, struct pacon_file *p_file, const char *buf, si
 	return 0;
 }	
 
-int pacon_rm(const char *path)
+int pacon_fsync(int fd)
 {
-	int ret;
-	ret = dmkv_del(kv_handle, path);
-	return ret;
-}
-
-int pacon_rmdir(const char *path)
-{
-	int ret;
-	ret = dmkv_del(kv_handle, path);
-	return ret;
+	return 0;
 }
 
 /*

@@ -50,7 +50,7 @@ int free_pacon(struct pacon *pacon);
 
 /**************** fs interfaces ****************/
 
-int pacon_open(const char *path, int flag, mode_t mode);
+int pacon_open(const char *path, int flag, mode_t mode, struct pacon_file *p_file);
 
 int pacon_close(struct pacon_file *p_file);
 
@@ -71,6 +71,8 @@ int pacon_rename(const char *path, const char *newpath);
 int pacon_read(const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset);
 
 int pacon_write(const char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset);
+
+int pacon_fsync(int fd);
 
 int pacon_release(const char *path);
 

@@ -37,18 +37,17 @@ int test_readdir(char *path)
 	return 0;
 }
 
-int test_open(char *path, int flag, mode_t mode)
-{
-	return pacon_open(path, flag, mode);
-}
-
-
 int test_rm(char *path)
 {
 	return pacon_rm(path);
 }
 
 /*
+int test_open(char *path, int flag, mode_t mode)
+{
+	return pacon_open(path, flag, mode);
+}
+
 int test_rm_dir()
 {
 	return 0;

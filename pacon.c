@@ -176,7 +176,7 @@ int pacon_create(const char *path, mode_t mode)
 	//cJSON_AddNumberToObject(j_body, "opt", 0);
 	//set_opt_flag(md, OP_mkdir, 1);
 	char *value = cJSON_Print(j_body);
-	ret = dmkv_set(kv_handle, path, value);	
+	ret = dmkv_add(kv_handle, path, value);	
 	return ret;
 }
 
@@ -197,7 +197,7 @@ int pacon_mkdir(const char *path, mode_t mode)
 	//cJSON_AddNumberToObject(j_body, "opt", 0);
 	//set_opt_flag(md, OP_mkdir, 1);
 	char *value = cJSON_Print(j_body);
-	ret = dmkv_set(kv_handle, path, value);
+	ret = dmkv_add(kv_handle, path, value);
 	return ret;
 }
 
@@ -254,6 +254,20 @@ int pacon_write(const char *path, struct pacon_file *p_file, const char *buf, si
 	return 0;
 }	
 
+int pacon_rm(const char *path)
+{
+	int ret;
+	ret = dmkv_del(kv_handle, path);
+	return ret;
+}
+
+int pacon_rmdir(const char *path)
+{
+	int ret;
+	ret = dmkv_del(kv_handle, path);
+	return ret;
+}
+
 /*
 int pacon_opendir(const char *path)
 {
@@ -264,11 +278,6 @@ int pacon_readdir(const char *path, void *buf, off_t offset)
 {
 	// need implement a filler function
 	return fs_readdir(fs, path, buf, filler, offset);
-}
-
-int pacon_rmdir(const char *path)
-{
-	return fs_rmdir(fs, path);
 }
 
 int pacon_rename(const char *path, const char *newpath)

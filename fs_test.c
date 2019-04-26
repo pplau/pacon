@@ -42,12 +42,13 @@ int test_open(char *path, int flag, mode_t mode)
 	return pacon_open(path, flag, mode);
 }
 
-/*
-int test_rm()
+
+int test_rm(char *path)
 {
-	return 0;
+	return pacon_rm(path);
 }
 
+/*
 int test_rm_dir()
 {
 	return 0;
@@ -104,6 +105,14 @@ int main(int argc, char const *argv[])
 	} else {
 		printf("mode: %d\n", st->mode);
 		printf("size: %d\n", st->size);
+	}
+
+	printf("rm test\n");
+	ret = test_rm("/file");
+	if (ret != 0)
+	{
+		printf("rm error\n");
+		return -1;
 	}
 
 	ret = test_free(pacon);

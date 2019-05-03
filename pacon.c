@@ -315,12 +315,12 @@ int pacon_unlink(const char * path)
 	return fs_unlink(fs, path);
 }
 
-int pacon_chmod(const char * path, mode_t mode)
+int pacon_batch_chmod(const char * path, mode_t mode)
 {
 	return fs_chmod(fs, path, mode);
 }
 
-int pacon_chown(const char * path, uid_t owner, gid_t group)
+int pacon_batch_chown(const char * path, uid_t owner, gid_t group)
 {
 	return fs_chown(fs, path, owner, group);
 }

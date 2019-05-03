@@ -84,9 +84,9 @@ int pacon_truncate(const char *path, off_t offset);
 
 int pacon_unlink(const char *path);
 
-int pacon_chmod(const char *path, mode_t mode);
+int pacon_batch_chmod(const char *path, mode_t mode);
 
-int pacon_chown(const char *path, uid_t owner, gid_t group);
+int pacon_batch_chown(const char *path, uid_t owner, gid_t group);
 
 int pacon_access(const char *path, int amode);
 

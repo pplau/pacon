@@ -13,6 +13,13 @@
 
 #define BUFFER_SIZE 64
 
+// opt type
+#define MKDIR ":1"
+#define CREATE ":2"
+#define RM ":3"
+#define RMDIR ":4"
+#define LINK ":5"
+
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
 
@@ -107,6 +114,17 @@ int init_pacon(struct pacon *pacon)
 	}
 	mount_path[i] = '\0';
 
+	// init mq
+	void *context = zmq_ctx_new();
+    void *publisher = zmq_socket(context, ZMQ_PUB);
+    int rc = zmq_bind(publisher, "ipc:///tmp/commit/0");
+    if (rc != 0)
+    {
+    	printf("init zeromq error\n");
+    	return -1;
+    }
+    pacon->publisher = publisher;
+    pacon->context = context;
 	return 0;
 }
 
@@ -115,6 +133,23 @@ int free_pacon(struct pacon *pacon)
 	dmkv_free(kv_handle);
 	return 0;
 } 
+
+int add_to_mq(struct pacon *pacon, char *path, char opt_type)
+{
+	int path_len = strlen(path);
+	if (path_len+3 > 128)
+	{
+		printf("path is too long\n");
+		return -1;
+	}
+	char mesg[128];
+	sprintf(mesg, "%s%s", path, opt_type);
+	mesg[path+2] = '\0';
+	zmq_send(pacon->publisher, mesg, strlen(mesg), 0);
+	return 0;
+}
+
+/**************** file interfaces ***************/
 
 int pacon_open(const char *path, int flags, mode_t mode, struct pacon_file *p_file)
 {
@@ -176,7 +211,10 @@ int pacon_create(const char *path, mode_t mode)
 	//cJSON_AddNumberToObject(j_body, "opt", 0);
 	//set_opt_flag(md, OP_mkdir, 1);
 	char *value = cJSON_Print(j_body);
-	ret = dmkv_add(kv_handle, path, value);	
+	ret = dmkv_add(kv_handle, path, value);
+	if (ret != 0)
+		return ret;
+	ret = add_to_mq(path, CREATE);
 	return ret;
 }
 
@@ -198,6 +236,9 @@ int pacon_mkdir(const char *path, mode_t mode)
 	//set_opt_flag(md, OP_mkdir, 1);
 	char *value = cJSON_Print(j_body);
 	ret = dmkv_add(kv_handle, path, value);
+	if (ret != 0)
+		return ret;
+	ret = add_to_mq(path, MKDIR);
 	return ret;
 }
 

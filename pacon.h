@@ -7,6 +7,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <zmq.h>
 #include "kv/dmkv.h"
 
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
@@ -20,6 +21,8 @@ struct pacon
 	//char node_list[NODE_MAX];
 	uint32_t kv_type;
 	char mount_path[MOUNT_PATH_MAX];
+	void *publisher;
+	void *context;
 };
 
 struct pacon_file
@@ -46,7 +49,7 @@ struct pacon_stat
 int init_pacon(struct pacon *pacon);
 
 int free_pacon(struct pacon *pacon);
- 
+
 
 /**************** fs interfaces ****************/
 

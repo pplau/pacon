@@ -3,8 +3,18 @@
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <zmq.h>
 #include "pacon_server.h"
+
+#define PATH_MAX 128
+
+// opt type
+#define MKDIR ":1"
+#define CREATE ":2"
+#define RM ":3"
+#define RMDIR ":4"
+#define LINK ":5"
 
 
 int start_pacon_server(struct *pacon_server_info)
@@ -53,6 +63,9 @@ int start_pacon_server(struct *pacon_server_info)
 	}
 	pacon_server_info->subscriber = subscriber;
 	pacon_server_info->context = context;
+
+	pacon_server_info->batch_dir_mode = S_IFDIR | 0755;
+	pacon_server_info->batch_file_mode = S_IFREG | 0644;
 	return 0;
 }
 
@@ -64,29 +77,58 @@ int stop_pacon_server(struct *pacon_server_info)
 	return 0;
 }
 
-int commit_to_fs(char *mesg)
+int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 {
-	int ret;
+	int ret = -1;
+	int mesg_len = strlen(mesg);
+	char path[PATH_MAX];
+	strncpy(path, mesg, mesg_len-2);
+	path[mesg_len] = '\0';
 
+	switch (mesg[mesg_len-1])
+	{
+		case '1':
+			ret = mkdir(path, ps_info->batch_dir_mode);
+			break;
+
+		case '2':
+			ret = create(path, ps_info->batch_file_mode);
+			break;
+
+		case '3':
+			break;
+
+		case '4':
+			break;
+
+		case '5':
+			break;
+
+		default:
+			printf("opt type error\n");
+			return -1;
+	}
+	return ret;
 }
 
-int listen_mq(struct *pacon_server_info)
+int listen_mq(struct pacon_server_info *ps_info)
 {
 	int ret, ms_size;
-	char mesg[255];
+	char mesg[PATH_MAX];
 	while (1)
 	{
-		ms_size = zmq_recv(pacon_server_info->subscriber, mesg, 255, 0);
+		ms_size = zmq_recv(ps_info->subscriber, mesg, PATH_MAX, 0);
 		if (ms_size == -1)
 		{
 			printf("error message\n");
 			continue;
 		}
 		mesg[ms_size] = '\0';
-		ret = commit_to_fs(mesg);
+		ret = commit_to_fs(ps_info, mesg);
 		if (ret != 0)
 		{
-			/* code */
+			printf("commit opt to fs fail: %s\n", mesg);
+			return -1;
 		}
 	}
 }

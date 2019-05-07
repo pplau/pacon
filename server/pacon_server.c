@@ -55,7 +55,7 @@ int start_pacon_server(struct *pacon_server_info)
 	printf("init zeromq\n");
 	void *context = zmq_ctx_new();
 	void *subscriber = zmq_socket(context, ZMQ_SUB);
-	int rc = zmq_connect(subscriber, "ipc:///tmp/commit/0");
+	int rc = zmq_connect(subscriber, "ipc:///tmp/commit");
 	if (rc != 0)
 	{
 		printf("init zeromq error\n");

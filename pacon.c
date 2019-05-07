@@ -117,7 +117,7 @@ int init_pacon(struct pacon *pacon)
 	// init mq
 	void *context = zmq_ctx_new();
     void *publisher = zmq_socket(context, ZMQ_PUB);
-    int rc = zmq_bind(publisher, "ipc:///tmp/commit/0");
+    int rc = zmq_bind(publisher, "ipc:///tmp/commit");
     if (rc != 0)
     {
     	printf("init zeromq error\n");
@@ -134,7 +134,7 @@ int free_pacon(struct pacon *pacon)
 	return 0;
 } 
 
-int add_to_mq(struct pacon *pacon, char *path, char opt_type)
+int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
 {
 	int path_len = strlen(path);
 	if (path_len+3 > 128)

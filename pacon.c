@@ -20,6 +20,7 @@
 #define RMDIR ":4"
 #define LINK ":5"
 
+static struct pacon *pacon;
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
 
@@ -92,7 +93,8 @@ int init_pacon(struct pacon *pacon)
 		printf("init dmkv fail\n");
 		return -1;
 	}
-	kv_handle = kv;
+	//kv_handle = kv;
+	pacon->kv_handle = kv;
 
 	// inital permission check info
 	ret = init_pcheck_info(pacon->mount_path);
@@ -125,12 +127,13 @@ int init_pacon(struct pacon *pacon)
     }
     pacon->publisher = publisher;
     pacon->context = context;
+    pacon = pacon;
 	return 0;
 }
 
 int free_pacon(struct pacon *pacon)
 {
-	dmkv_free(kv_handle);
+	dmkv_free(pacon->kv_handle);
 	return 0;
 } 
 
@@ -161,7 +164,7 @@ int check_parent_dir(char *path)
 
 	// check parent dir
 	char *val;
-	val = dmkv_get(kv_handle, p_dir);
+	val = dmkv_get(pacon->kv_handle, p_dir);
 	if (val == NULL)
 		return -1;
 	//add_to_dir_check_table(p_dir);
@@ -177,7 +180,7 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
 	}
 	char mesg[PATH_MAX];
 	sprintf(mesg, "%s%s", path, opt_type);
-	mesg[path+2] = '\0';
+	mesg[path_len+2] = '\0';
 	zmq_send(pacon->publisher, mesg, strlen(mesg), 0);
 	return 0;
 }
@@ -215,7 +218,7 @@ int pacon_open(const char *path, int flags, mode_t mode, struct pacon_file *p_fi
 		//cJSON_AddNumberToObject(j_body, "opt", 0);
 		//set_opt_flag(md, OP_mkdir, 1);
 		char *value = cJSON_Print(j_body);
-		res = dmkv_set(kv_handle, path, value);	
+		res = dmkv_set(pacon->kv_handle, path, value);	
 		p_file->fd = fd;
 	}
 	p_file->hit = 1;
@@ -253,10 +256,10 @@ int pacon_create(const char *path, mode_t mode)
 	//cJSON_AddNumberToObject(j_body, "opt", 0);
 	//set_opt_flag(md, OP_mkdir, 1);
 	char *value = cJSON_Print(j_body);
-	ret = dmkv_add(kv_handle, path, value);
+	ret = dmkv_add(pacon->kv_handle, path, value);
 	if (ret != 0)
 		return ret;
-	ret = add_to_mq(path, CREATE);
+	ret = add_to_mq(pacon, path, CREATE);
 	return ret;
 }
 
@@ -286,17 +289,17 @@ int pacon_mkdir(const char *path, mode_t mode)
 	//cJSON_AddNumberToObject(j_body, "opt", 0);
 	//set_opt_flag(md, OP_mkdir, 1);
 	char *value = cJSON_Print(j_body);
-	ret = dmkv_add(kv_handle, path, value);
+	ret = dmkv_add(pacon->kv_handle, path, value);
 	if (ret != 0)
 		return ret;
-	ret = add_to_mq(path, MKDIR);
+	ret = add_to_mq(pacon, path, MKDIR);
 	return ret;
 }
 
 int pacon_getattr(const char* path, struct pacon_stat* st)
 {
 	char *val;
-	val = dmkv_get(kv_handle, path);
+	val = dmkv_get(pacon->kv_handle, path);
 	if (val == NULL)
 		return -1;
 
@@ -332,14 +335,14 @@ int pacon_getattr(const char* path, struct pacon_stat* st)
 int pacon_rm(const char *path)
 {
 	int ret;
-	ret = dmkv_del(kv_handle, path);
+	ret = dmkv_del(pacon->kv_handle, path);
 	return ret;
 }
 
 int pacon_rmdir(const char *path)
 {
 	int ret;
-	ret = dmkv_del(kv_handle, path);
+	ret = dmkv_del(pacon->kv_handle, path);
 	return ret;
 }
 

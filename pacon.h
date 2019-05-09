@@ -26,6 +26,9 @@ struct pacon
 	//char node_list[NODE_MAX];
 	uint32_t kv_type;
 	char mount_path[MOUNT_PATH_MAX];
+	// kv
+	struct dmkv *kv_handle;
+	// mq
 	void *publisher;
 	void *context;
 };

@@ -134,15 +134,48 @@ int free_pacon(struct pacon *pacon)
 	return 0;
 } 
 
+/* 
+ * check the parent dir if existed
+ * GET will cause unnecessary data transmition, so we use CAS here
+ * if parent dir existed, we add the check result into the pdir_check_table
+ */
+int check_parent_dir(char *path)
+{
+	char p_dir[PATH_MAX];
+	int path_len = strlen(path), i;
+	if (path_len >= PATH_MAX)
+	{
+		printf("mkdir: path too long\n");
+		return -1;
+	}
+	for (i = path_len-1; i >= 0; --i)
+	{
+		if (i != path_len-1 && path[i] == '/')
+			break;
+	}
+	p_dir[i] = '\0';
+	for (i = i-1; i >= 0; --i)
+	{
+		p_dir[i] = path[i];
+	}
+
+	// check parent dir
+	char *val;
+	val = dmkv_get(kv_handle, p_dir);
+	if (val == NULL)
+		return -1;
+	//add_to_dir_check_table(p_dir);
+}
+
 int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
 {
 	int path_len = strlen(path);
-	if (path_len+3 > 128)
+	if (path_len+3 > PATH_MAX)
 	{
-		printf("path is too long\n");
+		printf("mq: path is too long\n");
 		return -1;
 	}
-	char mesg[128];
+	char mesg[PATH_MAX];
 	sprintf(mesg, "%s%s", path, opt_type);
 	mesg[path+2] = '\0';
 	zmq_send(pacon->publisher, mesg, strlen(mesg), 0);
@@ -197,6 +230,15 @@ int pacon_close(struct pacon_file *p_file)
 int pacon_create(const char *path, mode_t mode)
 {
 	int ret;
+	if (PARENT_CHECK == 1)
+	{
+		ret = check_parent_dir(path);
+		if (ret != 0)
+		{
+			printf("create: parent dir not existed\n");
+			return -1;
+		}
+	}
 	cJSON *j_body;
 	j_body = cJSON_CreateObject();
 	cJSON_AddNumberToObject(j_body, "flags", 0);
@@ -221,6 +263,15 @@ int pacon_create(const char *path, mode_t mode)
 int pacon_mkdir(const char *path, mode_t mode)
 {
 	int ret;
+	if (PARENT_CHECK == 1)
+	{
+		ret = check_parent_dir(path);
+		if (ret != 0)
+		{
+			printf("mkdir: parent dir not existed\n");
+			return -1;
+		}
+	}
 	cJSON *j_body;
 	j_body = cJSON_CreateObject();
 	cJSON_AddNumberToObject(j_body, "flags", 0);

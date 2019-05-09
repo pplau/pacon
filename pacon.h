@@ -10,8 +10,13 @@
 #include <zmq.h>
 #include "kv/dmkv.h"
 
+/******* pacon configure *******/
+#define PARENT_CHECK 1 // 0 is not check the parent dir when creating dir and file
+
+
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
 #define MOUNT_PATH_MAX 128
+#define PATH_MAX 128
 
 
 

@@ -117,7 +117,7 @@ int init_pacon(struct pacon *pacon)
 	// init mq
 	void *context = zmq_ctx_new();
     void *publisher = zmq_socket(context, ZMQ_PUB);
-    int rc = zmq_bind(publisher, "ipc:///tmp/commit");
+    int rc = zmq_bind(publisher, "ipc:///tmp/pacon_commit");
     if (rc != 0)
     {
     	printf("init zeromq error\n");

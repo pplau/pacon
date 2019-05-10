@@ -20,7 +20,6 @@
 #define RMDIR ":4"
 #define LINK ":5"
 
-static struct pacon *pacon;
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
 
@@ -79,6 +78,24 @@ int init_pcheck_info(char *mount_path)
 	return 0;
 }
 
+int set_root_path(struct pacon *pacon, char *r_path)
+{
+	int p_len = strlen(r_path);
+	if (p_len >= MOUNT_PATH_MAX -1)
+	{
+		printf("set root path: root dir too long\n");
+		return -1;
+	}
+	int i;
+	for (i = 0; i < p_len; ++i)
+	{
+		pacon->mount_path[i] = r_path[i];	
+	}
+	pacon->mount_path[i] == '\0';
+	printf("set root dir to %s\n", pacon->mount_path);
+	return 0;
+}
+
 /* 
  * 1. inital kv
  * 2. build namespace & inital commit queue 
@@ -127,7 +144,14 @@ int init_pacon(struct pacon *pacon)
     }
     pacon->publisher = publisher;
     pacon->context = context;
-    pacon = pacon;
+    
+    // init the root dir of the consistent area
+    ret = pacon_mkdir(pacon, pacon->mount_path, S_IFDIR | 0755);
+    if (ret != 0)
+    {
+    	printf("inital root dir fail\n");
+    	return -1;
+    }
 	return 0;
 }
 
@@ -146,6 +170,9 @@ int check_parent_dir(char *path)
 {
 	char p_dir[PATH_MAX];
 	int path_len = strlen(path), i;
+	if (path_len == 1 && path[0] == '/')
+		goto out;
+
 	if (path_len >= PATH_MAX)
 	{
 		printf("mkdir: path too long\n");
@@ -168,6 +195,8 @@ int check_parent_dir(char *path)
 	if (val == NULL)
 		return -1;
 	//add_to_dir_check_table(p_dir);
+out:
+	return 0;
 }
 
 int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
@@ -187,7 +216,7 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
 
 /**************** file interfaces ***************/
 
-int pacon_open(const char *path, int flags, mode_t mode, struct pacon_file *p_file)
+int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, struct pacon_file *p_file)
 {
 	int ret;
 	ret = child_cmp(path, mount_path, 1);
@@ -225,12 +254,12 @@ int pacon_open(const char *path, int flags, mode_t mode, struct pacon_file *p_fi
 	return 0;
 }
 
-int pacon_close(struct pacon_file *p_file)
+int pacon_close(struct pacon *pacon, struct pacon_file *p_file)
 {
 	return 0;
 }
 
-int pacon_create(const char *path, mode_t mode)
+int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 {
 	int ret;
 	if (PARENT_CHECK == 1)
@@ -263,7 +292,7 @@ int pacon_create(const char *path, mode_t mode)
 	return ret;
 }
 
-int pacon_mkdir(const char *path, mode_t mode)
+int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 {
 	int ret;
 	if (PARENT_CHECK == 1)
@@ -296,7 +325,7 @@ int pacon_mkdir(const char *path, mode_t mode)
 	return ret;
 }
 
-int pacon_getattr(const char* path, struct pacon_stat* st)
+int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 {
 	char *val;
 	val = dmkv_get(pacon->kv_handle, path);
@@ -332,21 +361,21 @@ int pacon_getattr(const char* path, struct pacon_stat* st)
 	return 0;
 }
 
-int pacon_rm(const char *path)
+int pacon_rm(struct pacon *pacon, const char *path)
 {
 	int ret;
 	ret = dmkv_del(pacon->kv_handle, path);
 	return ret;
 }
 
-int pacon_rmdir(const char *path)
+int pacon_rmdir(struct pacon *pacon, const char *path)
 {
 	int ret;
 	ret = dmkv_del(pacon->kv_handle, path);
 	return ret;
 }
 
-int pacon_read(const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
+int pacon_read(struct pacon *pacon, const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
 {
 	int ret;
 	if (p_file->hit == 1 && size <= BUFFER_SIZE && offset == 0)
@@ -358,79 +387,79 @@ int pacon_read(const char *path, struct pacon_file *p_file, char *buf, size_t si
 	return ret;
 }
 
-int pacon_write(const char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
+int pacon_write(struct pacon *pacon, const char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
 {
 	return 0;
 }	
 
-int pacon_fsync(int fd)
+int pacon_fsync(struct pacon *pacon, int fd)
 {
 	return 0;
 }
 
 /*
-int pacon_opendir(const char *path)
+int pacon_opendir(struct pacon *pacon, const char *path)
 {
 	return fs_opendir(fs, path);
 }
 
-int pacon_readdir(const char *path, void *buf, off_t offset)
+int pacon_readdir(struct pacon *pacon, const char *path, void *buf, off_t offset)
 {
 	// need implement a filler function
 	return fs_readdir(fs, path, buf, filler, offset);
 }
 
-int pacon_rename(const char *path, const char *newpath)
+int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 {
 	return fs_rename(fs, path, newpath);
 }
 
-int pacon_release(const char *path)
+int pacon_release(struct pacon *pacon, const char *path)
 {
 	 return fs_release(fs, path, file_info);
 }
 
-int pacon_releasedir(const char *path)
+int pacon_releasedir(struct pacon *pacon, const char *path)
 {
 	return fs_releasedir(fs, path, file_info);
 }
 
-int pacon_utimens(const char * path, const struct timespec tv[2])
+int pacon_utimens(struct pacon *pacon, const char * path, const struct timespec tv[2])
 {
 	return fs_utimens(fs, path, tv);
 }
 
-int pacon_truncate(const char * path, off_t offset)
+int pacon_truncate(struct pacon *pacon, const char * path, off_t offset)
 {
 	return fs_truncate(fs, path, offset);
 }
 
-int pacon_unlink(const char * path)
+int pacon_unlink(struct pacon *pacon, const char * path)
 {
 	return fs_unlink(fs, path);
 }
 
-int pacon_batch_chmod(const char * path, mode_t mode)
+int pacon_batch_chmod(struct pacon *pacon, const char * path, mode_t mode)
 {
 	return fs_chmod(fs, path, mode);
 }
 
-int pacon_batch_chown(const char * path, uid_t owner, gid_t group)
+int pacon_batch_chown(struct pacon *pacon, const char * path, uid_t owner, gid_t group)
 {
 	return fs_chown(fs, path, owner, group);
 }
 
-int pacon_access(const char * path, int amode)
+int pacon_access(struct pacon *pacon, const char * path, int amode)
 {
 	return fs_access(fs, path, amode);
 }
 
-int pacon_symlink(const char * oldpath, const char * newpath)
+int pacon_symlink(struct pacon *pacon, const char * oldpath, const char * newpath)
 {
 	return fs_symlink(fs, oldpath, newpath);
 }
 
-int pacon_readlink(const char * path, char * buf, size_t size)
+int pacon_readlink(struct pacon *pacon, const char * path, char * buf, size_t size)
 {
 	return fs_readlink(fs, path, buf, size);
 }

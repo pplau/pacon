@@ -54,6 +54,9 @@ struct pacon_stat
 	uint32_t fd;
 };
 
+
+int set_root_path(struct pacon *pacon, char *r_path);
+
 int init_pacon(struct pacon *pacon);
 
 int free_pacon(struct pacon *pacon);
@@ -61,49 +64,49 @@ int free_pacon(struct pacon *pacon);
 
 /**************** fs interfaces ****************/
 
-int pacon_open(const char *path, int flag, mode_t mode, struct pacon_file *p_file);
+int pacon_open(struct pacon *pacon, const char *path, int flag, mode_t mode, struct pacon_file *p_file);
 
-int pacon_close(struct pacon_file *p_file);
+int pacon_close(struct pacon *pacon, struct pacon_file *p_file);
 
-int pacon_create(const char *path, mode_t mode);
+int pacon_create(struct pacon *pacon, const char *path, mode_t mode);
 
-int pacon_mkdir(const char *path, mode_t mode);
+int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode);
 
-int pacon_opendir(const char *path);
+int pacon_opendir(struct pacon *pacon, const char *path);
 
-int pacon_readdir(const char *path, void *buf, off_t offset);
+int pacon_readdir(struct pacon *pacon, const char *path, void *buf, off_t offset);
 
-int pacon_getattr(const char *path, struct pacon_stat* st);
+int pacon_getattr(struct pacon *pacon, const char *path, struct pacon_stat* st);
 
-int pacon_rmdir(const char *path);
+int pacon_rmdir(struct pacon *pacon, const char *path);
 
-int pacon_rename(const char *path, const char *newpath);
+int pacon_rename(struct pacon *pacon, const char *path, const char *newpath);
 
-int pacon_read(const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset);
+int pacon_read(struct pacon *pacon, const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset);
 
-int pacon_write(const char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset);
+int pacon_write(struct pacon *pacon, const char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset);
 
-int pacon_fsync(int fd);
+int pacon_fsync(struct pacon *pacon, int fd);
 
-int pacon_release(const char *path);
+int pacon_release(struct pacon *pacon, const char *path);
 
-int pacon_releasedir(const char *path);
+int pacon_releasedir(struct pacon *pacon, const char *path);
 
-int pacon_utimens(const char *path, const struct timespec tv[2]);
+int pacon_utimens(struct pacon *pacon, const char *path, const struct timespec tv[2]);
 
-int pacon_truncate(const char *path, off_t offset);
+int pacon_truncate(struct pacon *pacon, const char *path, off_t offset);
 
-int pacon_unlink(const char *path);
+int pacon_unlink(struct pacon *pacon, const char *path);
 
-int pacon_batch_chmod(const char *path, mode_t mode);
+int pacon_batch_chmod(struct pacon *pacon, const char *path, mode_t mode);
 
-int pacon_batch_chown(const char *path, uid_t owner, gid_t group);
+int pacon_batch_chown(struct pacon *pacon, const char *path, uid_t owner, gid_t group);
 
-int pacon_access(const char *path, int amode);
+int pacon_access(struct pacon *pacon, const char *path, int amode);
 
-int pacon_symlink(const char *oldpath, const char * newpath);
+int pacon_symlink(struct pacon *pacon, const char *oldpath, const char * newpath);
 
-int pacon_readlink(const char *path, char * buf, size_t size);
+int pacon_readlink(struct pacon *pacon, const char *path, char * buf, size_t size);
 
 
 /**************** consistency area interfaces ****************/

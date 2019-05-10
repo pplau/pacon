@@ -149,7 +149,7 @@ int init_pacon(struct pacon *pacon)
 	cJSON *j_body;
 	j_body = cJSON_CreateObject();
 	cJSON_AddNumberToObject(j_body, "flags", 0);
-	cJSON_AddNumberToObject(j_body, "mode", mode);
+	cJSON_AddNumberToObject(j_body, "mode", S_IFDIR | 0755);
 	cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
 	cJSON_AddNumberToObject(j_body, "atime", time(NULL));
 	cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
@@ -257,7 +257,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 		cJSON *j_body;
 		j_body = cJSON_CreateObject();
 		cJSON_AddNumberToObject(j_body, "flags", 0);
-		cJSON_AddNumberToObject(j_body, "mode", mode);
+		cJSON_AddNumberToObject(j_body, "mode", S_IFDIR | 0755);
 		cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
 		cJSON_AddNumberToObject(j_body, "atime", time(NULL));
 		cJSON_AddNumberToObject(j_body, "mtime", time(NULL));

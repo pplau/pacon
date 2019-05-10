@@ -82,6 +82,7 @@ int main(int argc, char const *argv[])
 		printf("init pacon error\n");
 		return -1;
 	}
+	printf("init pacon success\n");
 
 	ret = test_mkdir(pacon, "/test", S_IFDIR | 0755);
 	if (ret != 0)

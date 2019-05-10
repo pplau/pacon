@@ -166,7 +166,7 @@ int free_pacon(struct pacon *pacon)
  * GET will cause unnecessary data transmition, so we use CAS here
  * if parent dir existed, we add the check result into the pdir_check_table
  */
-int check_parent_dir(char *path)
+int check_parent_dir(struct pacon *pacon, char *path)
 {
 	char p_dir[PATH_MAX];
 	int path_len = strlen(path), i;
@@ -180,10 +180,17 @@ int check_parent_dir(char *path)
 	}
 	for (i = path_len-1; i >= 0; --i)
 	{
-		if (i != path_len-1 && path[i] == '/')
+		if (path[i] == '/')
 			break;
 	}
-	p_dir[i] = '\0';
+	if (i == 0)
+	{
+		p_dir[0] = '/';
+		p_dir[1] = '\0';
+	} else {
+		p_dir[i] = '\0';
+	}
+	
 	for (i = i-1; i >= 0; --i)
 	{
 		p_dir[i] = path[i];
@@ -227,7 +234,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 	}
 
 	struct pacon_stat *st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
-	ret = pacon_getattr(path, st);
+	ret = pacon_getattr(pacon, path, st);
 	if (ret == -1)
 	{
 		int fd = open(path, flags, mode);
@@ -264,7 +271,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 	int ret;
 	if (PARENT_CHECK == 1)
 	{
-		ret = check_parent_dir(path);
+		ret = check_parent_dir(pacon, path);
 		if (ret != 0)
 		{
 			printf("create: parent dir not existed\n");
@@ -297,7 +304,7 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 	int ret;
 	if (PARENT_CHECK == 1)
 	{
-		ret = check_parent_dir(path);
+		ret = check_parent_dir(pacon, path);
 		if (ret != 0)
 		{
 			printf("mkdir: parent dir not existed\n");

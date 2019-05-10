@@ -175,6 +175,22 @@ int free_pacon(struct pacon *pacon)
 	return 0;
 } 
 
+/* only cache the result of parent check */
+int add_to_dir_check_table(struct pacon *pacon, char *parent_dir)
+{
+	int ret;
+
+	return 0;
+}
+
+/* 0 is hit, -1 is miss */
+int dir_check_local(struct pacon *pacon, char *parent_dir)
+{
+	int ret;
+	
+	return 0;
+}
+
 /* 
  * check the parent dir if existed
  * GET will cause unnecessary data transmition, so we use CAS here

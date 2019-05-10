@@ -3,6 +3,7 @@
 #
 
 cd ..
+cd ./lib
 
 yum install -y libevent-devel 
 
@@ -25,4 +26,10 @@ cd ./libzmq-4.3.1
 ./autogen.sh && ./configure && make && make install
 cd ..
 
-
+# install libcuckoo
+git clone https://github.com/efficient/libcuckoo.git
+cd ./libcuckoo
+# cmake version >= 3
+/usr/local/bin/cmake -DCMAKE_INSTALL_PREFIX=../install -DBUILD_EXAMPLES=1 -DBUILD_TESTS=1 ..
+make all
+make install

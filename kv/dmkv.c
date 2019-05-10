@@ -129,6 +129,9 @@ int get_cluster_info(struct cluster_info *c_info)
 	char ip[17];
 	while ( fgets(ip, 17, fp) )
 	{
+		if (ip[0] == '#')
+			continue;
+		
 		int c;
 		for (c = 0; i < 16; ++c)
 		{

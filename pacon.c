@@ -146,7 +146,21 @@ int init_pacon(struct pacon *pacon)
     pacon->context = context;
     
     // init the root dir of the consistent area
-    ret = pacon_mkdir(pacon, pacon->mount_path, S_IFDIR | 0755);
+	cJSON *j_body;
+	j_body = cJSON_CreateObject();
+	cJSON_AddNumberToObject(j_body, "flags", 0);
+	cJSON_AddNumberToObject(j_body, "mode", mode);
+	cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
+	cJSON_AddNumberToObject(j_body, "atime", time(NULL));
+	cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
+	cJSON_AddNumberToObject(j_body, "size", 0);
+	cJSON_AddNumberToObject(j_body, "uid", getuid());
+	cJSON_AddNumberToObject(j_body, "gid", getgid());
+	cJSON_AddNumberToObject(j_body, "nlink", 0);
+	//cJSON_AddNumberToObject(j_body, "opt", 0);
+	//set_opt_flag(md, OP_mkdir, 1);
+	char *value = cJSON_Print(j_body);
+	ret = dmkv_add(pacon->kv_handle, pacon->mount_path, value);
     if (ret != 0)
     {
     	printf("inital root dir fail\n");
@@ -190,7 +204,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 	} else {
 		p_dir[i] = '\0';
 	}
-	
+
 	for (i = i-1; i >= 0; --i)
 	{
 		p_dir[i] = path[i];

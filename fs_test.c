@@ -69,7 +69,7 @@ int main(int argc, char const *argv[])
 	struct pacon *pacon = (struct pacon *)malloc(sizeof(struct pacon));
 	/*pacon->mount_path[0] = '/';
 	pacon->mount_path[1] = '\0'; */
-	ret = set_root_path(pacon, "/");
+	ret = set_root_path(pacon, "/mnt/beegfs");
 	if (ret != 0)
 	{
 		printf("init pacon error\n");
@@ -84,7 +84,7 @@ int main(int argc, char const *argv[])
 	}
 	printf("init pacon success\n");
 
-	ret = test_mkdir(pacon, "/test", S_IFDIR | 0755);
+	ret = test_mkdir(pacon, "/mnt/beegfs/test", S_IFDIR | 0755);
 	if (ret != 0)
 	{
 		printf("mkdir error\n");
@@ -92,7 +92,7 @@ int main(int argc, char const *argv[])
 	}
 	printf("mkdir test success\n");
 
-	ret = test_create(pacon, "/file", S_IFREG | 0644);
+	ret = test_create(pacon, "/mnt/beegfs/file", S_IFREG | 0644);
 	if (ret != 0)
 	{
 		printf("create error\n");
@@ -101,7 +101,7 @@ int main(int argc, char const *argv[])
 	printf("create file test succee\n");
 
 	struct pacon_stat* st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
-	ret = test_stat(pacon, "/file", st);
+	ret = test_stat(pacon, "/mnt/beegfs/file", st);
 	if (ret != 0)
 	{
 		printf("stat error\n");
@@ -112,7 +112,7 @@ int main(int argc, char const *argv[])
 	}
 	printf("stat test succee\n");
 
-	ret = test_rm(pacon, "/file");
+	ret = test_rm(pacon, "/mnt/beegfs/file");
 	if (ret != 0)
 	{
 		printf("rm error\n");

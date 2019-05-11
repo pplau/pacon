@@ -96,6 +96,34 @@ int set_root_path(struct pacon *pacon, char *r_path)
 	return 0;
 }
 
+int load_to_pacon(struct pacon *pacon, char *path)
+{
+	int ret;
+	struct stat buf;
+	int ret = stat(path, &buf);
+	if (ret != 0)
+	{
+		printf("root dir not existed on DFS\n");
+		return -1;
+	}
+	cJSON *j_body;
+	j_body = cJSON_CreateObject();
+	cJSON_AddNumberToObject(j_body, "flags", 0);
+	cJSON_AddNumberToObject(j_body, "mode", buf.st_mode);
+	cJSON_AddNumberToObject(j_body, "ctime", buf.st_ctime);
+	cJSON_AddNumberToObject(j_body, "atime", buf.st_atime);
+	cJSON_AddNumberToObject(j_body, "mtime", buf.st_mtime);
+	cJSON_AddNumberToObject(j_body, "size", buf.st_size);
+	cJSON_AddNumberToObject(j_body, "uid", buf.st_uid);
+	cJSON_AddNumberToObject(j_body, "gid", buf.st_gid);
+	cJSON_AddNumberToObject(j_body, "nlink", buf.st_nlink);
+	//cJSON_AddNumberToObject(j_body, "opt", 0);
+	//set_opt_flag(md, OP_mkdir, 1);
+	char *value = cJSON_Print(j_body);
+	ret = dmkv_add(pacon->kv_handle, path, value);
+	return ret;
+}
+
 /* 
  * 1. inital kv
  * 2. build namespace & inital commit queue 
@@ -146,21 +174,8 @@ int init_pacon(struct pacon *pacon)
     pacon->context = context;
     
     // init the root dir of the consistent area
-	cJSON *j_body;
-	j_body = cJSON_CreateObject();
-	cJSON_AddNumberToObject(j_body, "flags", 0);
-	cJSON_AddNumberToObject(j_body, "mode", S_IFDIR | 0755);
-	cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "atime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "size", 0);
-	cJSON_AddNumberToObject(j_body, "uid", getuid());
-	cJSON_AddNumberToObject(j_body, "gid", getgid());
-	cJSON_AddNumberToObject(j_body, "nlink", 0);
-	//cJSON_AddNumberToObject(j_body, "opt", 0);
-	//set_opt_flag(md, OP_mkdir, 1);
-	char *value = cJSON_Print(j_body);
-	ret = dmkv_add(pacon->kv_handle, pacon->mount_path, value);
+    // get the root dir stat from DFS
+    ret = load_to_pacon(pacon, pacon->mount_path);
     if (ret != 0)
     {
     	printf("inital root dir fail\n");
@@ -172,6 +187,8 @@ int init_pacon(struct pacon *pacon)
 int free_pacon(struct pacon *pacon)
 {
 	dmkv_free(pacon->kv_handle);
+	zmq_close(pacon->publisher);
+	zmq_ctx_destroy(pacon->context);
 	return 0;
 } 
 
@@ -230,7 +247,15 @@ int check_parent_dir(struct pacon *pacon, char *path)
 	char *val;
 	val = dmkv_get(pacon->kv_handle, p_dir);
 	if (val == NULL)
-		return -1;
+	{
+		int ret;
+		ret = load_to_pacon(pacon, p_dir);
+		if (ret != 0)
+		{
+			printf("fail to load parent dir\n");
+			return -1;
+		}
+	}
 	//add_to_dir_check_table(p_dir);
 out:
 	return 0;
@@ -302,7 +327,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 	if (PARENT_CHECK == 1)
 	{
 		ret = check_parent_dir(pacon, path);
-		if (ret != 0)
+		if (ret != 0)````
 		{
 			printf("create: parent dir not existed\n");
 			return -1;

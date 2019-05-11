@@ -65,6 +65,23 @@ int memc_add(memcached_st *memc, char *key, char *val)
 	return 0;
 }
 
+int memc_cas(memcached_st *memc, char *key, char *val)
+{
+	/*memcached_return_t rc;
+	size_t key_len = strlen(key);
+	size_t val_len = strlen(val);
+	rc = memcached_cas();
+	if (rc != MEMCACHED_SUCCESS)
+		return -1;*/
+	return 0;
+}
+
+int memc_check(memcached_st *memc, char *key)
+{
+	//memcached_return_t rc;
+	return 0;
+}
+
 char* memc_get(memcached_st *memc, char *key) 
 {
 	memcached_return_t rc;
@@ -131,7 +148,7 @@ int get_cluster_info(struct cluster_info *c_info)
 	{
 		if (ip[0] == '#')
 			continue;
-		
+
 		int c;
 		for (c = 0; i < 16; ++c)
 		{
@@ -202,6 +219,21 @@ char* dmkv_get(struct dmkv *dmkv, char *key)
 {
 	//unsigned long hash = crc32(key, strlen(key));
 	return memc_get(dmkv->memc, key);
+}
+
+int dmkv_add(struct dmkv *dmkv, char *key, char *val)
+{
+	return memc_add(dmkv->memc, key, val);
+}
+
+int dmkv_cas(struct dmkv *dmkv, char *key, char *val)
+{
+	return memc_cas(dmkv->memc, key, val);
+}
+
+int dmkv_check(struct dmkv *dmkv, char *key)
+{
+	return memc_check(dmkv->memc, key);
 }
 
 int dmkv_del(struct dmkv *dmkv, char *key)

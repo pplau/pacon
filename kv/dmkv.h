@@ -30,6 +30,12 @@ int dmkv_free(struct dmkv *dmkv);
 
 int dmkv_set(struct dmkv *dmkv, char *key, char *value);
 
+int dmkv_add(struct dmkv *dmkv, char *key, char *val);
+
+int dmkv_cas(struct dmkv *dmkv, char *key, char *val);
+
+int dmkv_check(struct dmkv *dmkv, char *key);
+
 char* dmkv_get(struct dmkv *dmkv, char *key);
 
 int dmkv_del(struct dmkv *dmkv, char *key);

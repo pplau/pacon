@@ -31,11 +31,11 @@ struct pacon_server_info
 };
 
 
-int start_pacon_server(struct *pacon_server_info);
+int start_pacon_server(struct pacon_server_info *ps_info);
 
-int stop_pacon_server(struct *pacon_server_info);
+int stop_pacon_server(struct pacon_server_info *ps_info);
 
-int commit_to_fs(char *mesg);
+int commit_to_fs(struct pacon_server_info *ps_info, char *mesg);
 
 int new_carea(void);
 

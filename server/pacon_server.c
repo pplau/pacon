@@ -55,7 +55,9 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	printf("init zeromq\n");
 	void *context = zmq_ctx_new();
 	void *subscriber = zmq_socket(context, ZMQ_SUB);
-	int rc = zmq_connect(subscriber, "ipc:///tmp/pacon_commit");
+	int rc = zmq_bind(subscriber, "ipc:///run/pacon_commit");
+	char *filter = "";
+	rc = zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, filter, strlen (filter));
 	if (rc != 0)
 	{
 		printf("init zeromq error\n");
@@ -88,12 +90,12 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	switch (mesg[mesg_len-1])
 	{
 		case '1':
-			printf("coomit to fs, typs: MKDIR\n");
+			printf("commit to fs, typs: MKDIR\n");
 			//ret = mkdir(path, ps_info->batch_dir_mode);
 			break;
 
 		case '2':
-			printf("coomit to fs, typs: CREATE\n");
+			printf("commit to fs, typs: CREATE\n");
 			//ret = create(path, ps_info->batch_file_mode);
 			break;
 
@@ -110,11 +112,12 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			printf("opt type error\n");
 			return -1;
 	}
-	return ret;
+	return 0;
 }
 
 int listen_mq(struct pacon_server_info *ps_info)
 {
+	printf("listening mq\n");
 	int ret, ms_size;
 	char mesg[PATH_MAX];
 	while (1)
@@ -141,7 +144,7 @@ int main(int argc, char const *argv[])
 	int ret;
 	printf("Strat Pacon Server\n");
 	struct pacon_server_info *ps_info = (struct pacon_server_info *)malloc(sizeof(struct pacon_server_info));
-	ret = start_pacon(ps_info);
+	ret = start_pacon_server(ps_info);
 	if (ret != 0)
 	{
 		printf("strat pacon error\n");

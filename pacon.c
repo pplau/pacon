@@ -136,7 +136,7 @@ int init_pacon(struct pacon *pacon)
 	// init mq
 	void *context = zmq_ctx_new();
     void *publisher = zmq_socket(context, ZMQ_PUB);
-    int rc = zmq_bind(publisher, "ipc:///tmp/pacon_commit");
+    int rc = zmq_connect(publisher, "ipc:///run/pacon_commit");
     if (rc != 0)
     {
     	printf("init zeromq error\n");
@@ -187,7 +187,7 @@ int add_to_dir_check_table(struct pacon *pacon, char *parent_dir)
 int dir_check_local(struct pacon *pacon, char *parent_dir)
 {
 	int ret;
-	
+
 	return 0;
 }
 

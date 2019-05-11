@@ -12,6 +12,7 @@
 #include <memory>
 #include <utility>
 
+#include "./cuckoo_table_template.h"
 #include <libcuckoo/cuckoohash_map.hh>
 
 // Helper macros, we take care of undefining these

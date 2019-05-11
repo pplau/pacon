@@ -17,7 +17,7 @@
 #define LINK ":5"
 
 
-int start_pacon_server(struct *pacon_server_info)
+int start_pacon_server(struct pacon_server_info *ps_info)
 {
 	int ret;
 	/*FILE *fp;
@@ -43,12 +43,12 @@ int start_pacon_server(struct *pacon_server_info)
 	{
 		if (ip[c] != '\n' && ip[c] != '\0')
 		{
-			pacon_server_info->rec_mq_addr[c] = ip[c];
+			ps_info->rec_mq_addr[c] = ip[c];
 		} else {
 			break;
 		}
 	}
-	pacon_server_info->rec_mq_addr[c] = '\0';
+	ps_info->rec_mq_addr[c] = '\0';
 	fclose(fp);*/
 
 	// start mq
@@ -61,19 +61,19 @@ int start_pacon_server(struct *pacon_server_info)
 		printf("init zeromq error\n");
 		return -1;
 	}
-	pacon_server_info->subscriber = subscriber;
-	pacon_server_info->context = context;
+	ps_info->subscriber = subscriber;
+	ps_info->context = context;
 
-	pacon_server_info->batch_dir_mode = S_IFDIR | 0755;
-	pacon_server_info->batch_file_mode = S_IFREG | 0644;
+	ps_info->batch_dir_mode = S_IFDIR | 0755;
+	ps_info->batch_file_mode = S_IFREG | 0644;
 	return 0;
 }
 
-int stop_pacon_server(struct *pacon_server_info)
+int stop_pacon_server(struct pacon_server_info *ps_info)
 {
 	int ret;
-	zmq_close(pacon_server_info->subscriber);
-	zmq_ctx_destroy(pacon_server_info->context);
+	zmq_close(ps_info->subscriber);
+	zmq_ctx_destroy(ps_info->context);
 	return 0;
 }
 

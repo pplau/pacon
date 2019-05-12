@@ -100,7 +100,7 @@ int load_to_pacon(struct pacon *pacon, char *path)
 {
 	int ret;
 	struct stat buf;
-	int ret = stat(path, &buf);
+	ret = stat(path, &buf);
 	if (ret != 0)
 	{
 		printf("root dir not existed on DFS\n");
@@ -327,7 +327,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 	if (PARENT_CHECK == 1)
 	{
 		ret = check_parent_dir(pacon, path);
-		if (ret != 0)````
+		if (ret != 0)
 		{
 			printf("create: parent dir not existed\n");
 			return -1;

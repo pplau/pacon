@@ -79,24 +79,47 @@ int stop_pacon_server(struct pacon_server_info *ps_info)
 	return 0;
 }
 
+int retry_commit(char *path, int type)
+{
+	return 0;
+}
+
 int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret = -1;
 	int mesg_len = strlen(mesg);
 	char path[PATH_MAX];
 	strncpy(path, mesg, mesg_len-2);
-	path[mesg_len] = '\0';
+	path[mesg_len-2] = '\0';
 
 	switch (mesg[mesg_len-1])
 	{
 		case '1':
-			printf("commit to fs, typs: MKDIR\n");
-			//ret = mkdir(path, ps_info->batch_dir_mode);
+			//printf("commit to fs, typs: MKDIR\n");
+			ret = mkdir(path, ps_info->batch_dir_mode);
+			if (ret != 0)
+			{
+				ret = retry_commit(path, 1);
+				if (ret != 0)
+				{
+					printf("fail to commit to fs: typs: MKDIR, path: %s\n", path);
+					return -1;
+				}
+			}
 			break;
 
 		case '2':
-			printf("commit to fs, typs: CREATE\n");
-			//ret = create(path, ps_info->batch_file_mode);
+			//printf("commit to fs, typs: CREATE\n");
+			ret = creat(path, ps_info->batch_file_mode);
+			if (ret != 0)
+			{
+				ret = retry_commit(path, 1);
+				if (ret != 0)
+				{
+					printf("fail to commit to fs: typs: CREATE, path: %s\n", path);
+					return -1;
+				}
+			}
 			break;
 
 		case '3':

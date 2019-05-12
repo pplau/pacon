@@ -221,11 +221,6 @@ char* dmkv_get(struct dmkv *dmkv, char *key)
 	return memc_get(dmkv->memc, key);
 }
 
-int dmkv_add(struct dmkv *dmkv, char *key, char *val)
-{
-	return memc_add(dmkv->memc, key, val);
-}
-
 int dmkv_cas(struct dmkv *dmkv, char *key, char *val)
 {
 	return memc_cas(dmkv->memc, key, val);

@@ -6,6 +6,7 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <stdint.h>
 #include <fcntl.h>
 #include <zmq.h>
 #include "kv/dmkv.h"
@@ -33,13 +34,6 @@ struct pacon
 	void *context;
 };
 
-struct pacon_file
-{
-	int hit; // 0 is miss in pacon, 1 is hit in pacon
-	int fd; // fd only is used when the file data does not be cached in pacon
-	char *buf;
-};
-
 struct pacon_stat
 {
 	uint32_t flags;   //  including the metadata type
@@ -52,6 +46,28 @@ struct pacon_stat
 	uint32_t gid;
 	uint32_t nlink;
 	uint32_t fd;
+};
+
+struct pacon_file
+{
+	// regular stat
+	uint32_t flags;   //  including the metadata type
+	uint32_t mode;
+	uint32_t ctime;
+	uint32_t atime;
+	uint32_t mtime;
+	uint32_t size;
+	uint32_t uid;
+	uint32_t gid;
+	uint32_t nlink;
+	uint32_t fd;
+
+	// file stat
+	int open_flag;
+	int hit; // 0 is miss in pacon, 1 is hit in pacon
+	int fd; // fd only be used when the file data does not be cached in pacon
+	int p_fd; // p_fd only be used when the file data are cached in pacon 
+	char *buf; // buffer for inline file data, its largest size is 1KB
 };
 
 

@@ -11,7 +11,9 @@
 #include "kv/dmkv.h"
 #include "./lib/cJSON.h"
 
+#define SERI_TYPE 0 // 0 is memcpy, 1 is json
 #define BUFFER_SIZE 64
+#define PSTAT_SIZE 40
 
 // opt type
 #define MKDIR ":1"
@@ -24,6 +26,22 @@ static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
 
 
+
+/* serialization and deserialization */
+
+int seri_val(struct pacon_stat *s, char *val)
+{
+	int size = sizeof(struct pacon_stat);
+	memcpy(val, s, size);
+	return size;
+}
+
+int deseri_val(struct pacon_stat *s, char *val)
+{
+	int size = sizeof(struct pacon_stat);
+	memcpy(s, val, size);
+	return 0;
+}
 
 /* 
  * ret = 0 means recursive sub file/dir, 1 means not recursive sub file/dir,  
@@ -106,21 +124,38 @@ int load_to_pacon(struct pacon *pacon, char *path)
 		printf("root dir not existed on DFS\n");
 		return -1;
 	}
-	cJSON *j_body;
-	j_body = cJSON_CreateObject();
-	cJSON_AddNumberToObject(j_body, "flags", 0);
-	cJSON_AddNumberToObject(j_body, "mode", buf.st_mode);
-	cJSON_AddNumberToObject(j_body, "ctime", buf.st_ctime);
-	cJSON_AddNumberToObject(j_body, "atime", buf.st_atime);
-	cJSON_AddNumberToObject(j_body, "mtime", buf.st_mtime);
-	cJSON_AddNumberToObject(j_body, "size", buf.st_size);
-	cJSON_AddNumberToObject(j_body, "uid", buf.st_uid);
-	cJSON_AddNumberToObject(j_body, "gid", buf.st_gid);
-	cJSON_AddNumberToObject(j_body, "nlink", buf.st_nlink);
-	//cJSON_AddNumberToObject(j_body, "opt", 0);
-	//set_opt_flag(md, OP_mkdir, 1);
-	char *value = cJSON_Print(j_body);
-	ret = dmkv_add(pacon->kv_handle, path, value);
+	if (SERI_TYPE == 0)
+	{
+		struct pacon_stat p_st;
+		p_st.flags = 0;
+		p_st.mode = buf.st_mode;
+		p_st.ctime = buf.st_ctime;
+		p_st.atime = buf.st_atime;
+		p_st.mtime = buf.st_mtime;
+		p_st.size = buf.st_size;
+		p_st.uid = buf.st_uid;
+		p_st.gid = buf.st_gid;
+		p_st.nlink = buf.st_nlink;
+		char val[PSTAT_SIZE];
+		seri_val(&p_st, val);
+		ret = dmkv_add(pacon->kv_handle, path, val);
+	} else{
+		cJSON *j_body;
+		j_body = cJSON_CreateObject();
+		cJSON_AddNumberToObject(j_body, "flags", 0);
+		cJSON_AddNumberToObject(j_body, "mode", buf.st_mode);
+		cJSON_AddNumberToObject(j_body, "ctime", buf.st_ctime);
+		cJSON_AddNumberToObject(j_body, "atime", buf.st_atime);
+		cJSON_AddNumberToObject(j_body, "mtime", buf.st_mtime);
+		cJSON_AddNumberToObject(j_body, "size", buf.st_size);
+		cJSON_AddNumberToObject(j_body, "uid", buf.st_uid);
+		cJSON_AddNumberToObject(j_body, "gid", buf.st_gid);
+		cJSON_AddNumberToObject(j_body, "nlink", buf.st_nlink);
+		//cJSON_AddNumberToObject(j_body, "opt", 0);
+		//set_opt_flag(md, OP_mkdir, 1);
+		char *value = cJSON_Print(j_body);
+		ret = dmkv_add(pacon->kv_handle, path, value);
+	}
 	return ret;
 }
 
@@ -281,35 +316,47 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
 int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, struct pacon_file *p_file)
 {
 	int ret;
-	ret = child_cmp(path, mount_path, 1);
+	/*ret = child_cmp(path, mount_path, 1);
 	if (ret != 1)
 	{
 		p_file->hit = 0;
 		return open(path, flags, mode);
-	}
+	}*/
 
 	struct pacon_stat *st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
 	ret = pacon_getattr(pacon, path, st);
 	if (ret == -1)
 	{
 		int fd = open(path, flags, mode);
+		if (fd == -1)
+		{
+			printf("file not existed\n");
+			return -1;
+		}
 		// cache in pacon
 		int res;
-		cJSON *j_body;
-		j_body = cJSON_CreateObject();
-		cJSON_AddNumberToObject(j_body, "flags", 0);
-		cJSON_AddNumberToObject(j_body, "mode", S_IFDIR | 0755);
-		cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
-		cJSON_AddNumberToObject(j_body, "atime", time(NULL));
-		cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
-		cJSON_AddNumberToObject(j_body, "size", 0);
-		cJSON_AddNumberToObject(j_body, "uid", getuid());
-		cJSON_AddNumberToObject(j_body, "gid", getgid());
-		cJSON_AddNumberToObject(j_body, "nlink", 0);
-		//cJSON_AddNumberToObject(j_body, "opt", 0);
-		//set_opt_flag(md, OP_mkdir, 1);
-		char *value = cJSON_Print(j_body);
-		res = dmkv_set(pacon->kv_handle, path, value);	
+		if (SERI_TYPE == 0)
+		{
+			char val[40];
+			seri_val(st, val);
+			ret = dmkv_add(pacon->kv_handle, path, val);
+		} else {
+			cJSON *j_body;
+			j_body = cJSON_CreateObject();
+			cJSON_AddNumberToObject(j_body, "flags", 0);
+			cJSON_AddNumberToObject(j_body, "mode", S_IFDIR | 0755);
+			cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
+			cJSON_AddNumberToObject(j_body, "atime", time(NULL));
+			cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
+			cJSON_AddNumberToObject(j_body, "size", 0);
+			cJSON_AddNumberToObject(j_body, "uid", getuid());
+			cJSON_AddNumberToObject(j_body, "gid", getgid());
+			cJSON_AddNumberToObject(j_body, "nlink", 0);
+			//cJSON_AddNumberToObject(j_body, "opt", 0);
+			//set_opt_flag(md, OP_mkdir, 1);
+			char *value = cJSON_Print(j_body);
+			res = dmkv_add(pacon->kv_handle, path, value);	
+		}
 		p_file->fd = fd;
 	}
 	p_file->hit = 1;
@@ -333,21 +380,38 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 			return -1;
 		}
 	}
-	cJSON *j_body;
-	j_body = cJSON_CreateObject();
-	cJSON_AddNumberToObject(j_body, "flags", 0);
-	cJSON_AddNumberToObject(j_body, "mode", mode);
-	cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "atime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "size", 0);
-	cJSON_AddNumberToObject(j_body, "uid", getuid());
-	cJSON_AddNumberToObject(j_body, "gid", getgid());
-	cJSON_AddNumberToObject(j_body, "nlink", 0);
-	//cJSON_AddNumberToObject(j_body, "opt", 0);
-	//set_opt_flag(md, OP_mkdir, 1);
-	char *value = cJSON_Print(j_body);
-	ret = dmkv_add(pacon->kv_handle, path, value);
+	if (SERI_TYPE == 0)
+	{
+		struct pacon_stat p_st;
+		p_st.flags = 0;
+		p_st.mode = mode;
+		p_st.ctime = time(NULL);
+		p_st.atime = time(NULL);
+		p_st.mtime = time(NULL);
+		p_st.size = 0;
+		p_st.uid = getuid();
+		p_st.gid = getgid();
+		p_st.nlink = 0;
+		char val[PSTAT_SIZE];
+		seri_val(&p_st, val);
+		ret = dmkv_add(pacon->kv_handle, path, val);
+	} else {
+		cJSON *j_body;
+		j_body = cJSON_CreateObject();
+		cJSON_AddNumberToObject(j_body, "flags", 0);
+		cJSON_AddNumberToObject(j_body, "mode", mode);
+		cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "atime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "size", 0);
+		cJSON_AddNumberToObject(j_body, "uid", getuid());
+		cJSON_AddNumberToObject(j_body, "gid", getgid());
+		cJSON_AddNumberToObject(j_body, "nlink", 0);
+		//cJSON_AddNumberToObject(j_body, "opt", 0);
+		//set_opt_flag(md, OP_mkdir, 1);
+		char *value = cJSON_Print(j_body);
+		ret = dmkv_add(pacon->kv_handle, path, value);
+	}
 	if (ret != 0)
 		return ret;
 	ret = add_to_mq(pacon, path, CREATE);
@@ -366,21 +430,38 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 			return -1;
 		}
 	}
-	cJSON *j_body;
-	j_body = cJSON_CreateObject();
-	cJSON_AddNumberToObject(j_body, "flags", 0);
-	cJSON_AddNumberToObject(j_body, "mode", mode);
-	cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "atime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
-	cJSON_AddNumberToObject(j_body, "size", 0);
-	cJSON_AddNumberToObject(j_body, "uid", getuid());
-	cJSON_AddNumberToObject(j_body, "gid", getgid());
-	cJSON_AddNumberToObject(j_body, "nlink", 0);
-	//cJSON_AddNumberToObject(j_body, "opt", 0);
-	//set_opt_flag(md, OP_mkdir, 1);
-	char *value = cJSON_Print(j_body);
-	ret = dmkv_add(pacon->kv_handle, path, value);
+	if (SERI_TYPE == 0)
+	{
+		struct pacon_stat p_st;
+		p_st.flags = 0;
+		p_st.mode = mode;
+		p_st.ctime = time(NULL);
+		p_st.atime = time(NULL);
+		p_st.mtime = time(NULL);
+		p_st.size = 0;
+		p_st.uid = getuid();
+		p_st.gid = getgid();
+		p_st.nlink = 0;
+		char val[PSTAT_SIZE];
+		seri_val(&p_st, val);
+		ret = dmkv_add(pacon->kv_handle, path, val);
+	} else {
+		cJSON *j_body;
+		j_body = cJSON_CreateObject();
+		cJSON_AddNumberToObject(j_body, "flags", 0);
+		cJSON_AddNumberToObject(j_body, "mode", mode);
+		cJSON_AddNumberToObject(j_body, "ctime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "atime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "mtime", time(NULL));
+		cJSON_AddNumberToObject(j_body, "size", 0);
+		cJSON_AddNumberToObject(j_body, "uid", getuid());
+		cJSON_AddNumberToObject(j_body, "gid", getgid());
+		cJSON_AddNumberToObject(j_body, "nlink", 0);
+		//cJSON_AddNumberToObject(j_body, "opt", 0);
+		//set_opt_flag(md, OP_mkdir, 1);
+		char *value = cJSON_Print(j_body);
+		ret = dmkv_add(pacon->kv_handle, path, value);
+	}
 	if (ret != 0)
 		return ret;
 	ret = add_to_mq(pacon, path, MKDIR);
@@ -393,33 +474,37 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 	val = dmkv_get(pacon->kv_handle, path);
 	if (val == NULL)
 		return -1;
+	if (SERI_TYPE == 0)
+	{
+		deseri_val(st, val);
+	} else {
+		cJSON *j_body, *j_flags, *j_mode, *j_ctime, *j_atime, *j_mtime, *j_size, *j_uid, *j_gid, *j_nlink, *j_fd;
+		j_body = cJSON_Parse(val);
 
-	cJSON *j_body, *j_flags, *j_mode, *j_ctime, *j_atime, *j_mtime, *j_size, *j_uid, *j_gid, *j_nlink, *j_fd;
-	j_body = cJSON_Parse(val);
+		j_flags = cJSON_GetObjectItem(j_body, "flags");
+		j_mode = cJSON_GetObjectItem(j_body, "mode");
+		j_ctime = cJSON_GetObjectItem(j_body, "ctime");
+		j_atime = cJSON_GetObjectItem(j_body, "atime");
+		j_mtime = cJSON_GetObjectItem(j_body, "mtime");
+		j_size = cJSON_GetObjectItem(j_body, "size");
+		j_uid = cJSON_GetObjectItem(j_body, "uid");
+		j_gid = cJSON_GetObjectItem(j_body, "gid");
+		j_nlink = cJSON_GetObjectItem(j_body, "nlink");
+		//j_fd = cJSON_GetObjectItem(j_body, "fd");
+		//j_opt = cJSON_GetObjectItem(j_body, "opt");
 
-	j_flags = cJSON_GetObjectItem(j_body, "flags");
-	j_mode = cJSON_GetObjectItem(j_body, "mode");
-	j_ctime = cJSON_GetObjectItem(j_body, "ctime");
-	j_atime = cJSON_GetObjectItem(j_body, "atime");
-	j_mtime = cJSON_GetObjectItem(j_body, "mtime");
-	j_size = cJSON_GetObjectItem(j_body, "size");
-	j_uid = cJSON_GetObjectItem(j_body, "uid");
-	j_gid = cJSON_GetObjectItem(j_body, "gid");
-	j_nlink = cJSON_GetObjectItem(j_body, "nlink");
-	//j_fd = cJSON_GetObjectItem(j_body, "fd");
-	//j_opt = cJSON_GetObjectItem(j_body, "opt");
-
-	st->flags = (uint32_t)j_flags->valueint;
-	st->mode = (uint32_t)j_mode->valueint;
-	st->ctime = (uint32_t)j_ctime->valueint;
-	st->atime = (uint32_t)j_atime->valueint;
-	st->mtime = (uint32_t)j_mtime->valueint;
-	st->size = (uint32_t)j_size->valueint;
-	st->uid = (uint32_t)j_uid->valueint;
-	st->gid = (uint32_t)j_gid->valueint;
-	st->nlink = (uint32_t)j_nlink->valueint;
-	//st->fd = (uint32_t)j_fd->valueint;
-	//st->opt = (uint32_t)j_opt->valueint;
+		st->flags = (uint32_t)j_flags->valueint;
+		st->mode = (uint32_t)j_mode->valueint;
+		st->ctime = (uint32_t)j_ctime->valueint;
+		st->atime = (uint32_t)j_atime->valueint;
+		st->mtime = (uint32_t)j_mtime->valueint;
+		st->size = (uint32_t)j_size->valueint;
+		st->uid = (uint32_t)j_uid->valueint;
+		st->gid = (uint32_t)j_gid->valueint;
+		st->nlink = (uint32_t)j_nlink->valueint;
+		//st->fd = (uint32_t)j_fd->valueint;
+		//st->opt = (uint32_t)j_opt->valueint;
+	}
 	return 0;
 }
 

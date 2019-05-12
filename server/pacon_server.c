@@ -79,9 +79,27 @@ int stop_pacon_server(struct pacon_server_info *ps_info)
 	return 0;
 }
 
-int retry_commit(char *path, int type)
+int retry_commit(struct pacon_server_info *ps_info, char *path, int type)
 {
-	return 0;
+	int ret, i;
+	for (i = 0; i < 5; ++i)
+	{
+		if (type == 1)
+		{
+			ret = mkdir(path, ps_info->batch_dir_mode);
+			if (ret == 0)
+				return 0;
+		}
+		if (type == 2)
+		{
+			ret = creat(path, ps_info->batch_dir_mode);
+			if (ret == 0)
+				return 0;
+		}
+	}
+
+	// try to commit in clobal sync way
+	return -1;
 }
 
 int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
@@ -99,7 +117,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			ret = mkdir(path, ps_info->batch_dir_mode);
 			if (ret != 0)
 			{
-				ret = retry_commit(path, 1);
+				ret = retry_commit(ps_info, path, 1);
 				if (ret != 0)
 				{
 					printf("fail to commit to fs: typs: MKDIR, path: %s\n", path);
@@ -113,7 +131,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			ret = creat(path, ps_info->batch_file_mode);
 			if (ret != 0)
 			{
-				ret = retry_commit(path, 1);
+				ret = retry_commit(ps_info, path, 2);
 				if (ret != 0)
 				{
 					printf("fail to commit to fs: typs: CREATE, path: %s\n", path);

@@ -47,7 +47,7 @@ int memc_put(memcached_st *memc, char *key, char *val)
 {
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
-	size_t val_len = strlen(val);
+	size_t val_len = sizeof(val);
 	rc = memcached_set(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
 		return -1;
@@ -58,7 +58,7 @@ int memc_add(memcached_st *memc, char *key, char *val)
 {
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
-	size_t val_len = strlen(val);
+	size_t val_len = sizeof(val);
 	rc = memcached_add(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
 		return -1;

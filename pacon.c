@@ -365,7 +365,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 	// check its children
 	struct pacon_stat p_st;
 	deseri_val(&p_st, val);
-	if (get_stat_flag(&p_dir, STAT_type) == 1)
+	if (get_stat_flag(&p_st, STAT_type) == 1)
 	{
 		printf("check parent dir: parent dir is a file\n");
 		return -1;
@@ -381,6 +381,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 		char child_path[PATH_MAX];
 		int p_len = strlen(p_dir);
 		memcpy(child_path, p_dir, p_len);
+		child_path[p_len] = '/';
 		pd = opendir(p_dir);
 		while ( (entry = readdir(pd)) != NULL )
 		{
@@ -392,8 +393,8 @@ int check_parent_dir(struct pacon *pacon, char *path)
 				return -1;
 			}
 			int c_len = strlen(entry->d_name);
-			memcpy(child_path + p_len, entry->d_name, c_len);
-			child_path[p_len+c_len] = '\0';
+			memcpy(child_path + p_len + 1, entry->d_name, c_len);
+			child_path[p_len+1+c_len] = '\0';
 			ret = load_to_pacon(pacon, child_path);
 			if (ret != 0)
 			{
@@ -401,11 +402,11 @@ int check_parent_dir(struct pacon *pacon, char *path)
 				return -1;
 			}
 		} 
-		closedir(dp);
+		closedir(pd);
 
 		set_stat_flag(&p_st, STAT_child_check, 1);
 		seri_val(&p_st, val);
-		ret = dmkv_add(pacon->kv_handle, path, val);
+		ret = dmkv_add(pacon->kv_handle, p_dir, val);
 		if (ret != 0)
 		{
 			printf("check parent dir: fail to update STAT_child_check flag\n");

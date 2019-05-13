@@ -13,7 +13,6 @@
 
 #define SERI_TYPE 0 // 0 is memcpy, 1 is json
 #define BUFFER_SIZE 64
-#define PSTAT_SIZE 40
 
 // opt type
 #define MKDIR ":1"
@@ -27,20 +26,77 @@ static char mount_path[MOUNT_PATH_MAX];
 
 
 
-/* serialization and deserialization */
+/**************** get and set stat flags *****************/
+
+enum statflags
+{
+	STAT_type,  // 0: dir, 1: file
+	STAT_inline,  // 0: no inline data, 1: has inlien
+	STAT_commit,  // 0: not yet be committed, 1: already be committed
+	STAT_file_created,  // 0: not be created in DFS, 1: already be created in DFS
+};
+
+void set_stat_flag(struct pacon_stat *p_st, int flag_type, int val)
+{
+	if (val == 0)
+	{
+		// set 0
+		p_st->flags &= ~(1UL << flag_type);
+	} else {
+		// set 1
+		p_st->flags |= 1UL << flag_type;
+	}
+}
+
+int get_stat_flag(struct pacon_stat *p_st, int flag_type)
+{
+	if (((p_st->flags >> flag_type) & 1) == 1 )
+	{
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+
+/*********** serialization and deserialization ***********/
 
 int seri_val(struct pacon_stat *s, char *val)
 {
-	int size = sizeof(struct pacon_stat);
-	memcpy(val, s, size);
-	return size;
+	//int size = sizeof(struct pacon_stat);
+	memcpy(val, s, PSTAT_SIZE);
+	return PSTAT_SIZE;
 }
 
 int deseri_val(struct pacon_stat *s, char *val)
 {
-	int size = sizeof(struct pacon_stat);
-	memcpy(s, val, size);
+	//int size = sizeof(struct pacon_stat);
+	memcpy(s, val, PSTAT_SIZE);
 	return 0;
+}
+
+// seri pacom_stat and inline_data to val
+int seri_inline_data(struct pacon_stat *s, char *inline_data, char *val)
+{
+	//int size = sizeof(struct pacon_stat);
+	if (s != NULL)
+	{
+		memcpy(val, s, PSTAT_SIZE);
+	}
+	memcpy(val + PSTAT_SIZE, inline_data, sizeof(inline_data));
+	return PSTAT_SIZE + INLINE_MAX;
+}
+
+// deseri val to pacon_stat and inline_data
+int deseri_inline_data(struct pacon_stat *s, char *inline_data, char *val)
+{
+	//int size = sizeof(struct pacon_stat);
+	if (s != NULL)
+	{
+		memcpy(s, val, PSTAT_SIZE);
+	}
+	memcpy(inline_data, val + PSTAT_SIZE, sizeof(val) - PSTAT_SIZE);
+	return PSTAT_SIZE + INLINE_MAX;
 }
 
 /* 
@@ -128,6 +184,15 @@ int load_to_pacon(struct pacon *pacon, char *path)
 	{
 		struct pacon_stat p_st;
 		p_st.flags = 0;
+		if ( S_ISDIR(buf.st_mode) )
+		{
+			// it is a dir
+			set_stat_flag(&p_st, STAT_type, 0);
+		} else {
+			// it is a file
+			set_stat_flag(&p_st, STAT_type, 1);
+			set_stat_flag(&p_st, STAT_file_created, 1);
+		}
 		p_st.mode = buf.st_mode;
 		p_st.ctime = buf.st_ctime;
 		p_st.atime = buf.st_atime;
@@ -136,6 +201,7 @@ int load_to_pacon(struct pacon *pacon, char *path)
 		p_st.uid = buf.st_uid;
 		p_st.gid = buf.st_gid;
 		p_st.nlink = buf.st_nlink;
+		p_st.open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
 		ret = dmkv_add(pacon->kv_handle, path, val);
@@ -156,7 +222,7 @@ int load_to_pacon(struct pacon *pacon, char *path)
 		char *value = cJSON_Print(j_body);
 		ret = dmkv_add(pacon->kv_handle, path, value);
 	}
-	return ret;
+	return 0;
 }
 
 /* 
@@ -311,8 +377,23 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
 	return 0;
 }
 
+int local_fd_open(char *path)
+{
+	return -1;
+}
+
+int add_local_fd(char *path, int fd)
+{
+	return -1;
+}
+
 /**************** file interfaces ***************/
 
+/* 
+ * 1. search in local fd table, pacon and DFS
+ * 2. get its fd and increase the open counter ()
+ * 3. get inline data if necessary
+ */
 int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, struct pacon_file *p_file)
 {
 	int ret;
@@ -323,23 +404,49 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 		return open(path, flags, mode);
 	}*/
 
-	struct pacon_stat *st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
-	ret = pacon_getattr(pacon, path, st);
-	if (ret == -1)
+	// check fd in local fd table, if fd existed, goto out
+	ret = local_fd_open(path);
+	if (ret >= 0)
 	{
+		p_file->fd = fd;
+		goto out;
+	}
+
+	struct pacon_stat *st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
+	char *val;
+	val = dmkv_get(pacon->kv_handle, path);
+
+	// not be cached
+	if (val == NULL)
+	{
+		struct stat buf;
+		int st_ret = stat(path, &buf);
 		int fd = open(path, flags, mode);
-		if (fd == -1)
+		if (fd == -1 || st_ret != 0)
 		{
-			printf("file not existed\n");
+			printf("file is not existed\n");
 			return -1;
 		}
 		// cache in pacon
 		int res;
 		if (SERI_TYPE == 0)
 		{
-			char val[40];
-			seri_val(st, val);
-			ret = dmkv_add(pacon->kv_handle, path, val);
+			struct pacon_stat p_st;
+			p_st.flags = 0;
+			set_stat_flag(&p_st, STAT_file_created, 1);
+			p_st.mode = buf.st_mode;
+			p_st.ctime = buf.st_ctime;
+			p_st.atime = buf.st_atime;
+			p_st.mtime = buf.st_mtime;
+			p_st.size = buf.st_size;
+			p_st.uid = buf.st_uid;
+			p_st.gid = buf.st_gid;
+			p_st.nlink = buf.st_nlink;
+			p_st.open_counter = 1;  // only be used when file was created in DFS
+			char val[PSTAT_SIZE];
+			seri_val(&p_st, val);
+			res = dmkv_add(pacon->kv_handle, path, val);
+			p_file->p_st.flags;
 		} else {
 			cJSON *j_body;
 			j_body = cJSON_CreateObject();
@@ -358,11 +465,41 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 			res = dmkv_add(pacon->kv_handle, path, value);	
 		}
 		p_file->fd = fd;
+		// add fd to local fd table
+		ret = add_local_fd(path, fd);
+	} else {
+		// file md had been cached
+		deseri_val(st, val);
+		if (get_stat_flag(st, STAT_file_created) == 1)
+		{
+			st->open_counter++;
+			seri_val(st, val);
+			dmkv_add(pacon->kv_handle, path, val);
+		}
+		// get inline data
+		if (get_stat_flag(st, STAT_inline) == 1)
+		{
+			deseri_inline_data(NULL, p_file->buf, val);
+		} else {
+			p_file->buf = NULL;
+		}
+		p_file->flags = st->flags;
+		/*p_file->mode = st->mode;
+		p_file->ctime = st->ctime;
+		p_file->atime = st->atime;
+		p_file->mtime = st->mtime;
+		p_file->size = st->size;
+		p_file->uid = st->uid;
+		p_file->gid = st->gid;
+		p_file->nlink = st->nlink;*/
 	}
+out:
 	p_file->hit = 1;
+	p_file->open_flag = flags;
 	return 0;
 }
 
+/* reduce the opened counter */
 int pacon_close(struct pacon *pacon, struct pacon_file *p_file)
 {
 	return 0;
@@ -384,6 +521,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 	{
 		struct pacon_stat p_st;
 		p_st.flags = 0;
+		set_stat_flag(&p_st, STAT_type, 1);
 		p_st.mode = mode;
 		p_st.ctime = time(NULL);
 		p_st.atime = time(NULL);
@@ -392,6 +530,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.uid = getuid();
 		p_st.gid = getgid();
 		p_st.nlink = 0;
+		p_st.open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
 		ret = dmkv_add(pacon->kv_handle, path, val);
@@ -442,6 +581,7 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.uid = getuid();
 		p_st.gid = getgid();
 		p_st.nlink = 0;
+		p_st.open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
 		ret = dmkv_add(pacon->kv_handle, path, val);
@@ -472,8 +612,34 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 {
 	char *val;
 	val = dmkv_get(pacon->kv_handle, path);
+	// if not in pacon, try to get from DFS
 	if (val == NULL)
-		return -1;
+	{
+		int ret;
+		struct stat buf;
+		ret = stat(path, &buf);
+		if (ret != 0)
+		{
+			printf("getattr: path not existed: %s\n", path);
+			return -1;
+		}
+		st->flags = 0;
+		st->mode = buf.st_mode;
+		st->ctime = buf.st_ctime;
+		st->atime = buf.st_atime;
+		st->mtime = buf.st_mtime;
+		st->size = buf.st_size;
+		st->uid = buf.st_uid;
+		st->gid = buf.st_gid;
+		st->nlink = buf.st_nlink;
+		st->open_counter = 0;
+		char val[PSTAT_SIZE];
+		seri_val(st, val);
+		ret = dmkv_add(pacon->kv_handle, path, val);
+		goto out;
+	}
+
+	// md in pacon, deserialize it
 	if (SERI_TYPE == 0)
 	{
 		deseri_val(st, val);
@@ -505,6 +671,7 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 		//st->fd = (uint32_t)j_fd->valueint;
 		//st->opt = (uint32_t)j_opt->valueint;
 	}
+out:
 	return 0;
 }
 

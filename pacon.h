@@ -34,6 +34,8 @@ struct pacon
 	void *context;
 };
 
+#define PSTAT_SIZE 44 // 32 int * 11
+#define INLINE_MAX 468 // PSTAT_SIZE + INLINE_MAX = 512B
 struct pacon_stat
 {
 	uint32_t flags;   //  including the metadata type
@@ -45,6 +47,7 @@ struct pacon_stat
 	uint32_t uid;
 	uint32_t gid;
 	uint32_t nlink;
+	uint32_t open_counter;
 	//uint32_t fd;
 };
 

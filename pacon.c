@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <dirent.h>
 
 #include "pacon.h"
 #include "kv/dmkv.h"
@@ -34,6 +35,8 @@ enum statflags
 	STAT_inline,  // 0: no inline data, 1: has inlien
 	STAT_commit,  // 0: not yet be committed, 1: already be committed
 	STAT_file_created,  // 0: not be created in DFS, 1: already be created in DFS
+	STAT_existedin_dfs,  //  0: a new item after pacon run, 1: it was created before pacon run
+	STAT_child_check,  //  0: haven't check its children, 1: already checked its children
 };
 
 void set_stat_flag(struct pacon_stat *p_st, int flag_type, int val)
@@ -193,6 +196,7 @@ int load_to_pacon(struct pacon *pacon, char *path)
 			set_stat_flag(&p_st, STAT_type, 1);
 			set_stat_flag(&p_st, STAT_file_created, 1);
 		}
+		set_stat_flag(&p_st, STAT_existedin_dfs, 1);
 		p_st.mode = buf.st_mode;
 		p_st.ctime = buf.st_ctime;
 		p_st.atime = buf.st_atime;
@@ -345,18 +349,70 @@ int check_parent_dir(struct pacon *pacon, char *path)
 	}
 
 	// check parent dir
+	int ret;
 	char *val;
 	val = dmkv_get(pacon->kv_handle, p_dir);
 	if (val == NULL)
 	{
-		int ret;
 		ret = load_to_pacon(pacon, p_dir);
 		if (ret != 0)
 		{
 			printf("fail to load parent dir\n");
 			return -1;
 		}
+		val = dmkv_get(pacon->kv_handle, p_dir);
 	}
+	// check its children
+	struct pacon_stat p_st;
+	deseri_val(&p_st, val);
+	if (get_stat_flag(&p_dir, STAT_type) == 1)
+	{
+		printf("check parent dir: parent dir is a file\n");
+		return -1;
+	}
+
+	// if the p_dir's children are not be checked before, 
+	// read dir and load its children into pacon
+	if (get_stat_flag(&p_st, STAT_existedin_dfs) == 1 &&
+		get_stat_flag(&p_st, STAT_child_check) == 0)
+	{
+		DIR *pd;
+		struct dirent *entry;
+		char child_path[PATH_MAX];
+		int p_len = strlen(p_dir);
+		memcpy(child_path, p_dir, p_len);
+		pd = opendir(p_dir);
+		while ( (entry = readdir(pd)) != NULL )
+		{
+			if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+				continue;
+			if (p_len + strlen(entry->d_name) >= PATH_MAX-1)
+			{
+				printf("check parent dir: child path too long\n");
+				return -1;
+			}
+			int c_len = strlen(entry->d_name);
+			memcpy(child_path + p_len, entry->d_name, c_len);
+			child_path[p_len+c_len] = '\0';
+			ret = load_to_pacon(pacon, child_path);
+			if (ret != 0)
+			{
+				printf("check parent dir: fail to load child entry\n");
+				return -1;
+			}
+		} 
+		closedir(dp);
+
+		set_stat_flag(&p_st, STAT_child_check, 1);
+		seri_val(&p_st, val);
+		ret = dmkv_add(pacon->kv_handle, path, val);
+		if (ret != 0)
+		{
+			printf("check parent dir: fail to update STAT_child_check flag\n");
+			return -1;
+		}
+	}
+
 	//add_to_dir_check_table(p_dir);
 out:
 	return 0;

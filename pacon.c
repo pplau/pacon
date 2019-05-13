@@ -408,7 +408,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 	ret = local_fd_open(path);
 	if (ret >= 0)
 	{
-		p_file->fd = fd;
+		p_file->fd = ret;
 		goto out;
 	}
 
@@ -446,7 +446,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 			char val[PSTAT_SIZE];
 			seri_val(&p_st, val);
 			res = dmkv_add(pacon->kv_handle, path, val);
-			p_file->p_st.flags;
+			p_file->flags = p_st.flags;
 		} else {
 			cJSON *j_body;
 			j_body = cJSON_CreateObject();

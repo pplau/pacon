@@ -11,6 +11,7 @@
 #include "pacon.h"
 #include "kv/dmkv.h"
 #include "./lib/cJSON.h"
+#include "./lib/cuckoo/hash_table.h"
 
 #define SERI_TYPE 0 // 0 is memcpy, 1 is json
 #define BUFFER_SIZE 64
@@ -102,6 +103,28 @@ int deseri_inline_data(struct pacon_stat *s, char *inline_data, char *val)
 	return PSTAT_SIZE + INLINE_MAX;
 }
 
+
+/*********** parent dir check cache ***********/
+
+/* only cache the result of parent check */
+int add_to_dir_check_table(char *parent_dir)
+{
+	int ret;
+	int flags = 0;
+	pdirht_put(parent_dir, flags);
+	return 0;
+}
+
+/* 0 is hit, -1 is miss */
+int dir_check_local(struct pacon *pacon, char *parent_dir)
+{
+	int ret;
+	ret = pdirht_get(parent_dir);
+	return ret;
+}
+
+
+/************ some tool funcs ************/
 /* 
  * ret = 0 means recursive sub file/dir, 1 means not recursive sub file/dir,  
  * recursive = 0 means not recursive, =1 means recursive search all sub dir 
@@ -297,22 +320,6 @@ int free_pacon(struct pacon *pacon)
 	return 0;
 } 
 
-/* only cache the result of parent check */
-int add_to_dir_check_table(struct pacon *pacon, char *parent_dir)
-{
-	int ret;
-
-	return 0;
-}
-
-/* 0 is hit, -1 is miss */
-int dir_check_local(struct pacon *pacon, char *parent_dir)
-{
-	int ret;
-
-	return 0;
-}
-
 /* 
  * check the parent dir if existed
  * GET will cause unnecessary data transmition, so we use CAS here
@@ -348,8 +355,13 @@ int check_parent_dir(struct pacon *pacon, char *path)
 		p_dir[i] = path[i];
 	}
 
-	// check parent dir
 	int ret;
+	// check parent dir on local
+	ret = dir_check_local(p_dir);
+	if (ret != -1)
+		goto out;
+
+	// check parent dir on dmkv
 	char *val;
 	val = dmkv_get(pacon->kv_handle, p_dir);
 	if (val == NULL)
@@ -414,7 +426,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 		}
 	}
 
-	//add_to_dir_check_table(p_dir);
+	add_to_dir_check_table(p_dir);
 out:
 	return 0;
 }

@@ -109,14 +109,13 @@ int deseri_inline_data(struct pacon_stat *s, char *inline_data, char *val)
 /* only cache the result of parent check */
 int add_to_dir_check_table(char *parent_dir)
 {
-	int ret;
 	int flags = 0;
 	pdirht_put(parent_dir, flags);
 	return 0;
 }
 
 /* 0 is hit, -1 is miss */
-int dir_check_local(struct pacon *pacon, char *parent_dir)
+int dir_check_local(char *parent_dir)
 {
 	int ret;
 	ret = pdirht_get(parent_dir);
@@ -309,6 +308,7 @@ int init_pacon(struct pacon *pacon)
     	printf("inital root dir fail\n");
     	return -1;
     }
+    add_to_dir_check_table(pacon->mount_path);
 	return 0;
 }
 

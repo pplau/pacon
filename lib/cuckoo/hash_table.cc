@@ -35,7 +35,7 @@ extern "C" int pdirht_get(char *key)
 	{
 		return ret;
 	} else {
-		std::cout << "key not existed in dir check table" << std::endl;
+		//std::cout << "key not existed in dir check table" << std::endl;
 		return -1;
 	}
 }
@@ -69,7 +69,7 @@ extern "C" int fdht_get(char *key)
 	{
 		return ret;
 	} else {
-		std::cout << "key not existed in dir check table" << std::endl;
+		//std::cout << "key not existed in dir check table" << std::endl;
 		return -1;
 	}
 }

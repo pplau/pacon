@@ -45,11 +45,11 @@ int test_rm(struct pacon *pacon, char *path)
 	return pacon_rm(pacon, path);
 }
 
-int test_open_wr(char *path, int flag, mode_t mode)
+int test_open_wr(struct pacon *pacon, char *path, int flag, mode_t mode)
 {
 	int ret;
-	struct pacon_file p_file = new_pacon_file();
-	ret =  pacon_open(pacon, path, 0, 0, p_file);
+	struct pacon_file *p_file = new_pacon_file();
+	ret =  pacon_open(pacon, path, flag, mode, p_file);
 	if (ret == -1)
 	{
 		printf("fail to open file\n");
@@ -57,20 +57,21 @@ int test_open_wr(char *path, int flag, mode_t mode)
 	}
 	char *data = "hello";
 	int size = strlen(data);
-	ret = pacon_write(pacon, p_file, data, size, 0);
+	ret = pacon_write(pacon, path, p_file, data, size, 0);
 	if (ret == -1)
 	{
 		printf("write file error\n");
 		return -1;
 	}
 	char out[128];
-	ret = pacon_read(pacon, p_file, out, size, 0);
+	ret = pacon_read(pacon, path, p_file, out, size, 0);
 	if (ret <= 0)
 	{
 		printf("read file error\n");
 		return -1;
 	}
 	printf("file data: %s\n", out);
+	pacon_close(pacon, p_file);
 	return ret;
 }
 
@@ -164,7 +165,7 @@ int main(int argc, char const *argv[])
 
 		printf("\n");
 		printf("/********** open/rw test **********/\n");
-		ret = test_open_wr();
+		ret = test_open_wr(pacon, "/mnt/beegfs/file", 0, 0);
 		if (ret != 0)
 		{
 			printf("open/rw error\n");

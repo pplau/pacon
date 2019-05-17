@@ -805,7 +805,7 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 }
 
 /* success: return read bytes, error: return -1 */
-int pacon_read(struct pacon *pacon, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
+int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
 {
 	int ret;
 	if (p_file->size == 0)
@@ -837,7 +837,7 @@ int pacon_read(struct pacon *pacon, struct pacon_file *p_file, char *buf, size_t
 }
 
 /* success: return write bytes, error: return -1 */
-int pacon_write(struct pacon *pacon, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
+int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
 {
 	int ret;
 	int data_size = strlen(buf);

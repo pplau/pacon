@@ -7,7 +7,7 @@
 #include <time.h>
 #include "pacon.h"
 
-#define TEST_TYPE 1  // 0 is mirco test, 1 is pressure test
+#define TEST_TYPE 0  // 0 is mirco test, 1 is pressure test
 
 
 int test_init(struct pacon *pacon)
@@ -45,12 +45,36 @@ int test_rm(struct pacon *pacon, char *path)
 	return pacon_rm(pacon, path);
 }
 
-/*
-int test_open(char *path, int flag, mode_t mode)
+int test_open_wr(char *path, int flag, mode_t mode)
 {
-	return pacon_open(path, flag, mode);
+	int ret;
+	struct pacon_file p_file = new_pacon_file();
+	ret =  pacon_open(pacon, path, 0, 0, p_file);
+	if (ret == -1)
+	{
+		printf("fail to open file\n");
+		return -1;
+	}
+	char *data = "hello";
+	int size = strlen(data);
+	ret = pacon_write(pacon, p_file, data, size, 0);
+	if (ret == -1)
+	{
+		printf("write file error\n");
+		return -1;
+	}
+	char out[128];
+	ret = pacon_read(pacon, p_file, out, size, 0);
+	if (ret <= 0)
+	{
+		printf("read file error\n");
+		return -1;
+	}
+	printf("file data: %s\n", out);
+	return ret;
 }
 
+/*
 int test_rm_dir()
 {
 	return 0;
@@ -111,6 +135,7 @@ int main(int argc, char const *argv[])
 
 	if (TEST_TYPE == 0)
 	{
+		printf("\n");
 		printf("/********** mkdir test **********/\n");
 		ret = test_mkdir(pacon, "/mnt/beegfs/test", S_IFDIR | 0755);
 		if (ret != 0)
@@ -127,6 +152,7 @@ int main(int argc, char const *argv[])
 		}
 		printf("mkdir test success, path: /mnt/beegfs/test/t1\n");
 
+		printf("\n");
 		printf("/********** create test **********/\n");
 		ret = test_create(pacon, "/mnt/beegfs/file", S_IFREG | 0644);
 		if (ret != 0)
@@ -136,6 +162,17 @@ int main(int argc, char const *argv[])
 		}
 		printf("create file test succee, path: /mnt/beegfs/file\n");
 
+		printf("\n");
+		printf("/********** open/rw test **********/\n");
+		ret = test_open_wr();
+		if (ret != 0)
+		{
+			printf("open/rw error\n");
+			return -1;
+		}
+		printf("open/rw success\n");
+
+		printf("\n");
 		printf("/********** stat test **********/\n");
 		struct pacon_stat* st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
 		ret = test_stat(pacon, "/mnt/beegfs/file", st);
@@ -149,6 +186,7 @@ int main(int argc, char const *argv[])
 		}
 		printf("stat test succee\n");
 
+		printf("\n");
 		printf("/********** rm test **********/\n");
 		ret = test_rm(pacon, "/mnt/beegfs/file");
 		if (ret != 0)
@@ -172,7 +210,7 @@ int main(int argc, char const *argv[])
 
 	if (TEST_TYPE == 1)
 	{
-		int test_num = 100;
+		int test_num = 1000;
 		struct timespec start;
 		struct timespec end;
 		clock_gettime(CLOCK_REALTIME, &start);

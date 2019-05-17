@@ -80,6 +80,8 @@ int init_pacon(struct pacon *pacon);
 
 int free_pacon(struct pacon *pacon);
 
+struct pacon_file * new_pacon_file(void);
+
 
 /**************** fs interfaces ****************/
 

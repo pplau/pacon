@@ -7,6 +7,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <unistd.h> 
 
 #include "pacon.h"
 #include "kv/dmkv.h"
@@ -553,14 +554,14 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 			p_file->buf = NULL;
 		}
 		p_file->flags = st->flags;
-		/*p_file->mode = st->mode;
+		p_file->mode = st->mode;
 		p_file->ctime = st->ctime;
 		p_file->atime = st->atime;
 		p_file->mtime = st->mtime;
 		p_file->size = st->size;
 		p_file->uid = st->uid;
 		p_file->gid = st->gid;
-		p_file->nlink = st->nlink;*/
+		p_file->nlink = st->nlink;
 	}
 out:
 	p_file->hit = 1;
@@ -758,21 +759,92 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 	return ret;
 }
 
-int pacon_read(struct pacon *pacon, const char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
+/* success: return read bytes, error: return -1 */
+int pacon_read(struct pacon *pacon, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
 {
 	int ret;
-	if (p_file->hit == 1 && size <= BUFFER_SIZE && offset == 0)
+	if (p_file->size == 0)
 	{
-		buf = p_file->buf;
+		buf = NULL;
 		return 0;
-	} 
-	ret = read(p_file->fd, buf, size);
-	return ret;
+	}
+
+	// inline case
+	if (p_file->buf != NULL)
+	{
+		if (offset + size > p_file->size)
+		{
+			printf("read overflow\n");
+			return -1;
+		}
+		memcpy(buf, p_file->buf + offset, size);
+		return size;
+	}
+
+	// DFS case
+	if (p_file->buf == NULL)
+	{
+		ret = pread(p_file->fd, buf, size, offset);
+		return ret;
+	}
+
+	return -1;
 }
 
-int pacon_write(struct pacon *pacon, const char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
+/* success: return write bytes, error: return -1 */
+int pacon_write(struct pacon *pacon, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
 {
-	return 0;
+	int ret;
+	int data_size = strlen(buf);
+	if (data_size > size)
+	{
+		printf("write buffer size error\n");
+		return -1;
+	}
+
+	// inline case
+	if (p_file->buf != NULL)
+	{
+		if (size + offset < INLINE_MAX - 1)
+		{
+			// buffer in the metadata
+			char new_data[INLINE_MAX];
+			memcpy(new_data, p_file->buf, p_file->size - offset);
+			memcpy(new_data + offset, buf, size);
+			new_data[size + offset] = '\0';
+			struct pacon_stat new_st;
+			new_st.flags = p_file->flags;
+			new_st.mode = p_file->mode;
+			new_st.ctime = p_file->ctime;
+			new_st.atime = p_file->atime;
+			new_st.mtime = p_file->mtime;
+			new_st.size = size + offset;
+			new_st.uid = p_file->uid;
+			new_st.gid = p_file->gid;
+			new_st.nlink = p_file->nlink;
+			char val[PSTAT_SIZE+INLINE_MAX];
+			seri_inline_data(&new_st, &new_data, &val);
+			ret = dmkv_set(pacon->kv_handle, path, val);
+			if (ret != 0)
+			{
+				printf("write inline data error\n");
+				return -1;
+			}
+			return new_st.size;
+		} else {
+			// buffer outside the metadata
+
+		}
+	}
+
+	// DFS case
+	if (p_file->buf == NULL)
+	{
+		ret = pwrite(p_file->fd, buf, size, offset);
+		return ret;
+	}
+
+	return -1;
 }	
 
 int pacon_fsync(struct pacon *pacon, int fd)

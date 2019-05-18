@@ -166,7 +166,7 @@ int main(int argc, char const *argv[])
 		printf("\n");
 		printf("/********** open/rw test **********/\n");
 		ret = test_open_wr(pacon, "/mnt/beegfs/file", 0, 0);
-		if (ret != 0)
+		if (ret <= 0)
 		{
 			printf("open/rw error\n");
 			return -1;

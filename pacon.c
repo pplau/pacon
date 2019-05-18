@@ -817,12 +817,22 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 	// inline case
 	if (get_fstat_flag(p_file, STAT_inline) == 1)
 	{
+		struct pacon_stat st;
+		char *val;
+		val = dmkv_get(pacon->kv_handle, path);
+		if (val == NULL)
+		{
+			printf("read: get inline data error\n");
+			return -1;
+		}
+		char inline_data[INLINE_MAX];
+		deseri_inline_data(&st, inline_data, val);
 		if (offset + size > p_file->size)
 		{
 			printf("read overflow\n");
 			return -1;
 		}
-		memcpy(buf, p_file->buf + offset, size);
+		memcpy(buf, inline_data+offset, size);
 		return size;
 	}
 
@@ -852,7 +862,7 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	{
 		if (size + offset < INLINE_MAX - 1)
 		{
-			/*struct pacon_stat new_st;
+			struct pacon_stat new_st;
 			new_st.flags = p_file->flags;
 			set_fstat_flag(p_file, STAT_file_created, 1);
 			set_stat_flag(&new_st, STAT_file_created, 1);
@@ -860,20 +870,15 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 			set_stat_flag(&new_st, STAT_inline, 1);
 			new_st.mode = p_file->mode;
 			new_st.ctime = p_file->ctime;
-			new_st.atime = p_file->atime;
-			new_st.mtime = p_file->mtime;
+			new_st.atime = time(NULL);
+			new_st.mtime = time(NULL);
 			new_st.size = size + offset;
 			new_st.uid = p_file->uid;
 			new_st.gid = p_file->gid;
 			new_st.nlink = p_file->nlink;
 			char val[PSTAT_SIZE+INLINE_MAX];
-			seri_inline_data(&new_st, &new_data, &val);*/
-			char inlint_key[PATH_MAX+2];
-			int path_len = strlen(path);
-			memcpy(inlint_key, path, path_len);
-			inlint_key[path_len] = ':';
-			inlint_key[path_len+1] = '\0';
-			ret = dmkv_set(pacon->kv_handle, inlint_key, buf);
+			seri_inline_data(&new_st, &new_data, &val);
+			ret = dmkv_set(pacon->kv_handle, path, val);
 			if (ret != 0)
 			{
 				printf("write inline data error\n");
@@ -890,31 +895,28 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	// inline case & buffer in the metadata
 	if (get_fstat_flag(p_file, STAT_inline) == 1 && get_fstat_flag(p_file, STAT_file_created) == 0)
 	{
+		char *val;
+		val = dmkv_get(pacon->kv_handle, path);
+		struct pacon_stat new_st;
 		char inline_data[INLINE_MAX];
-		char inlint_key[PATH_MAX+2];
-		int path_len = strlen(path);
-		memcpy(inlint_key, path, path_len);
-		inlint_key[path_len] = ':';
-		inlint_key[path_len+1] = '\0';
-		ret = dmkv_get(pacon->kv_handle, inlint_key, inline_data);
+		deseri_inline_data(&new_st, inline_data, val);
 		if (size + offset < INLINE_MAX - 1)
 		{
 			char new_data[INLINE_MAX];
-			memcpy(new_data, inline_data, p_file->size - offset);
+			memcpy(new_data, inline_data, new_st.size - offset);
 			memcpy(new_data + offset, buf, size);
 			new_data[size + offset] = '\0';
-			/*struct pacon_stat new_st;
-			new_st.flags = p_file->flags;
+			/*new_st.flags = p_file->flags;
 			new_st.mode = p_file->mode;
-			new_st.ctime = p_file->ctime;
-			new_st.atime = p_file->atime;
-			new_st.mtime = p_file->mtime;
+			new_st.ctime = p_file->ctime;*/
+			new_st.atime = time(NULL);
+			new_st.mtime = time(NULL);
 			new_st.size = size + offset;
-			new_st.uid = p_file->uid;
+			/*new_st.uid = p_file->uid;
 			new_st.gid = p_file->gid;
-			new_st.nlink = p_file->nlink;
+			new_st.nlink = p_file->nlink;*/
 			char val[PSTAT_SIZE+INLINE_MAX];
-			seri_inline_data(&new_st, &new_data, &val);*/
+			seri_inline_data(&new_st, &new_data, &val);
 			ret = dmkv_set(pacon->kv_handle, inlint_key, new_data);
 			if (ret != 0)
 			{
@@ -922,7 +924,7 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 				return -1;
 			}
 			p_file->size = size + offset;
-			return new_st.size;
+			return size;
 		} else {
 			printf("need buffer outside the md\n");
 			return -1;

@@ -43,22 +43,22 @@ int memc_new(struct dmkv *dmkv)
 	return 0;
 }
 
-int memc_put(memcached_st *memc, char *key, char *val) 
+int memc_put(memcached_st *memc, char *key, char *val, int val_len) 
 {
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
-	size_t val_len = sizeof(val);
+	//size_t val_len = sizeof(val);
 	rc = memcached_set(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
 		return -1;
 	return 0;
 }
 
-int memc_add(memcached_st *memc, char *key, char *val)
+int memc_add(memcached_st *memc, char *key, char *val, int val_len)
 {
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
-	size_t val_len = sizeof(val);
+	//size_t val_len = sizeof(val);
 	rc = memcached_add(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
 		return -1;
@@ -203,16 +203,16 @@ int dmkv_free(struct dmkv *dmkv)
 	return 0;
 }
 
-int dmkv_set(struct dmkv *dmkv, char *key, char *value)
+int dmkv_set(struct dmkv *dmkv, char *key, char *value, int val_len)
 {
 	//unsigned long hash = crc32(key, strlen(key));
 	//int node_num = dht(dmkv->c_info, hash);
-	return memc_put(dmkv->memc, key, value);
+	return memc_put(dmkv->memc, key, value, val_len);
 }
 
-int dmkv_add(struct dmkv *dmkv, char *key, char *value)
+int dmkv_add(struct dmkv *dmkv, char *key, char *value, int val_len)
 {
-	return memc_add(dmkv->memc, key, value);
+	return memc_add(dmkv->memc, key, value, val_len);
 }
 
 char* dmkv_get(struct dmkv *dmkv, char *key)

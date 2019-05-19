@@ -28,9 +28,9 @@ int dmkv_init(struct dmkv *dmkv);
 
 int dmkv_free(struct dmkv *dmkv);
 
-int dmkv_set(struct dmkv *dmkv, char *key, char *value);
+int dmkv_set(struct dmkv *dmkv, char *key, char *value, int val_len);
 
-int dmkv_add(struct dmkv *dmkv, char *key, char *val);
+int dmkv_add(struct dmkv *dmkv, char *key, char *val, int val_len);
 
 int dmkv_cas(struct dmkv *dmkv, char *key, char *val);
 

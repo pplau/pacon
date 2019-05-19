@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <dirent.h>
 #include <unistd.h> 
+#include <string.h>
 
 #include "pacon.h"
 #include "kv/dmkv.h"
@@ -110,7 +111,8 @@ int seri_inline_data(struct pacon_stat *s, char *inline_data, char *val)
 	{
 		memcpy(val, s, PSTAT_SIZE);
 	}
-	memcpy(val + PSTAT_SIZE, inline_data, sizeof(inline_data));
+	memcpy(val + PSTAT_SIZE, inline_data, strlen(inline_data)+1);
+	//memcpy(val + PSTAT_SIZE, inline_data, strlen(inline_data));
 	return PSTAT_SIZE + INLINE_MAX;
 }
 
@@ -122,7 +124,8 @@ int deseri_inline_data(struct pacon_stat *s, char *inline_data, char *val)
 	{
 		memcpy(s, val, PSTAT_SIZE);
 	}
-	memcpy(inline_data, val + PSTAT_SIZE, sizeof(val) - PSTAT_SIZE);
+	strcpy(inline_data, val + PSTAT_SIZE);
+	//memcpy(inline_data, val + PSTAT_SIZE, strlen(val) - PSTAT_SIZE);
 	return PSTAT_SIZE + INLINE_MAX;
 }
 
@@ -253,7 +256,7 @@ int load_to_pacon(struct pacon *pacon, char *path)
 		p_st.open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
-		ret = dmkv_add(pacon->kv_handle, path, val);
+		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 	} else{
 		cJSON *j_body;
 		j_body = cJSON_CreateObject();
@@ -269,7 +272,7 @@ int load_to_pacon(struct pacon *pacon, char *path)
 		//cJSON_AddNumberToObject(j_body, "opt", 0);
 		//set_opt_flag(md, OP_mkdir, 1);
 		char *value = cJSON_Print(j_body);
-		ret = dmkv_add(pacon->kv_handle, path, value);
+		ret = dmkv_add(pacon->kv_handle, path, value, PSTAT_SIZE);
 	}
 	return 0;
 }
@@ -441,7 +444,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 
 		set_stat_flag(&p_st, STAT_child_check, 1);
 		seri_val(&p_st, val);
-		ret = dmkv_add(pacon->kv_handle, p_dir, val);
+		ret = dmkv_add(pacon->kv_handle, p_dir, val, PSTAT_SIZE);
 		if (ret != 0)
 		{
 			printf("check parent dir: fail to update STAT_child_check flag\n");
@@ -552,7 +555,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 			p_st.open_counter = 1;  // only be used when file was created in DFS
 			char val[PSTAT_SIZE];
 			seri_val(&p_st, val);
-			res = dmkv_add(pacon->kv_handle, path, val);
+			res = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 			p_file->flags = p_st.flags;
 			p_file->mode = p_st.mode;
 			p_file->ctime = p_st.ctime;
@@ -578,7 +581,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 			//cJSON_AddNumberToObject(j_body, "opt", 0);
 			//set_opt_flag(md, OP_mkdir, 1);
 			char *value = cJSON_Print(j_body);
-			res = dmkv_add(pacon->kv_handle, path, value);	
+			res = dmkv_add(pacon->kv_handle, path, value, PSTAT_SIZE);	
 		}
 
 		// add fd to local fd table
@@ -589,7 +592,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 		{
 			st->open_counter++;
 			seri_val(st, val);
-			dmkv_add(pacon->kv_handle, path, val);
+			dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 		}
 		/* get inline data
 		if (get_stat_flag(st, STAT_inline) == 1)
@@ -648,7 +651,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
-		ret = dmkv_add(pacon->kv_handle, path, val);
+		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 	} else {
 		cJSON *j_body;
 		j_body = cJSON_CreateObject();
@@ -664,7 +667,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		//cJSON_AddNumberToObject(j_body, "opt", 0);
 		//set_opt_flag(md, OP_mkdir, 1);
 		char *value = cJSON_Print(j_body);
-		ret = dmkv_add(pacon->kv_handle, path, value);
+		ret = dmkv_add(pacon->kv_handle, path, value, PSTAT_SIZE);
 	}
 	if (ret != 0)
 		return ret;
@@ -699,7 +702,7 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
-		ret = dmkv_add(pacon->kv_handle, path, val);
+		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 	} else {
 		cJSON *j_body;
 		j_body = cJSON_CreateObject();
@@ -715,7 +718,7 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 		//cJSON_AddNumberToObject(j_body, "opt", 0);
 		//set_opt_flag(md, OP_mkdir, 1);
 		char *value = cJSON_Print(j_body);
-		ret = dmkv_add(pacon->kv_handle, path, value);
+		ret = dmkv_add(pacon->kv_handle, path, value, PSTAT_SIZE);
 	}
 	if (ret != 0)
 		return ret;
@@ -750,7 +753,7 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 		st->open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(st, val);
-		ret = dmkv_add(pacon->kv_handle, path, val);
+		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 		goto out;
 	}
 
@@ -877,8 +880,8 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 			new_st.gid = p_file->gid;
 			new_st.nlink = p_file->nlink;
 			char val[PSTAT_SIZE+INLINE_MAX];
-			seri_inline_data(&new_st, &new_data, &val);
-			ret = dmkv_set(pacon->kv_handle, path, val);
+			seri_inline_data(&new_st, buf, val);
+			ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE + size);
 			if (ret != 0)
 			{
 				printf("write inline data error\n");
@@ -916,8 +919,8 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 			new_st.gid = p_file->gid;
 			new_st.nlink = p_file->nlink;*/
 			char val[PSTAT_SIZE+INLINE_MAX];
-			seri_inline_data(&new_st, &new_data, &val);
-			ret = dmkv_set(pacon->kv_handle, inlint_key, new_data);
+			seri_inline_data(&new_st, &new_data, val);
+			ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE + size);
 			if (ret != 0)
 			{
 				printf("write inline data error\n");

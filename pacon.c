@@ -485,16 +485,16 @@ int add_local_fd(char *path, int fd)
 struct pacon_file * new_pacon_file(void)
 {
 	struct pacon_file *p_file = (struct pacon_file *)malloc(sizeof(struct pacon_file));
-	char *buf = (char *)malloc(INLINE_MAX);
-	p_file->buf = buf;
+	//char *buf = (char *)malloc(INLINE_MAX);
+	//p_file->buf = buf;
 	return p_file;
 }
 
 void free_pacon_file(struct pacon_file *p_file)
 {
-	free(p_file->buf);
-	free(p_file);
-	p_file = NULL;
+	//free(p_file->buf);
+	//free(p_file);
+	//p_file = NULL;
 }
 
 /**************** file interfaces ***************/
@@ -619,7 +619,7 @@ out:
 /* reduce the opened counter */
 int pacon_close(struct pacon *pacon, struct pacon_file *p_file)
 {
-	free_pacon_file(p_file);
+	//free_pacon_file(p_file);
 	return 0;
 }
 
@@ -836,6 +836,7 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 			return -1;
 		}
 		memcpy(buf, inline_data+offset, size);
+		buf[size] = '\0';
 		return size;
 	}
 

@@ -71,7 +71,25 @@ int test_open_wr(struct pacon *pacon, char *path, int flag, mode_t mode)
 		return -1;
 	}
 	printf("file data: %s\n", out);
-	pacon_close(pacon, p_file);
+	//pacon_close(pacon, p_file);
+
+	// test rewrite
+	char *update = "Opsss";
+	int update_size = strlen(update);
+	ret = pacon_write(pacon, path, p_file, update, update_size, 0);
+	if (ret == -1)
+	{
+		printf("rewrite error\n");
+		return -1;
+	}
+	char up_out[128];
+	ret = pacon_read(pacon, path, p_file, out, size, 0);
+	if (ret <= 0)
+	{
+		printf("read file error\n");
+		return -1;
+	}
+	printf("file data: %s\n", out);
 	return ret;
 }
 

@@ -76,7 +76,7 @@ int test(struct dmkv *kv)
 				printf("get cas error, %d\n", i);
 				return -1;
 			}
-			ret = dmkv_cas(kv, get_key, val, strlen(update), cas);
+			ret = dmkv_cas(kv, get_key, update, strlen(update), cas);
 			if (ret == 1)
 			{
 				printf("first cas version error\n");
@@ -84,13 +84,12 @@ int test(struct dmkv *kv)
 			} else if (ret == 0)
 			{
 				printf("first cas success\n");
-				return -1;
 			} else {
 				printf("first cas error\n");
 				return -1;
 			}
 		} else {
-			ret = dmkv_cas(kv, get_key, val, strlen(update), cas);
+			ret = dmkv_cas(kv, get_key, update, strlen(update), cas);
 			if (ret == 1)
 			{
 				printf("second cas version error\n");

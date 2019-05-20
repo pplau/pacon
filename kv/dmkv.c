@@ -71,9 +71,7 @@ int memc_cas(memcached_st *memc, char *key, char *val, int val_len, uint64_t cas
 	size_t key_len = strlen(key);
 	rc = memcached_cas(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0, cas);
 	if (rc == MEMCACHED_DATA_EXISTS)
-		// version error
 		return 1;
-
 	if (rc == MEMCACHED_SUCCESS)
 		return 0;
 	
@@ -107,9 +105,9 @@ char* memc_get_cas(memcached_st *memc, char *key, uint64_t *ret_cas)
 	size_t val_len;
 	uint32_t flag = 0;
 	//size_t key_len = strlen(key);
-	char* keys[2] = {key, NULL};
-	size_t key_lens[2] = {strlen(key), 0};
-	rc = memcached_mget(memc, keys, key_lens, &val_len, 1);
+	char* keys[1] = {key};
+	size_t key_lens[1] = {strlen(key)};
+	rc = memcached_mget(memc, keys, key_lens, 1);
 	if (rc != MEMCACHED_SUCCESS)
 		return NULL;
 
@@ -117,7 +115,7 @@ char* memc_get_cas(memcached_st *memc, char *key, uint64_t *ret_cas)
 	memcached_result_st *result;
 	memcached_result_st result_obj;
 	result = memcached_result_create(memc, &result_obj);
-	result = memcached_fetch_result(memc, &results_obj, &rc);
+	result = memcached_fetch_result(memc, &result_obj, &rc);
 	cas = memcached_result_cas(result);
 	*ret_cas = cas;
 	val = memcached_result_value(result);

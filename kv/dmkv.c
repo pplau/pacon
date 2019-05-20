@@ -106,16 +106,21 @@ char* memc_get_cas(memcached_st *memc, char *key, uint64_t *ret_cas)
 	char *val;
 	size_t val_len;
 	uint32_t flag = 0;
-	size_t key_len = strlen(key);
-	val = memcached_get(memc, key, key_len, &val_len, &flag, &rc);
+	//size_t key_len = strlen(key);
+	char* keys[2] = {key, NULL};
+	size_t key_lens[2] = {strlen(key), 0};
+	rc = memcached_mget(memc, keys, key_lens, &val_len, 1);
 	if (rc != MEMCACHED_SUCCESS)
 		return NULL;
 
 	uint64_t cas;
 	memcached_result_st *result;
-	result= memcached_fetch_result(memc, NULL, &rc);
+	memcached_result_st result_obj;
+	result = memcached_result_create(memc, &result_obj);
+	result = memcached_fetch_result(memc, &results_obj, &rc);
 	cas = memcached_result_cas(result);
 	*ret_cas = cas;
+	val = memcached_result_value(result);
 	return val;
 }
 

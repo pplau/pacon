@@ -65,7 +65,7 @@ int test(struct dmkv *kv)
 		char get_key[2];
 		get_key[0] = '0';
 		get_key[1] = '\0';
-		char *update = "update"
+		char *update = "update";
 		char *res_val;
 		uint64_t cas;
 		if (i == 0)

@@ -30,7 +30,7 @@ int test(struct dmkv *kv)
 		char set_key[2];
 		set_key[0] = i + '0';
 		set_key[1] = '\0';
-		ret = dmkv_set(kv, set_key, val);
+		ret = dmkv_set(kv, set_key, val, strlen(val));
 		if (ret < 0)
 		{
 			printf("set error, key = %s\n", set_key);
@@ -65,6 +65,7 @@ int test(struct dmkv *kv)
 		char get_key[2];
 		get_key[0] = '0';
 		get_key[1] = '\0';
+		char *update = "update"
 		char *res_val;
 		uint64_t cas;
 		if (i == 0)
@@ -75,7 +76,7 @@ int test(struct dmkv *kv)
 				printf("get cas error, %d\n", i);
 				return -1;
 			}
-			ret = dmkv_cas(kv, get_key, val, cas);
+			ret = dmkv_cas(kv, get_key, val, strlen(update), cas);
 			if (ret == 1)
 			{
 				printf("first cas version error\n");
@@ -89,7 +90,7 @@ int test(struct dmkv *kv)
 				return -1;
 			}
 		} else {
-			ret = dmkv_cas(kv, get_key, val, cas);
+			ret = dmkv_cas(kv, get_key, val, strlen(update), cas);
 			if (ret == 1)
 			{
 				printf("second cas version error\n");

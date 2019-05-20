@@ -113,7 +113,7 @@ char* memc_get_cas(memcached_st *memc, char *key, uint64_t *ret_cas)
 
 	uint64_t cas;
 	memcached_result_st *result;
-	result= memcached_fetch_result(memc, NULL, rc);
+	result= memcached_fetch_result(memc, NULL, &rc);
 	cas = memcached_result_cas(result);
 	*ret_cas = cas;
 	return val;
@@ -251,9 +251,9 @@ char* dmkv_get_cas(struct dmkv *dmkv, char *key, uint64_t *cas)
 	return memc_get_cas(dmkv->memc, key, cas);
 }
 
-int dmkv_cas(struct dmkv *dmkv, char *key, char *val, uint64_t cas)
+int dmkv_cas(struct dmkv *dmkv, char *key, char *val, int val_len, uint64_t cas)
 {
-	return memc_cas(dmkv->memc, key, val, cas);
+	return memc_cas(dmkv->memc, key, val, val_len, cas);
 }
 
 int dmkv_check(struct dmkv *dmkv, char *key)

@@ -38,7 +38,7 @@ int dmkv_check(struct dmkv *dmkv, char *key);
 
 char* dmkv_get(struct dmkv *dmkv, char *key);
 
-char* dmkv_get_cas(memcached_st *memc, char *key, uint64_t *ret_cas);
+char* dmkv_get_cas(struct dmkv *dmkv, char *key, uint64_t *ret_cas);
 
 int dmkv_del(struct dmkv *dmkv, char *key);
 

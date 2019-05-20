@@ -65,15 +65,19 @@ int memc_add(memcached_st *memc, char *key, char *val, int val_len)
 	return 0;
 }
 
-int memc_cas(memcached_st *memc, char *key, char *val)
+int memc_cas(memcached_st *memc, char *key, char *val, int val_len, uint64_t cas)
 {
-	/*memcached_return_t rc;
+	memcached_return_t rc;
 	size_t key_len = strlen(key);
-	size_t val_len = strlen(val);
-	rc = memcached_cas();
-	if (rc != MEMCACHED_SUCCESS)
-		return -1;*/
-	return 0;
+	rc = memcached_cas(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0, cas);
+	if (rc == MEMCACHED_DATA_EXISTS)
+		// version error
+		return 1;
+
+	if (rc == MEMCACHED_SUCCESS)
+		return 0;
+	
+	return -1;
 }
 
 int memc_check(memcached_st *memc, char *key)
@@ -92,6 +96,26 @@ char* memc_get(memcached_st *memc, char *key)
 	val = memcached_get(memc, key, key_len, &val_len, &flag, &rc);
 	if (rc != MEMCACHED_SUCCESS)
 		return NULL;
+	return val;
+}
+
+// reture val and cas
+char* memc_get_cas(memcached_st *memc, char *key, uint64_t *ret_cas) 
+{
+	memcached_return_t rc;
+	char *val;
+	size_t val_len;
+	uint32_t flag = 0;
+	size_t key_len = strlen(key);
+	val = memcached_get(memc, key, key_len, &val_len, &flag, &rc);
+	if (rc != MEMCACHED_SUCCESS)
+		return NULL;
+
+	uint64_t cas;
+	memcached_result_st *result;
+	result= memcached_fetch_result(memc, NULL, rc);
+	cas = memcached_result_cas(result);
+	*ret_cas = cas;
 	return val;
 }
 
@@ -221,9 +245,15 @@ char* dmkv_get(struct dmkv *dmkv, char *key)
 	return memc_get(dmkv->memc, key);
 }
 
-int dmkv_cas(struct dmkv *dmkv, char *key, char *val)
+char* dmkv_get_cas(struct dmkv *dmkv, char *key, uint64_t *cas)
 {
-	return memc_cas(dmkv->memc, key, val);
+	//unsigned long hash = crc32(key, strlen(key));
+	return memc_get_cas(dmkv->memc, key, cas);
+}
+
+int dmkv_cas(struct dmkv *dmkv, char *key, char *val, uint64_t cas)
+{
+	return memc_cas(dmkv->memc, key, val, cas);
 }
 
 int dmkv_check(struct dmkv *dmkv, char *key)

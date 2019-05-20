@@ -861,25 +861,23 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 		return -1;
 	}
 
+	char *val;
+	val = dmkv_get(pacon->kv_handle, path);
+	struct pacon_stat new_st;
+	char inline_data[INLINE_MAX];
+	deseri_inline_data(&new_st, inline_data, val);
+
 	// empty file and not been created in DFS
 	if (get_fstat_flag(p_file, STAT_inline) == 0 && get_fstat_flag(p_file, STAT_file_created) == 0)
 	{
 		if (size + offset < INLINE_MAX - 1)
 		{
-			struct pacon_stat new_st;
 			new_st.flags = p_file->flags;
-			set_fstat_flag(p_file, STAT_file_created, 1);
-			set_stat_flag(&new_st, STAT_file_created, 1);
 			set_fstat_flag(p_file, STAT_inline, 1);
 			set_stat_flag(&new_st, STAT_inline, 1);
-			new_st.mode = p_file->mode;
-			new_st.ctime = p_file->ctime;
 			new_st.atime = time(NULL);
 			new_st.mtime = time(NULL);
 			new_st.size = size + offset;
-			new_st.uid = p_file->uid;
-			new_st.gid = p_file->gid;
-			new_st.nlink = p_file->nlink;
 			char val[PSTAT_SIZE+INLINE_MAX];
 			seri_inline_data(&new_st, buf, val);
 			ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE + size);
@@ -899,26 +897,15 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	// inline case & buffer in the metadata
 	if (get_fstat_flag(p_file, STAT_inline) == 1 && get_fstat_flag(p_file, STAT_file_created) == 0)
 	{
-		char *val;
-		val = dmkv_get(pacon->kv_handle, path);
-		struct pacon_stat new_st;
-		char inline_data[INLINE_MAX];
-		deseri_inline_data(&new_st, inline_data, val);
 		if (size + offset < INLINE_MAX - 1)
 		{
 			char new_data[INLINE_MAX];
 			memcpy(new_data, inline_data, new_st.size - offset);
 			memcpy(new_data + offset, buf, size);
 			new_data[size + offset] = '\0';
-			/*new_st.flags = p_file->flags;
-			new_st.mode = p_file->mode;
-			new_st.ctime = p_file->ctime;*/
 			new_st.atime = time(NULL);
 			new_st.mtime = time(NULL);
 			new_st.size = size + offset;
-			/*new_st.uid = p_file->uid;
-			new_st.gid = p_file->gid;
-			new_st.nlink = p_file->nlink;*/
 			char val[PSTAT_SIZE+INLINE_MAX];
 			seri_inline_data(&new_st, &new_data, val);
 			ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE + size);

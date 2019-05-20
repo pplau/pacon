@@ -55,7 +55,7 @@ int test_open_wr(struct pacon *pacon, char *path, int flag, mode_t mode)
 		printf("fail to open file\n");
 		return -1;
 	}
-	char *data = "hello";
+	char *data = "hello, you are a pig";
 	int size = strlen(data);
 	ret = pacon_write(pacon, path, p_file, data, size, 0);
 	if (ret == -1)

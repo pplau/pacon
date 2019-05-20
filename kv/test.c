@@ -58,6 +58,53 @@ int test(struct dmkv *kv)
 		}
 	}
 
+	// cas test
+	printf("/********** cas test **********/\n");
+	for (i = 0; i < 2; ++i)
+	{
+		char get_key[2];
+		get_key[0] = '0';
+		get_key[1] = '\0';
+		char *res_val;
+		uint64_t cas;
+		if (i == 0)
+		{
+			res_val = dmkv_get_cas(kv, get_key, &cas);
+			if (res_val == NULL)
+			{
+				printf("get cas error, %d\n", i);
+				return -1;
+			}
+			ret = dmkv_cas(kv, get_key, val, cas);
+			if (ret == 1)
+			{
+				printf("first cas version error\n");
+				return -1;
+			} else if (ret == 0)
+			{
+				printf("first cas success\n");
+				return -1;
+			} else {
+				printf("first cas error\n");
+				return -1;
+			}
+		} else {
+			ret = dmkv_cas(kv, get_key, val, cas);
+			if (ret == 1)
+			{
+				printf("second cas version error\n");
+				return -1;
+			} else if (ret == 0)
+			{
+				printf("second cas success\n");
+				return -1;
+			} else {
+				printf("second cas error\n");
+				return -1;
+			}
+		}
+	}
+
 	// del test
 	printf("/********** del test **********/\n");
 	for (i = 0; i < set_num; ++i)

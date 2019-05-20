@@ -93,7 +93,7 @@ int test(struct dmkv *kv)
 			if (ret == 1)
 			{
 				printf("second cas version error\n");
-				return -1;
+				//return -1;
 			} else if (ret == 0)
 			{
 				printf("second cas success\n");

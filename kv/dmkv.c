@@ -31,7 +31,9 @@ int memc_new(struct dmkv *dmkv)
 		printf("memc is NULL\n");
 		return -1;
 	}
-	memcached_behavior_set(dmkv->memc,MEMCACHED_BEHAVIOR_DISTRIBUTION,MEMCACHED_DISTRIBUTION_CONSISTENT);
+	memcached_behavior_set(dmkv->memc, MEMCACHED_BEHAVIOR_DISTRIBUTION, 1);
+	memcached_behavior_set(dmkv->memc, MEMCACHED_DISTRIBUTION_CONSISTENT, 1);
+	memcached_behavior_set(dmkv->memc, MEMCACHED_BEHAVIOR_SUPPORT_CAS, 1);
 	servers = memcached_server_list_append(NULL, dmkv->c_info->node_list[0], 11211, &rc);
 	for (i = 1; i < node_num; ++i)
 	{
@@ -104,21 +106,11 @@ char* memc_get_cas(memcached_st *memc, char *key, uint64_t *ret_cas)
 	char *val;
 	size_t val_len;
 	uint32_t flag = 0;
-	//size_t key_len = strlen(key);
-	char* keys[1] = {key};
-	size_t key_lens[1] = {strlen(key)};
-	rc = memcached_mget(memc, keys, key_lens, 1);
+	size_t key_len = strlen(key);
+	val = memcached_get(memc, key, key_len, &val_len, &flag, &rc);
 	if (rc != MEMCACHED_SUCCESS)
 		return NULL;
-
-	uint64_t cas;
-	memcached_result_st *result;
-	memcached_result_st result_obj;
-	result = memcached_result_create(memc, &result_obj);
-	result = memcached_fetch_result(memc, &result_obj, &rc);
-	cas = memcached_result_cas(result);
-	*ret_cas = cas;
-	val = memcached_result_value(result);
+	*ret_cas = (memc->result).item_cas;
 	return val;
 }
 
@@ -210,7 +202,12 @@ int dmkv_init(struct dmkv *dmkv)
 	pthread_rwlock_init(&(dmkv->rwlock_t), NULL);
 	pthread_rwlock_wrlock(&(dmkv->rwlock_t));
 	struct cluster_info *c_info = (struct cluster_info *)malloc(sizeof(struct cluster_info));
-	get_cluster_info(c_info);
+	ret = get_cluster_info(c_info);
+	if (ret != 0)
+	{
+		printf("dmkv init error\n");
+		return -1;
+	}
 	dmkv->c_info = c_info;
 	ret = memc_new(dmkv);
 	pthread_rwlock_unlock(&(dmkv->rwlock_t));

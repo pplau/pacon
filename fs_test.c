@@ -233,7 +233,7 @@ int main(int argc, char const *argv[])
 		struct timespec start;
 		struct timespec end;
 		clock_gettime(CLOCK_REALTIME, &start);
-		batch_mkdir(pacon, "/mnt/beegfs/", test_num);
+		batch_mkdir(pacon, "/mnt/beegfs/pacon/", test_num);
 		clock_gettime(CLOCK_REALTIME, &end);
         long timediff;
         timediff = 1000000 * (end.tv_sec - start.tv_sec) + (end.tv_nsec - start.tv_nsec) / 1000;

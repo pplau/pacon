@@ -522,7 +522,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 		goto out;
 	}*/
 	char *val;
-	uint64_t = cas;
+	uint64_t cas;
 
 retry:
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
@@ -589,20 +589,20 @@ retry:
 			st.size > 0)
 		{
 			int fd = open(path, flags, mode);
-			if (fd == -1 || st_ret != 0)
+			if (fd == -1)
 			{
 				printf("file is not existed\n");
 				return -1;
 			}
 			while (1)
 			{
-				st->open_counter++;
-				seri_val(st, val);
+				st.open_counter++;
+				seri_val(&st, val);
 				ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
 				if (ret == 1)
 				{
 					val = dmkv_get_cas(pacon->kv_handle, path, &cas);
-					deseri_val(st, val);
+					deseri_val(&st, val);
 					continue;
 				}
 				if (ret == -1)
@@ -835,7 +835,8 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 	// inline case
 		struct pacon_stat st;
 		char *val;
-		val = dmkv_get(pacon->kv_handle, path);
+		uint64_t cas;
+		val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 		if (val == NULL)
 		{
 			printf("read: get inline data error\n");
@@ -843,7 +844,46 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 		}
 		char inline_data[INLINE_MAX];
 		deseri_inline_data(&st, inline_data, val);
-		if (offset + size > p_file->size)
+
+		// if in DFS, open it and 
+		if (get_stat_flag(&new_st, STAT_inline) == 0 &&
+			get_stat_flag(&new_st, STAT_file_created) == 1 &&
+			st.size >0)
+		{
+			int fd = open(path, flags, mode);
+			if (fd == -1)
+			{
+				printf("file is not existed\n");
+				return -1;
+			}
+			while (1)
+			{
+				st.open_counter++;
+				seri_val(&st, val);
+				ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+				if (ret == 1)
+				{
+					val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+					deseri_val(&st, val);
+					continue;
+				}
+				if (ret == -1)
+				{
+					printf("open a cached file error\n");
+					return -1;
+				}
+				if (ret == 0)
+				{
+					break;
+				}
+			}
+			ret = add_local_fd(path, fd);
+			p_file->fd = fd;
+			ret = pread(p_file->fd, buf, size, offset);
+			return ret;
+		}
+
+		if (offset + size > st.size)
 		{
 			printf("read overflow\n");
 			return -1;
@@ -866,11 +906,20 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 		return -1;
 	}
 
+	// DFS case
+	if (get_stat_flag(&new_st, STAT_inline) == 0 && get_stat_flag(&new_st, STAT_file_created) == 1)
+	{
+		ret = pwrite(p_file->fd, buf, size, offset);
+		return ret;
+	}
+
 	char *val;
 	uint64_t cas;
-	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	struct pacon_stat new_st;
 	char inline_data[INLINE_MAX];
+
+retry:
+	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	deseri_inline_data(&new_st, inline_data, val);
 
 	// empty file and not been created in DFS
@@ -879,15 +928,18 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 		if (size + offset < INLINE_MAX - 1)
 		{
 			new_st.flags = p_file->flags;
-			set_fstat_flag(p_file, STAT_inline, 1);
 			set_stat_flag(&new_st, STAT_inline, 1);
 			new_st.atime = time(NULL);
 			new_st.mtime = time(NULL);
 			new_st.size = size + offset;
 			char val[PSTAT_SIZE+INLINE_MAX];
 			seri_inline_data(&new_st, buf, val);
-			ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE + size);
-			if (ret != 0)
+			ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE + size, cas);
+			// conflict, retry it
+			if (ret == 1)
+				goto retry;
+			
+			if (ret == -1)
 			{
 				printf("write inline data error\n");
 				return -1;
@@ -903,19 +955,26 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	// inline case & buffer in the metadata
 	if (get_stat_flag(&new_st, STAT_inline) == 1 && get_stat_flag(&new_st, STAT_file_created) == 0)
 	{
-		if (size + offset < INLINE_MAX - 1)
+		int new_size = ((new_st.size-offset)+size)>new_st.size?((new_st.size-offset)+size):new_st.size;
+		if (new_size < INLINE_MAX - 1)
 		{
 			char new_data[INLINE_MAX];
-			memcpy(new_data, inline_data, new_st.size - offset);
-			memcpy(new_data + offset, buf, size);
-			new_data[size + offset] = '\0';
+			memcpy(new_data, inline_data, offset);
+			memcpy(new_data+offset, buf, size);
+			if (offset + size < new_st.size)
+				memcpy(new_data+offset+size, inline_data+offset+size, new_st.size-(offset+size));
+			new_data[new_size+1] = '\0';
 			new_st.atime = time(NULL);
 			new_st.mtime = time(NULL);
-			new_st.size = size + offset;
+			new_st.size = new_size;
 			char val[PSTAT_SIZE+INLINE_MAX];
 			seri_inline_data(&new_st, &new_data, val);
-			ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE + size);
-			if (ret != 0)
+			ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE + new_size, cas);
+			// conflict, retry it
+			if (ret == 1)
+				goto retry;
+
+			if (ret == -1)
 			{
 				printf("write inline data error\n");
 				return -1;
@@ -933,13 +992,6 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	{
 		
 	}*/
-
-	// DFS case
-	if (get_stat_flag(&new_st, STAT_inline) == 0 && get_stat_flag(&new_st, STAT_file_created) == 1)
-	{
-		ret = pwrite(p_file->fd, buf, size, offset);
-		return ret;
-	}
 
 	return -1;
 }	

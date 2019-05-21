@@ -856,12 +856,12 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 			return -1;
 		}
 		char inline_data[INLINE_MAX];
-		deseri_inline_data(&st, inline_data, val);
+		deseri_inline_data(&new_st, inline_data, val);
 
 		// if in DFS, open it and 
 		if (get_stat_flag(&new_st, STAT_inline) == 0 &&
 			get_stat_flag(&new_st, STAT_file_created) == 1 &&
-			st.size >0)
+			new_st.size >0)
 		{
 			int fd = open(path, p_file->flags, p_file->mode);
 			if (fd == -1)
@@ -871,13 +871,13 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 			}
 			while (1)
 			{
-				st.open_counter++;
-				seri_val(&st, val);
+				new_st.open_counter++;
+				seri_val(&new_st, val);
 				ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
 				if (ret == 1)
 				{
 					val = dmkv_get_cas(pacon->kv_handle, path, &cas);
-					deseri_val(&st, val);
+					deseri_val(&new_st, val);
 					continue;
 				}
 				if (ret == -1)
@@ -896,7 +896,7 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 			return ret;
 		}
 
-		if (offset + size > st.size)
+		if (offset + size > new_st.size)
 		{
 			printf("read overflow\n");
 			return -1;
@@ -1017,13 +1017,13 @@ retry:
 		}
 		while (1)
 		{
-			st.open_counter++;
-			seri_val(&st, val);
+			new_st.open_counter++;
+			seri_val(&new_st, val);
 			ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
 			if (ret == 1)
 			{
 				val = dmkv_get_cas(pacon->kv_handle, path, &cas);
-				deseri_val(&st, val);
+				deseri_val(&new_st, val);
 				continue;
 			}
 			if (ret == -1)

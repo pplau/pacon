@@ -521,6 +521,8 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 		p_file->fd = ret;
 		goto out;
 	}*/
+	p_file->open_flags = flags;
+	p_file->open_mode = mode;
 	char *val;
 	uint64_t cas;
 
@@ -770,6 +772,17 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 	if (SERI_TYPE == 0)
 	{
 		deseri_val(st, val);
+		if (get_stat_flag(st, STAT_inline) == 0 &&
+			get_stat_flag(st, STAT_file_created) == 1)
+		{
+			int ret;
+			struct stat buf;
+			ret = stat(path, &buf);
+			st->ctime = buf.st_ctime;
+			st->atime = buf.st_atime;
+			st->mtime = buf.st_mtime;
+			st->size = buf.st_size;
+		}
 	} else {
 		cJSON *j_body, *j_flags, *j_mode, *j_ctime, *j_atime, *j_mtime, *j_size, *j_uid, *j_gid, *j_nlink, *j_fd;
 		j_body = cJSON_Parse(val);
@@ -833,7 +846,7 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 		return ret;
 	} else {
 	// inline case
-		struct pacon_stat st;
+		struct pacon_stat new_st;
 		char *val;
 		uint64_t cas;
 		val = dmkv_get_cas(pacon->kv_handle, path, &cas);
@@ -850,7 +863,7 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 			get_stat_flag(&new_st, STAT_file_created) == 1 &&
 			st.size >0)
 		{
-			int fd = open(path, flags, mode);
+			int fd = open(path, p_file->flags, p_file->mode);
 			if (fd == -1)
 			{
 				printf("file is not existed\n");
@@ -905,9 +918,9 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 		printf("write buffer size error\n");
 		return -1;
 	}
-
+begin:
 	// DFS case
-	if (get_stat_flag(&new_st, STAT_inline) == 0 && get_stat_flag(&new_st, STAT_file_created) == 1)
+	if (p_file->fd != -1)
 	{
 		ret = pwrite(p_file->fd, buf, size, offset);
 		return ret;
@@ -993,6 +1006,40 @@ retry:
 		
 	}*/
 
+	// DFS case
+	if (get_stat_flag(&new_st, STAT_inline) == 0 && get_stat_flag(&new_st, STAT_file_created) == 1)
+	{
+		int fd = open(path, p_file->flags, p_file->mode);
+		if (fd == -1)
+		{
+			printf("file is not existed\n");
+			return -1;
+		}
+		while (1)
+		{
+			st.open_counter++;
+			seri_val(&st, val);
+			ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+			if (ret == 1)
+			{
+				val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+				deseri_val(&st, val);
+				continue;
+			}
+			if (ret == -1)
+			{
+				printf("open a cached file error\n");
+				return -1;
+			}
+			if (ret == 0)
+			{
+				break;
+			}
+		}
+		ret = add_local_fd(path, fd);
+		p_file->fd = fd;
+		goto begin;
+	}
 	return -1;
 }	
 

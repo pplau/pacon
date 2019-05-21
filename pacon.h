@@ -66,7 +66,8 @@ struct pacon_file
 	//uint32_t fd;
 
 	// file stat
-	int open_flag;
+	int open_flags;
+	mode_t open_mode;
 	int hit; // 0 is miss in pacon, 1 is hit in pacon
 	int fd; // fd only be used when the file data does not be cached in pacon
 	int p_fd; // p_fd only be used when the file data are cached in pacon 

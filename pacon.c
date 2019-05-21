@@ -521,11 +521,11 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 		p_file->fd = ret;
 		goto out;
 	}*/
-
-	struct pacon_stat *st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
 	char *val;
-	val = dmkv_get(pacon->kv_handle, path);
+	uint64_t = cas;
 
+retry:
+	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	// not be cached
 	if (val == NULL)
 	{
@@ -552,22 +552,15 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 			p_st.uid = buf.st_uid;
 			p_st.gid = buf.st_gid;
 			p_st.nlink = buf.st_nlink;
-			p_st.open_counter = 1;  // only be used when file was created in DFS
+			p_st.open_counter++;  // only be used when file was created in DFS
 			char val[PSTAT_SIZE];
 			seri_val(&p_st, val);
 			res = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
-			p_file->flags = p_st.flags;
-			p_file->mode = p_st.mode;
-			p_file->ctime = p_st.ctime;
-			p_file->atime = p_st.atime;
-			p_file->mtime = p_st.mtime;
-			p_file->size = p_st.size;
-			p_file->uid = p_st.uid;
-			p_file->gid = p_st.gid;
-			p_file->nlink = p_st.nlink;
+			if (res != 0)
+				goto retry;
 			p_file->fd = fd;
 		} else {
-			cJSON *j_body;
+			/*cJSON *j_body;
 			j_body = cJSON_CreateObject();
 			cJSON_AddNumberToObject(j_body, "flags", 0);
 			cJSON_AddNumberToObject(j_body, "mode", S_IFDIR | 0755);
@@ -581,38 +574,54 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 			//cJSON_AddNumberToObject(j_body, "opt", 0);
 			//set_opt_flag(md, OP_mkdir, 1);
 			char *value = cJSON_Print(j_body);
-			res = dmkv_add(pacon->kv_handle, path, value, PSTAT_SIZE);	
+			res = dmkv_add(pacon->kv_handle, path, value, PSTAT_SIZE);*/
 		}
 
 		// add fd to local fd table
 		ret = add_local_fd(path, fd);
-	} else {// file md had been cached
-		deseri_val(st, val);
-		if (get_stat_flag(st, STAT_file_created) == 1)
-		{
-			st->open_counter++;
-			seri_val(st, val);
-			dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
-		}
-		/* get inline data
-		if (get_stat_flag(st, STAT_inline) == 1)
-		{
-			deseri_inline_data(NULL, p_file->buf, val);
-		}*/
+	} else {
+		struct pacon_stat st;
+		deseri_val(&st, val);
 
-		p_file->flags = st->flags;
-		p_file->mode = st->mode;
-		p_file->ctime = st->ctime;
-		p_file->atime = st->atime;
-		p_file->mtime = st->mtime;
-		p_file->size = st->size;
-		p_file->uid = st->uid;
-		p_file->gid = st->gid;
-		p_file->nlink = st->nlink;
+		// file md had been cached but not yet been opened
+		if (get_stat_flag(&st, STAT_file_created) == 1 && 
+			get_stat_flag(&st, STAT_inline) == 0 &&
+			st.size > 0)
+		{
+			int fd = open(path, flags, mode);
+			if (fd == -1 || st_ret != 0)
+			{
+				printf("file is not existed\n");
+				return -1;
+			}
+			while (1)
+			{
+				st->open_counter++;
+				seri_val(st, val);
+				ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+				if (ret == 1)
+				{
+					val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+					deseri_val(st, val);
+					continue;
+				}
+				if (ret == -1)
+				{
+					printf("open a cached file error\n");
+					return -1;
+				}
+				if (ret == 0)
+				{
+					break;
+				}
+			}
+			ret = add_local_fd(path, fd);
+			p_file->fd = fd;
+		} else {
+			p_file->fd = -1;
+		}
 	}
 out:
-	p_file->hit = 1;
-	p_file->open_flag = flags;
 	return 0;
 }
 
@@ -817,9 +826,13 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 		return 0;
 	}
 
-	// inline case
-	if (get_fstat_flag(p_file, STAT_inline) == 1)
+	// DFS case
+	if (p_file->fd != -1)
 	{
+		ret = pread(p_file->fd, buf, size, offset);
+		return ret;
+	} else {
+	// inline case
 		struct pacon_stat st;
 		char *val;
 		val = dmkv_get(pacon->kv_handle, path);
@@ -839,14 +852,6 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 		buf[size] = '\0';
 		return size;
 	}
-
-	// DFS case
-	if (get_fstat_flag(p_file, STAT_inline) == 0)
-	{
-		ret = pread(p_file->fd, buf, size, offset);
-		return ret;
-	}
-
 	return -1;
 }
 
@@ -862,13 +867,14 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	}
 
 	char *val;
-	val = dmkv_get(pacon->kv_handle, path);
+	uint64_t cas;
+	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	struct pacon_stat new_st;
 	char inline_data[INLINE_MAX];
 	deseri_inline_data(&new_st, inline_data, val);
 
 	// empty file and not been created in DFS
-	if (get_fstat_flag(p_file, STAT_inline) == 0 && get_fstat_flag(p_file, STAT_file_created) == 0)
+	if (get_stat_flag(&new_st, STAT_inline) == 0 && get_stat_flag(&new_st, STAT_file_created) == 0)
 	{
 		if (size + offset < INLINE_MAX - 1)
 		{
@@ -895,7 +901,7 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	}
 
 	// inline case & buffer in the metadata
-	if (get_fstat_flag(p_file, STAT_inline) == 1 && get_fstat_flag(p_file, STAT_file_created) == 0)
+	if (get_stat_flag(&new_st, STAT_inline) == 1 && get_stat_flag(&new_st, STAT_file_created) == 0)
 	{
 		if (size + offset < INLINE_MAX - 1)
 		{
@@ -929,7 +935,7 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	}*/
 
 	// DFS case
-	if (get_fstat_flag(p_file, STAT_inline) == 0 && get_fstat_flag(p_file, STAT_file_created) == 1)
+	if (get_stat_flag(&new_st, STAT_inline) == 0 && get_stat_flag(&new_st, STAT_file_created) == 1)
 	{
 		ret = pwrite(p_file->fd, buf, size, offset);
 		return ret;

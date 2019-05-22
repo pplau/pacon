@@ -115,13 +115,14 @@ void batch_mkdir(struct pacon *pacon, char* p_dir, int num)
 	int i, ret, p_len = strlen(p_dir);
 	char dir[128];
 	memcpy(dir, p_dir, p_len);
+	dir[p_len] = '/';
 	char c[8];
 	for (i = 0; i < num; ++i)
 	{
 		sprintf(c, "%d", i);
 		int c_len = strlen(c);
-		memcpy(dir+p_len, c, c_len);
-		dir[p_len+c_len] = '\0';
+		memcpy(dir+p_len+1, c, c_len);
+		dir[p_len+c_len+1] = '\0';
 		ret = pacon_mkdir(pacon, dir, S_IFDIR | 0755);
 		if (ret != 0)
 		{

@@ -318,7 +318,7 @@ int init_pacon(struct pacon *pacon)
 	void *context = zmq_ctx_new();
     void *publisher = zmq_socket(context, ZMQ_PUB);
     //int q_len = 0;
-    //rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, 0, sizeof(q_len));
+    //int rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, &q, sizeof(q_len));
     int rc = zmq_connect(publisher, "ipc:///run/pacon_commit");
     if (rc != 0)
     {

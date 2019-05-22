@@ -31,7 +31,7 @@ void get_local_addr(char *ip)
 	int i;
 	for (i = 0; i < 16; ++i)
 	{
-		if ((temp[c] >= '0' && temp[c] <= '9') || temp[c] == '.')
+		if ((temp[i] >= '0' && temp[i] <= '9') || temp[i] == '.')
 		{
 			ip[i] = temp[i];
 		} else {
@@ -80,11 +80,11 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	printf("init commit mq\n");
 	void *context = zmq_ctx_new();
 	void *subscriber = zmq_socket(context, ZMQ_SUB);
-	rc = zmq_bind(subscriber, "ipc:///run/pacon_commit");
 	char *filter = "";
 	int q_len = 0;
 	rc = zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, filter, strlen (filter));
-	rc = zmq_setsockopt(publisher, ZMQ_RCVHWM, 0, sizeof(q_len));
+	rc = zmq_setsockopt(subscriber, ZMQ_RCVHWM, &q_len, sizeof(q_len));
+	rc = zmq_bind(subscriber, "ipc:///run/pacon_commit");
 	if (rc != 0)
 	{
 		printf("init zeromq error\n");

@@ -97,6 +97,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	printf("init rpc mq\n");
 	void *context_local_rpc = zmq_ctx_new();
 	void *local_rpc_rep = zmq_socket(context_local_rpc, ZMQ_REP);
+	rc = zmq_setsockopt(local_rpc_rep, ZMQ_RCVHWM, &q_len, sizeof(q_len));
 	rc = zmq_bind(local_rpc_rep, "ipc:///run/pacon_local_rpc");
 	if (rc != 0)
 	{
@@ -114,6 +115,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	int ip_len = strlen(local_ip);
 
 	void *context_cluster_rpc = zmq_ctx_new();
+	rc = zmq_setsockopt(context_cluster_rpc, ZMQ_RCVHWM, &q_len, sizeof(q_len));
 	void *cluster_rpc_rep = zmq_socket(context_cluster_rpc, ZMQ_REP);
 	rc = zmq_bind(cluster_rpc_rep, bind_addr);
 	if (rc != 0)

@@ -391,7 +391,8 @@ int check_parent_dir(struct pacon *pacon, char *path)
 
 	// check parent dir on dmkv
 	char *val;
-	val = dmkv_get(pacon->kv_handle, p_dir);
+	uint64_t cas;
+	val = dmkv_get_cas(pacon->kv_handle, p_dir, &cas);
 	if (val == NULL)
 	{
 		ret = load_to_pacon(pacon, p_dir);
@@ -400,7 +401,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 			printf("fail to load parent dir\n");
 			return -1;
 		}
-		val = dmkv_get(pacon->kv_handle, p_dir);
+		val = dmkv_get_cas(pacon->kv_handle, p_dir, &cas);
 	}
 	// check its children
 	struct pacon_stat p_st;
@@ -446,8 +447,15 @@ int check_parent_dir(struct pacon *pacon, char *path)
 
 		set_stat_flag(&p_st, STAT_child_check, 1);
 		seri_val(&p_st, val);
-		ret = dmkv_add(pacon->kv_handle, p_dir, val, PSTAT_SIZE);
-		if (ret != 0)
+		ret = dmkv_cas(pacon->kv_handle, p_dir, val, PSTAT_SIZE, cas);
+		while (ret == 1)
+		{
+			val = dmkv_get_cas(pacon->kv_handle, p_dir, &cas);
+			set_stat_flag(&p_st, STAT_child_check, 1);
+			seri_val(&p_st, val);
+			ret = dmkv_cas(pacon->kv_handle, p_dir, val, PSTAT_SIZE, cas);
+		}
+		if (ret == -1)
 		{
 			printf("check parent dir: fail to update STAT_child_check flag\n");
 			return -1;

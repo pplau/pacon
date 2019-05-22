@@ -392,6 +392,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 	// check parent dir on dmkv
 	char *val;
 	uint64_t cas;
+	uint64_t cas_temp;
 	val = dmkv_get_cas(pacon->kv_handle, p_dir, &cas);
 	if (val == NULL)
 	{
@@ -402,6 +403,9 @@ int check_parent_dir(struct pacon *pacon, char *path)
 			return -1;
 		}
 		val = dmkv_get_cas(pacon->kv_handle, p_dir, &cas);
+		cas_temp = cas;
+	} else {
+		cas_temp = cas;
 	}
 	// check its children
 	struct pacon_stat p_st;

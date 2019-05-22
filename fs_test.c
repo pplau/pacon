@@ -7,7 +7,7 @@
 #include <time.h>
 #include "pacon.h"
 
-#define TEST_TYPE 1  // 0 is mirco test, 1 is pressure test
+#define TEST_TYPE 0  // 0 is mirco test, 1 is pressure test
 
 
 int test_init(struct pacon *pacon)
@@ -164,7 +164,7 @@ int main(int argc, char const *argv[])
 			return -1;
 		}
 		printf("mkdir test success, path: /mnt/beegfs/test\n");
-		ret = test_mkdir(pacon, "/mnt/beegfs/test/t1", S_IFDIR | 0755);
+		ret = test_mkdir(pacon, "/mnt/beegfs/pacon/t1", S_IFDIR | 0755);
 		if (ret != 0)
 		{
 			printf("mkdir error\n");

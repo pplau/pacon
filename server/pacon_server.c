@@ -93,7 +93,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	ps_info->subscriber = subscriber;
 	ps_info->context = context;
 
-	/* start local rpc mq
+	// start local rpc mq
 	printf("init rpc mq\n");
 	void *context_local_rpc = zmq_ctx_new();
 	void *local_rpc_rep = zmq_socket(context_local_rpc, ZMQ_REP);
@@ -113,7 +113,12 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	get_local_addr(local_ip);
 	char bind_addr[64];
 	int ip_len = strlen(local_ip);
-
+	char *head = "tcp://";
+	char *port = ":12580";
+	strcpy(bind_addr, head);
+	strcpy(bind_addr+strlen(head), local_ip);
+	strcpy(bind_addr+strlen(head)+strlen(local_ip), port);
+	
 	void *context_cluster_rpc = zmq_ctx_new();
 	rc = zmq_setsockopt(context_cluster_rpc, ZMQ_RCVHWM, &q_len, sizeof(q_len));
 	void *cluster_rpc_rep = zmq_socket(context_cluster_rpc, ZMQ_REP);
@@ -125,7 +130,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	}
 	ps_info->cluster_rpc_rep = cluster_rpc_rep;
 	ps_info->context_cluster_rpc = context_cluster_rpc;
-	*/
+	
 	ps_info->batch_dir_mode = S_IFDIR | 0755;
 	ps_info->batch_file_mode = S_IFREG | 0644;
 	return 0;

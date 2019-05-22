@@ -451,7 +451,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 
 		set_stat_flag(&p_st, STAT_child_check, 1);
 		seri_val(&p_st, val);
-		ret = dmkv_cas(pacon->kv_handle, p_dir, val, PSTAT_SIZE, cas);
+		ret = dmkv_cas(pacon->kv_handle, p_dir, val, PSTAT_SIZE, cas_temp);
 		while (ret == 1)
 		{
 			val = dmkv_get_cas(pacon->kv_handle, p_dir, &cas);

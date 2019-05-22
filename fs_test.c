@@ -7,7 +7,7 @@
 #include <time.h>
 #include "pacon.h"
 
-#define TEST_TYPE 0  // 0 is mirco test, 1 is pressure test
+#define TEST_TYPE 1  // 0 is mirco test, 1 is pressure test
 
 
 int test_init(struct pacon *pacon)

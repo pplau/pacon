@@ -17,9 +17,34 @@
 #define LINK ":5"
 
 
+void get_local_addr(char *ip)
+{
+	FILE *fp;
+	fp = fopen("./local_config", "r");
+	if (fp == NULL)
+	{
+		printf("cannot open config file\n");
+		return -1;
+	}
+	char temp[17];
+	fgets(temp, 17, fp);
+	int i;
+	for (i = 0; i < 16; ++i)
+	{
+		if ((temp[c] >= '0' && temp[c] <= '9') || temp[c] == '.')
+		{
+			ip[i] = temp[i];
+		} else {
+			break;
+		}
+	}
+	ip[i] = '\0';
+}
+
 int start_pacon_server(struct pacon_server_info *ps_info)
 {
 	int ret;
+	int rc;
 	/*FILE *fp;
 	fp = fopen("./server_config", "r");
 	if (fp == NULL)
@@ -51,13 +76,15 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	ps_info->rec_mq_addr[c] = '\0';
 	fclose(fp);*/
 
-	// start mq
-	printf("init zeromq\n");
+	// start coomit mq
+	printf("init commit mq\n");
 	void *context = zmq_ctx_new();
 	void *subscriber = zmq_socket(context, ZMQ_SUB);
-	int rc = zmq_bind(subscriber, "ipc:///run/pacon_commit");
+	rc = zmq_bind(subscriber, "ipc:///run/pacon_commit");
 	char *filter = "";
+	int q_len = 0;
 	rc = zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, filter, strlen (filter));
+	rc = zmq_setsockopt(publisher, ZMQ_RCVHWM, 0, sizeof(q_len));
 	if (rc != 0)
 	{
 		printf("init zeromq error\n");
@@ -66,6 +93,37 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	ps_info->subscriber = subscriber;
 	ps_info->context = context;
 
+	/* start local rpc mq
+	printf("init rpc mq\n");
+	void *context_local_rpc = zmq_ctx_new();
+	void *local_rpc_rep = zmq_socket(context_local_rpc, ZMQ_REP);
+	rc = zmq_bind(local_rpc_rep, "ipc:///run/pacon_local_rpc");
+	if (rc != 0)
+	{
+		printf("init local rpc error\n");
+		return -1;
+	}
+	ps_info->local_rpc_rep = local_rpc_rep;
+	ps_info->context_local_rpc = context_local_rpc;
+
+	// start cluster rpc mq
+	printf("init cluster rpc mq\n");
+	char local_ip[17];
+	get_local_addr(local_ip);
+	char bind_addr[64];
+	int ip_len = strlen(local_ip);
+
+	void *context_cluster_rpc = zmq_ctx_new();
+	void *cluster_rpc_rep = zmq_socket(context_cluster_rpc, ZMQ_REP);
+	rc = zmq_bind(cluster_rpc_rep, bind_addr);
+	if (rc != 0)
+	{
+		printf("init local rpc error\n");
+		return -1;
+	}
+	ps_info->cluster_rpc_rep = cluster_rpc_rep;
+	ps_info->context_cluster_rpc = context_cluster_rpc;
+	*/
 	ps_info->batch_dir_mode = S_IFDIR | 0755;
 	ps_info->batch_file_mode = S_IFREG | 0644;
 	return 0;
@@ -76,6 +134,10 @@ int stop_pacon_server(struct pacon_server_info *ps_info)
 	int ret;
 	zmq_close(ps_info->subscriber);
 	zmq_ctx_destroy(ps_info->context);
+	zmq_close(ps_info->local_rpc_rep);
+	zmq_ctx_destroy(ps_info->context_local_rpc);
+	zmq_close(ps_info->cluster_rpc_rep);
+	zmq_ctx_destroy(ps_info->context_cluster_rpc);
 	return 0;
 }
 
@@ -156,7 +218,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	return 0;
 }
 
-int listen_mq(struct pacon_server_info *ps_info)
+int listen_commit_mq(struct pacon_server_info *ps_info)
 {
 	printf("listening mq\n");
 	int ret, ms_size;
@@ -179,6 +241,16 @@ int listen_mq(struct pacon_server_info *ps_info)
 	}
 }
 
+int listen_local_rpc(struct pacon_server_info *ps_info)
+{
+
+}
+
+int listen_cluster_rpc(struct pacon_server_info *ps_info)
+{
+
+}
+
 
 int main(int argc, char const *argv[])
 {
@@ -192,7 +264,7 @@ int main(int argc, char const *argv[])
 		return -1;
 	}
 
-	ret = listen_mq(ps_info);
+	ret = listen_commit_mq(ps_info);
 	if (ret != 0)
 	{
 		printf("listen mq error\n");

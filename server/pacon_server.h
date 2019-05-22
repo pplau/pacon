@@ -25,9 +25,17 @@ struct pacon_server_info
 	int batch_dir_mode;
 	int batch_file_mode;
 
-	// mq
+	// commit mq
 	void *subscriber;
 	void *context;
+
+	// local rpc
+	void *local_rpc_rep;
+	void *context_local_rpc;
+
+	// cluster rpc
+	void *cluster_rpc_rep;
+	void *context_cluster_rpc;
 };
 
 

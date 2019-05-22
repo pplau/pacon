@@ -317,6 +317,8 @@ int init_pacon(struct pacon *pacon)
 	// init mq
 	void *context = zmq_ctx_new();
     void *publisher = zmq_socket(context, ZMQ_PUB);
+    //int q_len = 0;
+    //rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, 0, sizeof(q_len));
     int rc = zmq_connect(publisher, "ipc:///run/pacon_commit");
     if (rc != 0)
     {
@@ -474,12 +476,17 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
 
 int local_fd_open(char *path)
 {
-	return -1;
+	int ret;
+	ret = fdht_get(path);
+	return ret;
 }
 
 int add_local_fd(char *path, int fd)
 {
-	return -1;
+	int ret;
+	ret = fdht_put(path, fd);
+	ret = opc_put(path, 1);
+	return ret;
 }
 
 struct pacon_file * new_pacon_file(void)

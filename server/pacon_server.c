@@ -20,7 +20,7 @@
 void get_local_addr(char *ip)
 {
 	FILE *fp;
-	fp = fopen("./local_config", "r");
+	fp = fopen("../local_config", "r");
 	if (fp == NULL)
 	{
 		printf("cannot open config file\n");
@@ -118,18 +118,24 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	strcpy(bind_addr, head);
 	strcpy(bind_addr+strlen(head), local_ip);
 	strcpy(bind_addr+strlen(head)+strlen(local_ip), port);
-	
+
 	void *context_cluster_rpc = zmq_ctx_new();
 	rc = zmq_setsockopt(context_cluster_rpc, ZMQ_RCVHWM, &q_len, sizeof(q_len));
 	void *cluster_rpc_rep = zmq_socket(context_cluster_rpc, ZMQ_REP);
 	rc = zmq_bind(cluster_rpc_rep, bind_addr);
 	if (rc != 0)
 	{
-		printf("init local rpc error\n");
+		printf("init cluster rpc error\n");
 		return -1;
 	}
 	ps_info->cluster_rpc_rep = cluster_rpc_rep;
 	ps_info->context_cluster_rpc = context_cluster_rpc;
+
+	// init server cluster info
+	printf("init server cluster info\n");
+	struct servers_comm *s_comm = (struct servers_comm *)malloc(sizeof(struct servers_comm));
+	setup_servers_comm(s_comm);
+	ps_info->s_comm = s_comm;
 	
 	ps_info->batch_dir_mode = S_IFDIR | 0755;
 	ps_info->batch_file_mode = S_IFREG | 0644;
@@ -145,6 +151,8 @@ int stop_pacon_server(struct pacon_server_info *ps_info)
 	zmq_ctx_destroy(ps_info->context_local_rpc);
 	zmq_close(ps_info->cluster_rpc_rep);
 	zmq_ctx_destroy(ps_info->context_cluster_rpc);
+	free(ps_info->s_comm);
+	free(ps_info);
 	return 0;
 }
 
@@ -156,13 +164,13 @@ int retry_commit(struct pacon_server_info *ps_info, char *path, int type)
 		if (type == 1)
 		{
 			ret = mkdir(path, ps_info->batch_dir_mode);
-			if (ret == 0)
+			if (ret != -1)
 				return 0;
 		}
 		if (type == 2)
 		{
 			ret = creat(path, ps_info->batch_dir_mode);
-			if (ret == 0)
+			if (ret != -1)
 				return 0;
 		}
 	}
@@ -184,10 +192,10 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		case '1':
 			//printf("commit to fs, typs: MKDIR\n");
 			ret = mkdir(path, ps_info->batch_dir_mode);
-			if (ret != 0)
+			if (ret == -1)
 			{
 				ret = retry_commit(ps_info, path, 1);
-				if (ret != 0)
+				if (ret == -1)
 				{
 					printf("fail to commit to fs: typs: MKDIR, path: %s\n", path);
 					return -1;
@@ -198,10 +206,10 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		case '2':
 			//printf("commit to fs, typs: CREATE\n");
 			ret = creat(path, ps_info->batch_file_mode);
-			if (ret != 0)
+			if (ret == -1)
 			{
 				ret = retry_commit(ps_info, path, 2);
-				if (ret != 0)
+				if (ret == -1)
 				{
 					printf("fail to commit to fs: typs: CREATE, path: %s\n", path);
 					return -1;
@@ -210,6 +218,8 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			break;
 
 		case '3':
+			//printf("commit to fs, typs: RM\n");
+			
 			break;
 
 		case '4':

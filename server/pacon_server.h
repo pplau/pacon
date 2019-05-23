@@ -9,6 +9,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include "../comm/comm.h"
+
 struct carea_info
 {
 
@@ -36,6 +38,9 @@ struct pacon_server_info
 	// cluster rpc
 	void *cluster_rpc_rep;
 	void *context_cluster_rpc;
+
+	// cluster info
+	struct servers_comm *s_comm;
 };
 
 

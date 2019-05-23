@@ -29,9 +29,12 @@ struct pacon
 	char mount_path[MOUNT_PATH_MAX];
 	// kv
 	struct dmkv *kv_handle;
-	// mq
+	// commit mq
 	void *publisher;
 	void *context;
+	// local rpc
+	void *local_rpc_req;
+	void *context_local_rpc;
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11

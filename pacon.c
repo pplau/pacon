@@ -322,11 +322,25 @@ int init_pacon(struct pacon *pacon)
     int rc = zmq_connect(publisher, "ipc:///run/pacon_commit");
     if (rc != 0)
     {
-    	printf("init zeromq error\n");
+    	printf("init commit mq error\n");
     	return -1;
     }
     pacon->publisher = publisher;
     pacon->context = context;
+
+    // init local rpc
+	void *context_local_rpc = zmq_ctx_new();
+    void *local_rpc_req = zmq_socket(context_local_rpc, ZMQ_REQ);
+    //int q_len = 0;
+    //int rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, &q, sizeof(q_len));
+    int rc = zmq_connect(local_rpc_req, "ipc:///run/pacon_local_rpc");
+    if (rc != 0)
+    {
+    	printf("init local rpc error\n");
+    	return -1;
+    }
+    pacon->local_rpc_req = local_rpc_req;
+    pacon->context_local_rpc = context_local_rpc;
     
     // init the root dir of the consistent area
     // get the root dir stat from DFS

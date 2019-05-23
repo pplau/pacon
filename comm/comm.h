@@ -32,7 +32,7 @@ struct servers_comm
 	int servers_num;
 	char server_list[NODE_MAX][17];
 	void* server_mq[NODE_MAX];
-	
+	void* server_contx[NODE_MAX];
 };
 
 
@@ -42,7 +42,7 @@ int deseri_mesg(struct remote_mesg *mesg, char *val);
 
 int setup_clients_comm(void);
 
-int setup_servers_comm(void);
+int setup_servers_comm(struct servers_comm *s_comm);
 
 int client_broadcast_sync(struct clients_comm *c_comm);
 

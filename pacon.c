@@ -40,6 +40,7 @@ enum statflags
 	STAT_file_created,  // 0: not be created in DFS, 1: already be created in DFS
 	STAT_existedin_dfs,  //  0: a new item after pacon run, 1: it was created before pacon run
 	STAT_child_check,  //  0: haven't check its children, 1: already checked its children
+	STAT_rm,
 };
 
 void set_stat_flag(struct pacon_stat *p_st, int flag_type, int val)
@@ -469,6 +470,7 @@ int check_parent_dir(struct pacon *pacon, char *path)
 		while (ret == 1)
 		{
 			val = dmkv_get_cas(pacon->kv_handle, p_dir, &cas);
+			deseri_val(&p_st, val);
 			set_stat_flag(&p_st, STAT_child_check, 1);
 			seri_val(&p_st, val);
 			ret = dmkv_cas(pacon->kv_handle, p_dir, val, PSTAT_SIZE, cas);
@@ -713,8 +715,23 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		char *value = cJSON_Print(j_body);
 		ret = dmkv_add(pacon->kv_handle, path, value, PSTAT_SIZE);
 	}
+
+	// the file may be existed or be removed
 	if (ret != 0)
+	{
+		char *val;
+		struct pacon_stat p_st;
+		val = dmkv_get(pacon->kv_handle, path);
+		deseri_val(&p_st, val);
+		if (get_stat_flag(&p_st, STAT_rm) == 1)
+		{
+			ret = dmkv_del(pacon->kv_handle, path);
+		} else {
+			printf("file is existed\n");
+			ret = -1;
+		}
 		return ret;
+	}
 	ret = add_to_mq(pacon, path, CREATE);
 	return ret;
 }
@@ -805,6 +822,11 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 	if (SERI_TYPE == 0)
 	{
 		deseri_val(st, val);
+		if (get_stat_flag(st, STAT_rm) == 1)
+		{
+			printf("getattr: path not existed: %s\n", path);
+			return -1;
+		}
 		if (get_stat_flag(st, STAT_inline) == 0 &&
 			get_stat_flag(st, STAT_file_created) == 1)
 		{
@@ -851,7 +873,23 @@ out:
 int pacon_rm(struct pacon *pacon, const char *path)
 {
 	int ret;
-	ret = dmkv_del(pacon->kv_handle, path);
+	uint64_t cas;
+	//ret = dmkv_del(pacon->kv_handle, path);
+	struct pacon_stat p_st;
+	char *val;
+	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+	deseri_val(&p_st, val);
+	set_stat_flag(&p_st, STAT_rm, 1);
+	seri_val(&p_st, val);
+	ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+	while (ret == 1)
+	{
+		val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+		deseri_val(&p_st, val);
+		set_stat_flag(&p_st, STAT_rm, 1);
+		seri_val(&p_st, val);
+		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+	}
 	return ret;
 }
 

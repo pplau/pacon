@@ -173,9 +173,15 @@ int retry_commit(struct pacon_server_info *ps_info, char *path, int type)
 			if (ret != -1)
 				return 0;
 		}
+		if (type == 3)
+		{
+			ret = remove(path);
+			if (ret == 0)
+				return 0
+		}
 	}
 
-	// try to commit in clobal sync way
+	// try to commit in global sync way
 	return -1;
 }
 
@@ -219,7 +225,17 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '3':
 			//printf("commit to fs, typs: RM\n");
-			
+			ret = remove(path);
+			if (ret != 0)
+			{
+				ret = retry_commit(ps_info, path, 3);
+				if (ret == -1)
+				{
+					printf("fail to commit to fs: typs: RM, path: %s\n", path);
+					return -1;
+				}
+			}
+			// del the invalid item in pacon if necessary
 			break;
 
 		case '4':

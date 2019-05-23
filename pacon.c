@@ -890,6 +890,7 @@ int pacon_rm(struct pacon *pacon, const char *path)
 		seri_val(&p_st, val);
 		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
 	}
+	ret = add_to_mq(pacon, path, RM);
 	return ret;
 }
 

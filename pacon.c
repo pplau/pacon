@@ -873,22 +873,29 @@ out:
 int pacon_rm(struct pacon *pacon, const char *path)
 {
 	int ret;
-	uint64_t cas;
+	uint64_t cas, cas_temp;
 	//ret = dmkv_del(pacon->kv_handle, path);
 	struct pacon_stat p_st;
 	char *val;
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+	if (val != NULL)
+	{
+		printf("rm: file is not existed %s\n", path);
+		return -1;
+	}
+	cas_temp = cas;
 	deseri_val(&p_st, val);
 	set_stat_flag(&p_st, STAT_rm, 1);
 	seri_val(&p_st, val);
-	ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+	ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
 	while (ret == 1)
 	{
 		val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+		cas_temp = cas;
 		deseri_val(&p_st, val);
 		set_stat_flag(&p_st, STAT_rm, 1);
 		seri_val(&p_st, val);
-		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
 	}
 	ret = add_to_mq(pacon, path, RM);
 	return ret;

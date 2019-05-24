@@ -164,7 +164,7 @@ int main(int argc, char const *argv[])
 			return -1;
 		}
 		printf("mkdir test success, path: /mnt/beegfs/test\n");
-		ret = test_mkdir(pacon, "/mnt/beegfs/pacon/t1", S_IFDIR | 0755);
+		ret = test_mkdir(pacon, "/mnt/beegfs/test/t1", S_IFDIR | 0755);
 		if (ret != 0)
 		{
 			printf("mkdir error\n");

@@ -24,6 +24,8 @@ struct dmkv
 	pthread_rwlock_t rwlock_t;
 };
 
+void set_dmkv_config_type(int type);
+
 int dmkv_init(struct dmkv *dmkv);
 
 int dmkv_free(struct dmkv *dmkv);

@@ -7,6 +7,9 @@
 #include <malloc.h>
 #include "dmkv.h"
 
+#define CONFIG_FILE_PATH_CLIENT "./config"
+#define CONFIG_FILE_PATH_SERVER "../config"
+static int config_type = 0  // 0 is pacon client, 1 is pacon server
 
 /*
 static char node_address[12][4] = {
@@ -151,10 +154,23 @@ int dht(struct cluster_info *c_info, unsigned long hash)
 }
 */
 
+void set_dmkv_config_type(int type)
+{
+	if (type != 0 || type != 1)
+	{
+		printf("config type must be 0 or 1\n");
+		return;
+	}
+	config_type = type;
+}
+
 int get_cluster_info(struct cluster_info *c_info)
 {
 	FILE *fp;
-	fp = fopen("./config", "r");
+	if (config_type == 0)
+		fp = fopen(CONFIG_FILE_PATH_CLIENT, "r");
+	else
+		fp = fopen(CONFIG_FILE_PATH_SERVER, "r");
 	if (fp == NULL)
 	{
 		printf("cannot open config file\n");

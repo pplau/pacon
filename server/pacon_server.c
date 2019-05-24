@@ -48,6 +48,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 
 	// init kv
 	struct dmkv *kv = (struct dmkv *)malloc(sizeof(struct dmkv));
+	set_dmkv_config_type(1);
 	ret = dmkv_init(kv);
 	if (ret != 0)
 	{

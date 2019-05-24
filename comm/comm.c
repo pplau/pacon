@@ -12,7 +12,7 @@ void get_local_addr_comm(char *ip)
 	fp = fopen("../local_config", "r");
 	if (fp == NULL)
 	{
-		printf("cannot open config file\n");
+		printf("cannot open local config file\n");
 		return -1;
 	}
 	char temp[17];
@@ -30,13 +30,13 @@ void get_local_addr_comm(char *ip)
 	ip[i] = '\0';
 }
 
-int get_cluster_info(struct servers_comm *s_comm)
+int get_cluster_info_comm(struct servers_comm *s_comm)
 {
 	FILE *fp;
 	fp = fopen("../config", "r");
 	if (fp == NULL)
 	{
-		printf("cannot open config file\n");
+		printf("cannot open cluster config file\n");
 		return -1;
 	}
 
@@ -109,7 +109,7 @@ int setup_clients_comm(void)
 int setup_servers_comm(struct servers_comm *s_comm)
 {
 	int ret;
-	ret = get_cluster_info(s_comm);
+	ret = get_cluster_info_comm(s_comm);
 	if (ret != 0)
 	{
 		printf("setup server comm: get cluster config error\n");

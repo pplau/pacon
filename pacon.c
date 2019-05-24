@@ -878,7 +878,7 @@ int pacon_rm(struct pacon *pacon, const char *path)
 	struct pacon_stat p_st;
 	char *val;
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
-	if (val != NULL)
+	if (val == NULL)
 	{
 		printf("rm: file is not existed %s\n", path);
 		return -1;

@@ -9,7 +9,7 @@
 
 #define CONFIG_FILE_PATH_CLIENT "./config"
 #define CONFIG_FILE_PATH_SERVER "../config"
-static int config_type = 0  // 0 is pacon client, 1 is pacon server
+static int config_type = 0;  // 0 is pacon client, 1 is pacon server
 
 /*
 static char node_address[12][4] = {
@@ -156,7 +156,7 @@ int dht(struct cluster_info *c_info, unsigned long hash)
 
 void set_dmkv_config_type(int type)
 {
-	if (type != 0 || type != 1)
+	if (type != 0 && type != 1)
 	{
 		printf("config type must be 0 or 1\n");
 		return;

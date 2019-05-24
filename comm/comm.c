@@ -6,7 +6,7 @@
 
 
 
-void get_local_addr(char *ip)
+void get_local_addr_comm(char *ip)
 {
 	FILE *fp;
 	fp = fopen("../local_config", "r");
@@ -83,7 +83,7 @@ int is_loacl_addr(char *l_addr, char *t_addr)
 	int t_len = strlen(t_addr);
 	if (l_len != t_len)
 		return 0;
-	for (int i = 0; i < l_len; ++i)
+	for (i = 0; i < l_len; ++i)
 	{
 		if (l_addr[i] != t_addr[i])
 			return 0;
@@ -118,8 +118,9 @@ int setup_servers_comm(struct servers_comm *s_comm)
 
 	// connect to other pacon servers
 	char local_ip[17];
-	get_local_addr(local_ip);
+	get_local_addr_comm(local_ip);
 	int i;
+	int rc;
 	for (i = 0; i < s_comm->servers_num; ++i)
 	{
 		if (is_loacl_addr(local_ip, s_comm->server_list[i]))
@@ -137,9 +138,10 @@ int setup_servers_comm(struct servers_comm *s_comm)
 		strcpy(bind_addr+strlen(head), s_comm->server_list[i]);
 		strcpy(bind_addr+strlen(head)+strlen(ip), port);
 		void *context_cluster_rpc = zmq_ctx_new();
+		int q_len = 0;
 		rc = zmq_setsockopt(context_cluster_rpc, ZMQ_RCVHWM, &q_len, sizeof(q_len));
 		void *cluster_rpc_req = zmq_socket(context_cluster_rpc, ZMQ_REP);
-		rc = zmq_connect(cluster_rpc_rep, bind_addr);
+		rc = zmq_connect(cluster_rpc_req, bind_addr);
 		if (rc != 0)
 		{
 			printf("init cluster rpc error\n");

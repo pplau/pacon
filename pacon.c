@@ -334,7 +334,7 @@ int init_pacon(struct pacon *pacon)
     void *local_rpc_req = zmq_socket(context_local_rpc, ZMQ_REQ);
     //int q_len = 0;
     //int rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, &q, sizeof(q_len));
-    int rc = zmq_connect(local_rpc_req, "ipc:///run/pacon_local_rpc");
+    rc = zmq_connect(local_rpc_req, "ipc:///run/pacon_local_rpc");
     if (rc != 0)
     {
     	printf("init local rpc error\n");

@@ -45,6 +45,17 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 {
 	int ret;
 	int rc;
+
+	// init kv
+	struct dmkv *kv = (struct dmkv *)malloc(sizeof(struct dmkv));
+	ret = dmkv_init(kv);
+	if (ret != 0)
+	{
+		printf("init dmkv fail\n");
+		return -1;
+	}
+	ps_info->kv_handle = kv;
+
 	/*FILE *fp;
 	fp = fopen("./server_config", "r");
 	if (fp == NULL)
@@ -177,7 +188,7 @@ int retry_commit(struct pacon_server_info *ps_info, char *path, int type)
 		{
 			ret = remove(path);
 			if (ret == 0)
-				return 0
+				return 0;
 		}
 	}
 
@@ -236,6 +247,12 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 				}
 			}
 			// del the invalid item in pacon if necessary
+			ret = dmkv_del(ps_info->kv_handle, path);
+			if (ret != 0)
+			{
+				printf("fail to rm invalid item from dmkv\n");
+				return -1;
+			}
 			break;
 
 		case '4':

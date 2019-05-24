@@ -10,6 +10,7 @@
 #include <fcntl.h>
 
 #include "../comm/comm.h"
+#include "../kv/dmkv.h"
 
 struct carea_info
 {
@@ -22,6 +23,7 @@ struct pacon_server_info
 	struct carea_info *carea_list;
 	char rec_mq_addr[28];
 	int rec_mq_port;
+	struct dmkv *kv_handle;
 
 	// batch mode and owner
 	int batch_dir_mode;

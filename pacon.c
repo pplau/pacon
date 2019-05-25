@@ -375,6 +375,9 @@ int check_parent_dir(struct pacon *pacon, char *path)
 	if (path_len == 1 && path[0] == '/')
 		goto out;
 
+	if (path[path_len-1] == '/')
+		path_len--;
+
 	if (path_len >= PATH_MAX)
 	{
 		printf("mkdir: path too long\n");

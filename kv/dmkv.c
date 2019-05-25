@@ -53,6 +53,8 @@ int memc_put(memcached_st *memc, char *key, char *val, int val_len)
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
 	//size_t val_len = sizeof(val);
+	if (key[key_len-1] == '/')
+		key_len--;
 	rc = memcached_set(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
 		return -1;
@@ -64,6 +66,8 @@ int memc_add(memcached_st *memc, char *key, char *val, int val_len)
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
 	//size_t val_len = sizeof(val);
+	if (key[key_len-1] == '/')
+		key_len--;
 	rc = memcached_add(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
 		return -1;
@@ -74,6 +78,8 @@ int memc_cas(memcached_st *memc, char *key, char *val, int val_len, uint64_t cas
 {
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
+	if (key[key_len-1] == '/')
+		key_len--;
 	rc = memcached_cas(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0, cas);
 	if (rc == MEMCACHED_DATA_EXISTS)
 		return 1;
@@ -96,6 +102,8 @@ char* memc_get(memcached_st *memc, char *key)
 	size_t val_len;
 	uint32_t flag = 0;
 	size_t key_len = strlen(key);
+	if (key[key_len-1] == '/')
+		key_len--;
 	val = memcached_get(memc, key, key_len, &val_len, &flag, &rc);
 	if (rc != MEMCACHED_SUCCESS)
 		return NULL;
@@ -110,6 +118,8 @@ char* memc_get_cas(memcached_st *memc, char *key, uint64_t *ret_cas)
 	size_t val_len;
 	uint32_t flag = 0;
 	size_t key_len = strlen(key);
+	if (key[key_len-1] == '/')
+		key_len--;
 	val = memcached_get(memc, key, key_len, &val_len, &flag, &rc);
 	if (rc != MEMCACHED_SUCCESS)
 		return NULL;
@@ -121,6 +131,8 @@ int memc_del(memcached_st *memc, char *key)
 {
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
+	if (key[key_len-1] == '/')
+		key_len--;
 	time_t expiration = 0;
 	rc = memcached_delete(memc, key, key_len, expiration);
 	if (rc == MEMCACHED_SUCCESS)

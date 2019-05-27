@@ -728,14 +728,85 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		deseri_val(&p_st, val);
 		if (get_stat_flag(&p_st, STAT_rm) == 1)
 		{
-			ret = dmkv_del(pacon->kv_handle, path);
+			ret = dmkv_set(pacon->kv_handle, path, value, PSTAT_SIZE);
+			if (ret != 0)
+			{
+				printf("fail to create file: %s\n", path);
+				return -1;
+			}
 		} else {
 			printf("file is existed\n");
 			ret = -1;
 		}
-		return ret;
+		//return ret;
 	}
 	ret = add_to_mq(pacon, path, CREATE);
+	return ret;
+}
+
+/*
+ * This func is used to fast write after create
+ * It combine create, open, write and close together 
+ * offset is 0 becase the file should be an empty file
+ */
+int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const char *buf, size_t size)
+{
+	int ret;
+	if (PARENT_CHECK == 1)
+	{
+		ret = check_parent_dir(pacon, path);
+		if (ret != 0)
+		{
+			printf("create: parent dir not existed\n");
+			return -1;
+		}
+	}
+
+	if (size < INLINE_MAX - 1)
+	{
+		struct pacon_stat p_st;
+		p_st.flags = 0;
+		set_stat_flag(&p_st, STAT_type, 1);
+		set_stat_flag(&new_st, STAT_inline, 1);
+		p_st.mode = mode;
+		p_st.ctime = time(NULL);
+		p_st.atime = time(NULL);
+		p_st.mtime = time(NULL);
+		p_st.size = size;
+		p_st.uid = getuid();
+		p_st.gid = getgid();
+		p_st.nlink = 0;
+		p_st.open_counter = 0;
+		char val[PSTAT_SIZE+INLINE_MAX];
+		seri_inline_data(&new_st, buf, val);
+		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE + size);
+
+		// the file may be existed or be removed
+		if (ret != 0)
+		{
+			char *val;
+			struct pacon_stat p_st;
+			val = dmkv_get(pacon->kv_handle, path);
+			deseri_val(&p_st, val);
+			if (get_stat_flag(&p_st, STAT_rm) == 1)
+			{
+				ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE + size);
+				if (ret != 0)
+				{
+					printf("fail to create file: %s\n", path);
+					return -1;
+				}
+			} else {
+				printf("file is existed\n");
+				ret = -1;
+			}
+			//return ret;
+		}
+		ret = add_to_mq(pacon, path, CREATE);
+	} else {
+		printf("need buffer outside the md\n");
+		return -1;
+	}
 	return ret;
 }
 
@@ -1127,6 +1198,8 @@ retry:
 
 int pacon_fsync(struct pacon *pacon, int fd)
 {
+	int ret;
+
 	return 0;
 }
 

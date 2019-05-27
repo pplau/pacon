@@ -53,8 +53,13 @@ int memc_put(memcached_st *memc, char *key, char *val, int val_len)
 	memcached_return_t rc;
 	size_t key_len = strlen(key);
 	//size_t val_len = sizeof(val);
-	if (key[key_len-1] == '/')
+	int i = 1;
+	size_t t_key_len = key_len;
+	while (key[t_key_len-i] == '/')
+	{
+		i++;
 		key_len--;
+	}
 	rc = memcached_set(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
 		return -1;

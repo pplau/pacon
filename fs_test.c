@@ -93,6 +93,39 @@ int test_open_wr(struct pacon *pacon, char *path, int flag, mode_t mode)
 	return ret;
 }
 
+int test_create_write(struct pacon *pacon, char *path, int flag, mode_t mode)
+{
+	int ret;
+	char *data = "test write after create";
+	int size = strlen(data);
+	ret = pacon_create_write(pacon, path, mode, data, size);
+	if (ret == 0)
+	{
+		printf("write after create success\n");
+	} else {
+		printf("write after create error\n");
+		return -1;
+	}
+
+	// read it for test
+	struct pacon_file *p_file = new_pacon_file();
+	ret =  pacon_open(pacon, path, flag, mode, p_file);
+	if (ret == -1)
+	{
+		printf("fail to open file\n");
+		return -1;
+	}
+	char up_out[128];
+	ret = pacon_read(pacon, path, p_file, out, size, 0);
+	if (ret <= 0)
+	{
+		printf("read file error\n");
+		return -1;
+	}
+	printf("file data: %s\n", out);
+	return ret;
+}
+
 /*
 int test_rm_dir()
 {
@@ -191,6 +224,16 @@ int main(int argc, char const *argv[])
 			return -1;
 		}
 		printf("open/rw success\n");
+
+		printf("\n");
+		printf("/********** create_write test **********/\n");
+		ret = test_create_write(pacon, "/mnt/beegfs/file_cw", 0, 0);
+		if (ret <= 0)
+		{
+			printf("create_write error\n");
+			return -1;
+		}
+		printf("create_write success\n");
 
 		printf("\n");
 		printf("/********** stat test **********/\n");

@@ -19,6 +19,8 @@
 #define MOUNT_PATH_MAX 128
 #define PATH_MAX 128
 
+#define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log"
+
 
 
 struct pacon
@@ -35,6 +37,8 @@ struct pacon
 	// local rpc
 	void *local_rpc_req;
 	void *context_local_rpc;
+	// fsync log file
+	int fsync_log_fd;
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11

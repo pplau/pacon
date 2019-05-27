@@ -25,6 +25,9 @@
 #define RMDIR ":4"
 #define LINK ":5"
 
+#define DEFAULT_FILEMODE S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH
+#define DEFAULT_DIRMORE S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH
+
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
 
@@ -278,6 +281,30 @@ int load_to_pacon(struct pacon *pacon, char *path)
 	return 0;
 }
 
+void get_local_addr(char *ip)
+{
+	FILE *fp;
+	fp = fopen("./local_config", "r");
+	if (fp == NULL)
+	{
+		printf("cannot open config file\n");
+		return -1;
+	}
+	char temp[17];
+	fgets(temp, 17, fp);
+	int i;
+	for (i = 0; i < 16; ++i)
+	{
+		if ((temp[i] >= '0' && temp[i] <= '9') || temp[i] == '.')
+		{
+			ip[i] = temp[i];
+		} else {
+			break;
+		}
+	}
+	ip[i] = '\0';
+}
+
 /* 
  * 1. inital kv
  * 2. build namespace & inital commit queue 
@@ -352,6 +379,41 @@ int init_pacon(struct pacon *pacon)
     	return -1;
     }
     add_to_dir_check_table(pacon->mount_path);
+
+    // init fsync log: 1. check the path  2. create the log file
+    if (access(FSYNC_LOG_PATH, F_OK) != 0)
+    {
+    	if (mkdir(FSYNC_LOG_PATH, DEFAULT_DIRMORE) != 0)
+    	{
+    		printf("create fsync log dir error\n");
+    		return -1;
+    	}
+    }
+    char fsync_logfile_path[128];
+    char local_ip[17];
+    get_local_addr(local_ip);
+    int pid = (int)getpid();
+    char pid_s[45];
+    sprintf(pid_s, "%d", pid);
+    char filename[64];
+    strcpy(filename, local_ip);
+    filename[strlen(local_ip)] = '.';
+    strcpy(filename + strlen(local_ip) + 1, pid_s);
+    strcpy(fsync_logfile_path, FSYNC_LOG_PATH);
+    strcpy(fsync_logfile_path + strlen(FSYNC_LOG_PATH), filename);
+    int fd;
+    fd = open(fsync_logfile_path, 0, 0);
+    if (fd == -1) 
+    {
+	    fd = creat(fsync_logfile_path, DEFAULT_FILEMODE);
+	    if (fd == -1)
+	    {
+	    	printf("create fsync log file error\n");
+	    	return -1;
+	    }
+    }
+    pacon->fsync_log_fd = fd;
+
 	return 0;
 }
 
@@ -988,11 +1050,11 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
 {
 	int ret;
-	if (p_file->size == 0)
+	/*if (p_file->size == 0)
 	{
 		buf = NULL;
 		return 0;
-	}
+	}*/
 
 	// DFS case
 	if (p_file->fd != -1)

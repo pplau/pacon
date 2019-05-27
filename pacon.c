@@ -684,6 +684,8 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 			return -1;
 		}
 	}
+
+	char val[PSTAT_SIZE];
 	if (SERI_TYPE == 0)
 	{
 		struct pacon_stat p_st;
@@ -698,7 +700,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.gid = getgid();
 		p_st.nlink = 0;
 		p_st.open_counter = 0;
-		char val[PSTAT_SIZE];
+		//char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 	} else {
@@ -722,13 +724,13 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 	// the file may be existed or be removed
 	if (ret != 0)
 	{
-		char *val;
-		struct pacon_stat p_st;
-		val = dmkv_get(pacon->kv_handle, path);
-		deseri_val(&p_st, val);
-		if (get_stat_flag(&p_st, STAT_rm) == 1)
+		char *tmp_val;
+		struct pacon_stat tmp_p_st;
+		tmp_val = dmkv_get(pacon->kv_handle, path);
+		deseri_val(&tmp_p_st, tmp_val);
+		if (get_stat_flag(&tmp_p_st, STAT_rm) == 1)
 		{
-			ret = dmkv_set(pacon->kv_handle, path, value, PSTAT_SIZE);
+			ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE);
 			if (ret != 0)
 			{
 				printf("fail to create file: %s\n", path);
@@ -767,7 +769,7 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 		struct pacon_stat p_st;
 		p_st.flags = 0;
 		set_stat_flag(&p_st, STAT_type, 1);
-		set_stat_flag(&new_st, STAT_inline, 1);
+		set_stat_flag(&p_st, STAT_inline, 1);
 		p_st.mode = mode;
 		p_st.ctime = time(NULL);
 		p_st.atime = time(NULL);
@@ -778,17 +780,17 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 		p_st.nlink = 0;
 		p_st.open_counter = 0;
 		char val[PSTAT_SIZE+INLINE_MAX];
-		seri_inline_data(&new_st, buf, val);
+		seri_inline_data(&p_st, buf, val);
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE + size);
 
 		// the file may be existed or be removed
 		if (ret != 0)
 		{
-			char *val;
-			struct pacon_stat p_st;
-			val = dmkv_get(pacon->kv_handle, path);
-			deseri_val(&p_st, val);
-			if (get_stat_flag(&p_st, STAT_rm) == 1)
+			char *tmp_val;
+			struct pacon_stat tmp_p_st;
+			tmp_val = dmkv_get(pacon->kv_handle, path);
+			deseri_val(&tmp_p_st, tmp_val);
+			if (get_stat_flag(&tmp_p_st, STAT_rm) == 1)
 			{
 				ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE + size);
 				if (ret != 0)

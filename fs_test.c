@@ -115,7 +115,7 @@ int test_create_write(struct pacon *pacon, char *path, int flag, mode_t mode)
 		printf("fail to open file\n");
 		return -1;
 	}
-	char up_out[128];
+	char out[128];
 	ret = pacon_read(pacon, path, p_file, out, size, 0);
 	if (ret <= 0)
 	{

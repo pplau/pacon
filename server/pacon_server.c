@@ -15,7 +15,69 @@
 #define RM ":3"
 #define RMDIR ":4"
 #define LINK ":5"
+#define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
+#define FSYNC ":7"
 
+
+enum statflags
+{
+	STAT_type,  // 0: dir, 1: file
+	STAT_inline,  // 0: no inline data, 1: has inlien
+	STAT_commit,  // 0: not yet be committed, 1: already be committed
+	STAT_file_created,  // 0: not be created in DFS, 1: already be created in DFS
+	STAT_existedin_dfs,  //  0: a new item after pacon run, 1: it was created before pacon run
+	STAT_child_check,  //  0: haven't check its children, 1: already checked its children
+	STAT_rm,
+};
+
+
+void server_set_stat_flag(struct pacon_stat_server *p_st, int flag_type, int val)
+{
+	if (val == 0)
+	{
+		// set 0
+		p_st->flags &= ~(1UL << flag_type);
+	} else {
+		// set 1
+		p_st->flags |= 1UL << flag_type;
+	}
+}
+
+int server_get_stat_flag(struct pacon_stat_server *p_st, int flag_type)
+{
+	if (((p_st->flags >> flag_type) & 1) == 1 )
+	{
+		return 1;
+	} else {
+		return 0;
+	}
+}
+
+// seri pacom_stat and inline_data to val
+int server_seri_inline_data(struct pacon_stat_server *s, char *inline_data, char *val)
+{
+	//int size = sizeof(struct pacon_stat);
+	if (s != NULL)
+	{
+		memcpy(val, s, PSTAT_SIZE);
+	}
+	memcpy(val + PSTAT_SIZE, inline_data, strlen(inline_data)+1);
+	//memcpy(val + PSTAT_SIZE, inline_data, strlen(inline_data));
+	return PSTAT_SIZE + INLINE_MAX;
+}
+
+// deseri val to pacon_stat and inline_data
+int server_deseri_inline_data(struct pacon_stat_server *s, char *inline_data, char *val)
+{
+	//int size = sizeof(struct pacon_stat);
+	if (s != NULL)
+	{
+		memcpy(s, val, PSTAT_SIZE);
+	}
+	strcpy(inline_data, val + PSTAT_SIZE);
+	//memcpy(inline_data, val + PSTAT_SIZE, strlen(val) - PSTAT_SIZE);
+	return PSTAT_SIZE + INLINE_MAX;
+}
 
 void get_local_addr(char *ip)
 {
@@ -222,16 +284,47 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			break;
 
 		case '2':
-			//printf("commit to fs, typs: CREATE\n");
-			ret = creat(path, ps_info->batch_file_mode);
-			if (ret == -1)
+			//printf("commit to fs, typs: CREATE\n");	
+			int fd = creat(path, ps_info->batch_file_mode);
+			if (fd == -1)
 			{
-				ret = retry_commit(ps_info, path, 2);
-				if (ret == -1)
+				fd = retry_commit(ps_info, path, 2);
+				if (fd == -1)
 				{
 					printf("fail to commit to fs: typs: CREATE, path: %s\n", path);
 					return -1;
 				}
+			}
+			char *val;
+			char inline_data[INLINE_MAX];
+			uint64_t cas, temp_cas;
+			val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
+			temp_cas = cas;
+			struct pacon_stat_server st;
+			server_deseri_inline_data(&st, inline_data, val);
+			// write inline data to the new file
+			/*if (server_get_stat_flag(&st, STAT_inline) == 1 && st.size >0)
+			{
+				ret = pwrite(fd, inline_data, strlen(inline_data), 0);
+				if (ret <= 0)
+				{
+					printf("write inline data error\n");
+					return -1;
+				}
+			}*/
+			close(fd);
+			server_set_stat_flag(&st, STAT_file_created, 1);
+			char value[PSTAT_SIZE+INLINE_MAX];
+			server_seri_inline_data(&st, inline_data, value);
+			ret = dmkv_cas(ps_info->kv_handle, path, value, st.size, temp_cas);
+			while (ret != 0)
+			{
+				val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
+				temp_cas = cas;
+				server_deseri_inline_data(&st, inline_data, val);
+				server_set_stat_flag(&st, STAT_file_created, 1);
+				server_seri_inline_data(&st, inline_data, value);
+				ret = dmkv_cas(ps_info->kv_handle, path, value, st.size, temp_cas);
 			}
 			break;
 
@@ -257,9 +350,19 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			break;
 
 		case '4':
+			//printf("commit to fs, typs: RMDIR\n");
 			break;
 
 		case '5':
+			//printf("commit to fs, typs: LINK\n");
+			break;
+
+		case '6':
+			//printf("commit to fs, typs: OWRITE\n");
+			break;
+
+		case '7':
+			//printf("commit to fs, typs: FSYNC\n");
 			break;
 
 		default:

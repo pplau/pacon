@@ -24,6 +24,8 @@
 #define RM ":3"
 #define RMDIR ":4"
 #define LINK ":5"
+#define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
+#define FSYNC ":7"
 
 #define DEFAULT_FILEMODE S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH
 #define DEFAULT_DIRMORE S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH
@@ -1260,10 +1262,25 @@ retry:
 	return -1;
 }	
 
-int pacon_fsync(struct pacon *pacon, int fd)
+int pacon_fsync(struct pacon *pacon, char *path)
 {
 	int ret;
-
+	struct pacon_stat st;
+	char *val;
+	val = dmkv_get(pacon->kv_handle, path);
+	if (val == NULL)
+	{
+		printf("read: get inline data error\n");
+		return -1;
+	}
+	char inline_data[INLINE_MAX];
+	deseri_inline_data(st, inline_data, val);
+	
+	// if file already be created in DFS, directly call the fsycn
+	if (get_stat_flag(&st, STAT_file_created) == 1)
+	{
+		
+	}
 	return 0;
 }
 

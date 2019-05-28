@@ -12,6 +12,7 @@
 #include "../comm/comm.h"
 #include "../kv/dmkv.h"
 
+
 struct carea_info
 {
 
@@ -43,6 +44,23 @@ struct pacon_server_info
 
 	// cluster info
 	struct servers_comm *s_comm;
+};
+
+#define PSTAT_SIZE 44 // 32 int * 11
+#define INLINE_MAX 468 // PSTAT_SIZE + INLINE_MAX = 512B
+struct pacon_stat_server
+{
+	uint32_t flags;   //  including the metadata type
+	uint32_t mode;
+	uint32_t ctime;
+	uint32_t atime;
+	uint32_t mtime;
+	uint32_t size;
+	uint32_t uid;
+	uint32_t gid;
+	uint32_t nlink;
+	uint32_t open_counter;
+	//uint32_t fd;
 };
 
 

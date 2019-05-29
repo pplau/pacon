@@ -262,6 +262,7 @@ int retry_commit(struct pacon_server_info *ps_info, char *path, int type)
 int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret = -1;
+	int fd; 
 	int mesg_len = strlen(mesg);
 	char path[PATH_MAX];
 	strncpy(path, mesg, mesg_len-2);
@@ -285,7 +286,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '2':
 			//printf("commit to fs, typs: CREATE\n");	
-			int fd = creat(path, ps_info->batch_file_mode);
+			fd = creat(path, ps_info->batch_file_mode);
 			if (fd == -1)
 			{
 				fd = retry_commit(ps_info, path, 2);

@@ -96,9 +96,10 @@ int test_open_wr(struct pacon *pacon, char *path, int flag, mode_t mode)
 int test_create_write(struct pacon *pacon, char *path, int flag, mode_t mode)
 {
 	int ret;
+	struct pacon_file *p_file = new_pacon_file();
 	char *data = "test write after create";
 	int size = strlen(data);
-	ret = pacon_create_write(pacon, path, mode, data, size);
+	ret = pacon_create_write(pacon, path, mode, data, size, p_file);
 	if (ret == 0)
 	{
 		printf("write after create success\n");
@@ -108,7 +109,7 @@ int test_create_write(struct pacon *pacon, char *path, int flag, mode_t mode)
 	}
 
 	// read it for test
-	struct pacon_file *p_file = new_pacon_file();
+	//struct pacon_file *p_file = new_pacon_file();
 	ret =  pacon_open(pacon, path, flag, mode, p_file);
 	if (ret == -1)
 	{

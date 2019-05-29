@@ -30,6 +30,8 @@
 #define DEFAULT_FILEMODE S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH
 #define DEFAULT_DIRMORE S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH
 
+#define SECTOR_SIZE 512
+
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
 
@@ -404,7 +406,7 @@ int init_pacon(struct pacon *pacon)
     strcpy(fsync_logfile_path, FSYNC_LOG_PATH);
     strcpy(fsync_logfile_path + strlen(FSYNC_LOG_PATH), filename);
     int fd;
-    fd = open(fsync_logfile_path, 0, 0);
+    fd = open(fsync_logfile_path, O_RDWR | O_DIRECT);
     if (fd == -1) 
     {
 	    fd = creat(fsync_logfile_path, DEFAULT_FILEMODE);
@@ -815,7 +817,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
  * It combine create, open, write and close together 
  * offset is 0 becase the file should be an empty file
  */
-int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const char *buf, size_t size)
+int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const char *buf, size_t size, struct pacon_file *p_file)
 {
 	int ret;
 	if (PARENT_CHECK == 1)
@@ -873,6 +875,7 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 		printf("need buffer outside the md\n");
 		return -1;
 	}
+	p_file->fd = -1;
 	return ret;
 }
 
@@ -1262,24 +1265,55 @@ retry:
 	return -1;
 }	
 
-int pacon_fsync(struct pacon *pacon, char *path)
+int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 {
 	int ret;
+	// large file, call DFS fsync
+	if (p_file->fd != -1)
+	{
+		ret = fsync(p_file->fd);
+		if (ret == -1)
+		{
+			printf("call DFS fsync error\n");
+			return -1;
+		} else {
+			return 0;
+		}
+	}
+
+	// small file, sync inline data to log
 	struct pacon_stat st;
 	char *val;
-	val = dmkv_get(pacon->kv_handle, path);
+	uint64_t cas, cas_temp;
+	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+	cas_temp = cas;
 	if (val == NULL)
 	{
 		printf("read: get inline data error\n");
 		return -1;
 	}
 	char inline_data[INLINE_MAX];
-	deseri_inline_data(st, inline_data, val);
+	deseri_inline_data(&st, inline_data, val);
 	
 	// if file already be created in DFS, directly call the fsycn
-	if (get_stat_flag(&st, STAT_file_created) == 1)
+	if (get_stat_flag(&st, STAT_file_created) == 1 &&
+		get_stat_flag(&st, STAT_inline) == 0 &&
+		st.size > 0)
 	{
-		
+		int fd = open(path, 0, 0);
+		ret = fsycn(fd);
+		close(fd);
+	} else {
+		char buf[PATH_MAX + INLINE_MAX];
+		strcpy(buf, path);
+		strcpy(buf + strlen(path), inline_data);
+		posix_memalign(&inline_data, SECTOR_SIZE, strlen(buf));
+		ret = write(pacon->fsync_log_fd, inline_data, strlen(buf));
+		if (ret <= 0)
+		{
+			printf("fail to sync file to the log: %s\n", path);
+			return -1;
+		}
 	}
 	return 0;
 }

@@ -99,7 +99,7 @@ int pacon_close(struct pacon *pacon, struct pacon_file *p_file);
 
 int pacon_create(struct pacon *pacon, const char *path, mode_t mode);
 
-int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const char *buf, size_t size);
+int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const char *buf, size_t size, struct pacon_file *p_file);
 
 int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode);
 

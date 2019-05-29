@@ -4,10 +4,11 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <pthread.h>
 #include <zmq.h>
 #include "pacon_server.h"
 
-#define PATH_MAX 128
+#define PATH_MAX 512
 
 // opt type
 #define MKDIR ":1"
@@ -373,9 +374,10 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	return 0;
 }
 
-int listen_commit_mq(struct pacon_server_info *ps_info)
+void *listen_commit_mq(struct pacon_server_info *ps_info_t)
 {
-	printf("listening mq\n");
+	printf("listening coomit mq\n");
+	struct pacon_server_info *ps_info = (struct pacon_server_info *)ps_info_t;
 	int ret, ms_size;
 	char mesg[PATH_MAX];
 	while (1)
@@ -383,7 +385,7 @@ int listen_commit_mq(struct pacon_server_info *ps_info)
 		ms_size = zmq_recv(ps_info->subscriber, mesg, PATH_MAX, 0);
 		if (ms_size == -1)
 		{
-			printf("error message\n");
+			printf("commit mq get message error\n");
 			continue;
 		}
 		mesg[ms_size] = '\0';
@@ -391,19 +393,45 @@ int listen_commit_mq(struct pacon_server_info *ps_info)
 		if (ret != 0)
 		{
 			printf("commit opt to fs fail: %s\n", mesg);
-			return -1;
+			//return -1;
 		}
 	}
 }
 
-int listen_local_rpc(struct pacon_server_info *ps_info)
+void *listen_local_rpc(struct pacon_server_info *ps_info_t)
 {
-
+	printf("listening local rpc\n");
+	struct pacon_server_info *ps_info = (struct pacon_server_info *)ps_info_t;
+	int ret, ms_size;
+	char mesg[PATH_MAX];
+	while (1)
+	{
+		ms_size = zmq_recv(ps_info->local_rpc_rep, mesg, PATH_MAX, 0);
+		if (ms_size == -1)
+		{
+			printf("local rpc get message error\n");
+			continue;
+		}
+		mesg[ms_size] = '\0';
+	}
 }
 
-int listen_cluster_rpc(struct pacon_server_info *ps_info)
+void *listen_cluster_rpc(struct pacon_server_info *ps_info_t)
 {
-
+	printf("listening cluster rpc\n");
+	struct pacon_server_info *ps_info = (struct pacon_server_info *)ps_info_t;
+	int ret, ms_size;
+	char mesg[PATH_MAX];
+	while (1)
+	{
+		ms_size = zmq_recv(ps_info->cluster_rpc_rep, mesg, PATH_MAX, 0);
+		if (ms_size == -1)
+		{
+			printf("cluster get message error\n");
+			continue;
+		}
+		mesg[ms_size] = '\0';
+	}
 }
 
 
@@ -419,12 +447,32 @@ int main(int argc, char const *argv[])
 		return -1;
 	}
 
-	ret = listen_commit_mq(ps_info);
+	pthread_t t_commit_mq;
+	pthread_t t_local_rpc;
+	pthread_t t_cluster_rpc;
+	if (pthread_create(&t_commit_mq, NULL, listen_commit_mq, (void *)ps_info) == -1)
+	{
+		printf("create commit mq thread error\n");
+		return -1;
+	}
+	if (pthread_create(&t_local_rpc, NULL, listen_local_rpc, (void *)ps_info) == -1)
+	{
+		printf("create local rpc thread error\n");
+		return -1;
+	}
+	if (pthread_create(&t_cluster_rpc, NULL, listen_cluster_rpc, (void *)ps_info) == -1)
+	{
+		printf("create cluster rpc thread error\n");
+		return -1;
+	}
+
+	/* old 
+ 	ret = listen_commit_mq(ps_info);
 	if (ret != 0)
 	{
 		printf("listen mq error\n");
 		return -1;
 	}
-
+	*/
 	return 0;
 }

@@ -131,7 +131,7 @@ int test_fsync(struct pacon *pacon, char *path)
 {
 	int ret;
 	struct pacon_file *p_file = new_pacon_file();
-	ret =  pacon_open(pacon, path, flag, mode, p_file);
+	ret =  pacon_open(pacon, path, 0, 0, p_file);
 	if (ret == -1)
 	{
 		printf("fail to open file\n");
@@ -258,7 +258,7 @@ int main(int argc, char const *argv[])
 		printf("\n");
 		printf("/********** fsync test **********/\n");
 		ret = test_fsync(pacon, "/mnt/beegfs/file_cw");
-		if (ret <= 0)
+		if (ret != 0)
 		{
 			printf("fsync error\n");
 			return -1;

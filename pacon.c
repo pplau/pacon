@@ -1301,7 +1301,7 @@ int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 		st.size > 0)
 	{
 		int fd = open(path, 0, 0);
-		ret = fsycn(fd);
+		ret = fsync(fd);
 		close(fd);
 	} else {
 		char buf[PATH_MAX + INLINE_MAX];

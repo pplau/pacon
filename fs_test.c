@@ -127,6 +127,25 @@ int test_create_write(struct pacon *pacon, char *path, int flag, mode_t mode)
 	return ret;
 }
 
+int test_fsync(struct pacon *pacon, char *path)
+{
+	int ret;
+	struct pacon_file *p_file = new_pacon_file();
+	ret =  pacon_open(pacon, path, flag, mode, p_file);
+	if (ret == -1)
+	{
+		printf("fail to open file\n");
+		return -1;
+	}
+	ret = pacon_fsync(pacon, path, p_file);
+	if (ret != 0)
+	{
+		printf("fsync error\n");
+		return -1;
+	}
+	return 0;
+}
+
 /*
 int test_rm_dir()
 {
@@ -235,6 +254,16 @@ int main(int argc, char const *argv[])
 			return -1;
 		}
 		printf("create_write success\n");
+
+		printf("\n");
+		printf("/********** fsync test **********/\n");
+		ret = test_fsync(pacon, "/mnt/beegfs/file_cw");
+		if (ret <= 0)
+		{
+			printf("fsync error\n");
+			return -1;
+		}
+		printf("fsync success\n");
 
 		printf("\n");
 		printf("/********** stat test **********/\n");

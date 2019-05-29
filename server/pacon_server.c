@@ -376,7 +376,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 void *listen_commit_mq(struct pacon_server_info *ps_info_t)
 {
-	printf("listening coomit mq\n");
+	printf("listening commit mq\n");
 	struct pacon_server_info *ps_info = (struct pacon_server_info *)ps_info_t;
 	int ret, ms_size;
 	char mesg[PATH_MAX];
@@ -474,5 +474,6 @@ int main(int argc, char const *argv[])
 		return -1;
 	}
 	*/
+	while(1);
 	return 0;
 }

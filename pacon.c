@@ -571,7 +571,7 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type, uint32_t timestam
 	sprintf(ts, "%d", timestamp);
 	sprintf(mesg, "%s%s%s", path, opt_type, ts);
 	//mesg[path_len+2] = '\0';
-	zmq_send(pacon->publisher, mesg_ts, strlen(mesg_ts), 0);
+	zmq_send(pacon->publisher, mesg, strlen(mesg), 0);
 	return 0;
 }
 

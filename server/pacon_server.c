@@ -19,7 +19,7 @@
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
 
-static uint32_t commit_barrier 0;  // 0 is not barrier, != 0 is timestamp
+static uint32_t commit_barrier = 0;  // 0 is not barrier, != 0 is timestamp
 
 enum statflags
 {
@@ -273,7 +273,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	for (i = 0; i < mesg_len; ++i)
 	{
 		if (mesg[i] != ':')
-			path = [i] = mesg[i];
+			path[i] = mesg[i];
 		else
 			break;
 	}
@@ -422,7 +422,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	for (i = 0; i < mesg_len; ++i)
 	{
 		if (mesg[i] != ':')
-			path = [i] = mesg[i];
+			path[i] = mesg[i];
 		else
 			break;
 	}

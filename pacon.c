@@ -564,14 +564,14 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type, uint32_t timestam
 		printf("mq: path is too long\n");
 		return -1;
 	}
-	char mesg[PATH_MAX];
+	char mesg[PATH_MAX+11];
 	//sprintf(mesg, "%s%s", path, opt_type);
 	// add timestamp
 	char ts[11];
 	sprintf(ts, "%d", timestamp);
-	sprintf(mesg, "%s%s%s", path, opt_type, timestamp);
+	sprintf(mesg, "%s%s%s", path, opt_type, ts);
 	//mesg[path_len+2] = '\0';
-	zmq_send(pacon->publisher, mesg, strlen(mesg), 0);
+	zmq_send(pacon->publisher, mesg_ts, strlen(mesg_ts), 0);
 	return 0;
 }
 
@@ -1083,7 +1083,7 @@ int pacon_rm(struct pacon *pacon, const char *path)
 int pacon_rmdir(struct pacon *pacon, const char *path)
 {
 	int ret;
-	ret = add_to_local_rpc(pacon, path, RMDIR);
+	ret = add_to_local_rpc(pacon, path, RMDIR, time(NULL));
 	if (ret == -1)
 	{
 		printf("rmdir error: %s\n", path);

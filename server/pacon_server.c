@@ -19,6 +19,7 @@
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
 
+static uint32_t commit_barrier 0;  // 0 is not barrier, != 0 is timestamp
 
 enum statflags
 {
@@ -266,10 +267,31 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	int fd; 
 	int mesg_len = strlen(mesg);
 	char path[PATH_MAX];
-	strncpy(path, mesg, mesg_len-2);
-	path[mesg_len-2] = '\0';
+	//strncpy(path, mesg, mesg_len-2);
+	//path[mesg_len-2] = '\0';
+	int i;
+	for (i = 0; i < mesg_len; ++i)
+	{
+		if (mesg[i] != ':')
+			path = [i] = mesg[i];
+		else
+			break;
+	}
+	path[i] = '\0';
 
-	switch (mesg[mesg_len-1])
+	// get timestamp
+	uint32_t timestamp;
+	timestamp = atoi(mesg[i+2]);
+	if (commit_barrier != 0)
+	{
+		if (timestamp > commit_barrier)
+		{
+			while (commit_barrier != 0);
+		}
+	}
+	
+	//switch (mesg[mesg_len-1])
+	switch (mesg[i+1])
 	{
 		case '1':
 			//printf("commit to fs, typs: MKDIR\n");
@@ -374,6 +396,69 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	return 0;
 }
 
+// add the barrier in other node in the cluster, and set the commit_barrier in the local
+int broadcast_barrier_begin(struct pacon_server_info *ps_info)
+{
+	int ret;
+	return ret;
+}
+
+// del the barrier in other node in the cluster, and reset the commit_barrier in the local
+int broadcast_barrier_end(struct pacon_server_info *ps_info)
+{
+	int ret;
+	return ret;
+}
+
+int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
+{
+	int ret = -1;
+	int fd; 
+	int mesg_len = strlen(mesg);
+	char path[PATH_MAX];
+	//strncpy(path, mesg, mesg_len-2);
+	//path[mesg_len-2] = '\0';
+	int i;
+	for (i = 0; i < mesg_len; ++i)
+	{
+		if (mesg[i] != ':')
+			path = [i] = mesg[i];
+		else
+			break;
+	}
+	path[i] = '\0';
+
+	// get timestamp
+	uint32_t timestamp;
+	timestamp = atoi(mesg[i+2]);
+	if (commit_barrier != 0)
+	{
+		if (timestamp > commit_barrier)
+		{
+			while (commit_barrier != 0);
+		}
+	}
+
+	switch (mesg[mesg_len-1])
+	{
+		case '4':
+			//printf("commit to fs, typs: RMDIR\n");
+			/*
+			 * 1. call readdir to get all sub dirs and files under the target dir
+			 * 2. del them in the dmkv
+			 * 3. call rmdir
+			 */
+			break;
+
+		default:
+			printf("barrier opt type error\n");
+			return -1;
+	}
+	ret = broadcast_barrier_end(ps_info);
+
+	return ret;
+}
+
 void *listen_commit_mq(struct pacon_server_info *ps_info_t)
 {
 	printf("listening commit mq\n");
@@ -413,6 +498,16 @@ void *listen_local_rpc(struct pacon_server_info *ps_info_t)
 			continue;
 		}
 		mesg[ms_size] = '\0';
+		char rep[1];
+		ret = commit_to_fs_barrier(ps_info, mesg);
+		if (ret == 0)
+		{
+			rep[0] = '0';			
+		} else {
+			printf("some errors in local rpc\n");
+			rep[0] = '1';
+		}
+		zmq_send(ps_info->local_rpc_rep, rep, 1, 0);
 	}
 }
 

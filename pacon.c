@@ -556,7 +556,7 @@ out:
 	return 0;
 }
 
-int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
+int add_to_mq(struct pacon *pacon, char *path, char *opt_type, uint32_t timestamp)
 {
 	int path_len = strlen(path);
 	if (path_len+3 > PATH_MAX)
@@ -565,10 +565,35 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type)
 		return -1;
 	}
 	char mesg[PATH_MAX];
-	sprintf(mesg, "%s%s", path, opt_type);
-	mesg[path_len+2] = '\0';
+	//sprintf(mesg, "%s%s", path, opt_type);
+	// add timestamp
+	char ts[11];
+	sprintf(ts, "%d", timestamp);
+	sprintf(mesg, "%s%s%s", path, opt_type, timestamp);
+	//mesg[path_len+2] = '\0';
 	zmq_send(pacon->publisher, mesg, strlen(mesg), 0);
 	return 0;
+}
+
+int add_to_local_rpc(struct pacon *pacon, char *path, char *opt_type, uint32_t timestamp)
+{
+	int path_len = strlen(path);
+	if (path_len+3 > PATH_MAX)
+	{
+		printf("mq: path is too long\n");
+		return -1;
+	}
+	char mesg[PATH_MAX];
+	char rep[2];
+	sprintf(mesg, "%s%s", path, opt_type);
+	mesg[path_len+2] = '\0';
+	zmq_send(pacon->local_rpc_req, mesg, strlen(mesg), 0);
+	zmq_recv(pacon->local_rpc_req, rep, 1, 0);
+	// return 0 means success, 1 means error
+	if (rep[0] == '0')
+		return 0;
+	else
+		return -1;
 }
 
 int local_fd_open(char *path)
@@ -741,6 +766,7 @@ int pacon_close(struct pacon *pacon, struct pacon_file *p_file)
 int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 {
 	int ret;
+	uint32_t timestamp = time(NULL);
 	if (PARENT_CHECK == 1)
 	{
 		ret = check_parent_dir(pacon, path);
@@ -758,9 +784,9 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.flags = 0;
 		set_stat_flag(&p_st, STAT_type, 1);
 		p_st.mode = mode;
-		p_st.ctime = time(NULL);
-		p_st.atime = time(NULL);
-		p_st.mtime = time(NULL);
+		p_st.ctime = timestamp;
+		p_st.atime = timestamp;
+		p_st.mtime = timestamp;
 		p_st.size = 0;
 		p_st.uid = getuid();
 		p_st.gid = getgid();
@@ -808,7 +834,8 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		}
 		//return ret;
 	}
-	ret = add_to_mq(pacon, path, CREATE);
+	//ret = add_to_mq(pacon, path, CREATE);
+	ret = add_to_mq(pacon, path, CREATE, timestamp);
 	return ret;
 }
 
@@ -830,9 +857,10 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 		}
 	}
 
+	struct pacon_stat p_st;
 	if (size < INLINE_MAX - 1)
 	{
-		struct pacon_stat p_st;
+		//struct pacon_stat p_st;
 		p_st.flags = 0;
 		set_stat_flag(&p_st, STAT_type, 1);
 		set_stat_flag(&p_st, STAT_inline, 1);
@@ -870,7 +898,8 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 			}
 			//return ret;
 		}
-		ret = add_to_mq(pacon, path, CREATE);
+		//ret = add_to_mq(pacon, path, CREATE);
+		ret = add_to_mq(pacon, path, CREATE, p_st.ctime);
 	} else {
 		printf("need buffer outside the md\n");
 		return -1;
@@ -891,9 +920,11 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 			return -1;
 		}
 	}
+
+	struct pacon_stat p_st;
 	if (SERI_TYPE == 0)
 	{
-		struct pacon_stat p_st;
+		//struct pacon_stat p_st;
 		p_st.flags = 0;
 		p_st.mode = mode;
 		p_st.ctime = time(NULL);
@@ -926,7 +957,8 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 	}
 	if (ret != 0)
 		return ret;
-	ret = add_to_mq(pacon, path, MKDIR);
+	//ret = add_to_mq(pacon, path, MKDIR);
+	ret = add_to_mq(pacon, path, MKDIR, p_st.ctime);
 	return ret;
 }
 
@@ -1040,13 +1072,23 @@ int pacon_rm(struct pacon *pacon, const char *path)
 		seri_val(&p_st, val);
 		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
 	}
-	ret = add_to_mq(pacon, path, RM);
+	ret = add_to_mq(pacon, path, RM, time(NULL));
 	return ret;
 }
 
+/*
+ * 1. push rmdir mesg to local rpc queue
+ * 2. del the dir item in dmkv when pacon server complete the rmdir process
+ */
 int pacon_rmdir(struct pacon *pacon, const char *path)
 {
 	int ret;
+	ret = add_to_local_rpc(pacon, path, RMDIR);
+	if (ret == -1)
+	{
+		printf("rmdir error: %s\n", path);
+		return -1;
+	}
 	ret = dmkv_del(pacon->kv_handle, path);
 	return ret;
 }

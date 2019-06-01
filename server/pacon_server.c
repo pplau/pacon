@@ -279,11 +279,11 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	}
 	path[i] = '\0';
 
-	// get timestamp
-	uint32_t timestamp;
-	timestamp = atoi(mesg+i+2);
 	if (commit_barrier != 0)
 	{
+		// get timestamp
+		uint32_t timestamp;
+		timestamp = atoi(mesg+i+2);
 		if (timestamp > commit_barrier)
 		{
 			while (commit_barrier != 0);
@@ -428,11 +428,11 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	}
 	path[i] = '\0';
 
-	// get timestamp
-	uint32_t timestamp;
-	timestamp = atoi(mesg+i+2);
 	if (commit_barrier != 0)
 	{
+		// get timestamp
+		uint32_t timestamp;
+		timestamp = atoi(mesg+i+2);
 		if (timestamp > commit_barrier)
 		{
 			while (commit_barrier != 0);

@@ -146,6 +146,11 @@ int test_fsync(struct pacon *pacon, char *path)
 	return 0;
 }
 
+int test_rmdir(struct pacon *pacon, char *path)
+{
+	return pacon_rmdir(pacon, path);
+}
+
 /*
 int test_rm_dir()
 {
@@ -299,6 +304,20 @@ int main(int argc, char const *argv[])
 			printf("free pacon error\n");
 			return -1;
 		}
+
+		printf("\n");
+		printf("/********** rm test **********/\n");
+		ret = test_rmdir(pacon, "/mnt/beegfs/test");
+		if (ret != 0)
+		{
+			printf("rmdir error\n");
+			return -1;
+		}
+		ret = test_stat(pacon, "/mnt/beegfs/test", st);
+		if (ret != 0)
+			printf("rmdir test succee\n");
+		else
+			printf("rmdir test error\n");
 	}
 
 	if (TEST_TYPE == 1)

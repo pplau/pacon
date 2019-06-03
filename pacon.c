@@ -585,9 +585,11 @@ int add_to_local_rpc(struct pacon *pacon, char *path, char *opt_type, uint32_t t
 		return -1;
 	}
 	char mesg[PATH_MAX];
+	char ts[TIMESTAMP_SIZE];
+	sprintf(ts, "%d", timestamp);
+	sprintf(mesg, "%s%s%s", path, opt_type, ts);
+	//mesg[path_len+2] = '\0';
 	char rep[2];
-	sprintf(mesg, "%s%s", path, opt_type);
-	mesg[path_len+2] = '\0';
 	zmq_send(pacon->local_rpc_req, mesg, strlen(mesg), 0);
 	zmq_recv(pacon->local_rpc_req, rep, 1, 0);
 	// return 0 means success, 1 means error

@@ -292,7 +292,11 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		timestamp = atoi(mesg+i+2);
 		if (timestamp > commit_barrier)
 		{
-			while (commit_barrier != 0);
+			while (commit_barrier != 0)
+			{
+				if (time(NULL) - commit_barrier >= 1)
+					break;
+			}
 			reach_barrier = 0;
 		}
 	}
@@ -417,7 +421,6 @@ int broadcast_barrier_begin(struct pacon_server_info *ps_info, uint32_t timestam
 		return -1;
 	commit_barrier = timestamp;
 	reach_barrier = 1;
-	while (reach_barrier == 1);
 	return ret;
 }
 
@@ -497,6 +500,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			 * 2. del them in the dmkv
 			 * 3. call rmdir
 			 */
+			while (reach_barrier == 1);
 			traversedir_dmkv_del(ps_info, path);
 			ret = remove(path);
 			if (ret != 0)

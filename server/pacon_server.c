@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
+#include <dirent.h>
+#include <fcntl.h>
 #include <zmq.h>
 #include "pacon_server.h"
 
@@ -429,24 +431,26 @@ int broadcast_barrier_end(struct pacon_server_info *ps_info)
 	return ret;
 }
 
-void traversedir_dmkv_del(char *path)
+void traversedir_dmkv_del(struct pacon_server_info *ps_info, char *path)
 {
 	int ret;
 	char dir_new[PATH_MAX];
 	DIR *pd;
+	struct dirent *entry;
 	pd = opendir(path);
 	while ((entry = readdir(pd)) != NULL)
 	{
 		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
 			continue;
 		int c_len = strlen(entry->d_name);
+		int p_len = strlen(path);
 		memcpy(dir_new + p_len + 1, entry->d_name, c_len);
 		dir_new[p_len+1+c_len] = '\0';
-		dmkv_del(dir_new);
+		dmkv_del(ps_info->kv_handle, dir_new);
 
 		if (entry->d_type == DT_DIR)
 		{
-			traversedir_dmkv_del(dir_new);
+			traversedir_dmkv_del(ps_info, dir_new);
 		}
 	}
 }
@@ -508,11 +512,11 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret;
+	uint32_t timestamp;
 	switch (mesg[1])
 	{
 		case '8':
 			//printf("set timestamp\n");
-			uint32_t timestamp;
 			timestamp = atoi(mesg+2);
 			if (timestamp == 0)
 			{
@@ -520,12 +524,12 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 				return -1;
 			}
 			commit_barrier = timestamp;
-			break
+			break;
 
 		case '9':
 			//printf("del timestamp\n");
 			commit_barrier = 0;
-			break	
+			break;	
 
 		default:
 			printf("handle cluster mesg error\n");

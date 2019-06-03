@@ -25,6 +25,7 @@
 #define DEL_BARRIER ":9"
 
 static uint32_t commit_barrier = 0;  // 0 is not barrier, != 0 is timestamp
+static int reach_barrier = 0;
 
 enum statflags
 {
@@ -292,6 +293,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		if (timestamp > commit_barrier)
 		{
 			while (commit_barrier != 0);
+			reach_barrier = 0;
 		}
 	}
 	
@@ -414,6 +416,8 @@ int broadcast_barrier_begin(struct pacon_server_info *ps_info, uint32_t timestam
 	if (ret != 0)
 		return -1;
 	commit_barrier = timestamp;
+	reach_barrier = 1;
+	while (reach_barrier == 1);
 	return ret;
 }
 
@@ -444,6 +448,8 @@ void traversedir_dmkv_del(struct pacon_server_info *ps_info, char *path)
 			continue;
 		int c_len = strlen(entry->d_name);
 		int p_len = strlen(path);
+		memcpy(dir_new, path, p_len);
+		dir_new[p_len] = '/';
 		memcpy(dir_new + p_len + 1, entry->d_name, c_len);
 		dir_new[p_len+1+c_len] = '\0';
 		dmkv_del(ps_info->kv_handle, dir_new);
@@ -491,7 +497,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			 * 2. del them in the dmkv
 			 * 3. call rmdir
 			 */
-			traversedir_dmkv_del(path);
+			traversedir_dmkv_del(ps_info, path);
 			ret = remove(path);
 			if (ret != 0)
 			{
@@ -524,6 +530,8 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 				return -1;
 			}
 			commit_barrier = timestamp;
+			reach_barrier = 1;
+			while (reach_barrier == 1);
 			break;
 
 		case '9':

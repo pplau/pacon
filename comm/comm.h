@@ -44,9 +44,9 @@ int setup_clients_comm(void);
 
 int setup_servers_comm(struct servers_comm *s_comm);
 
-int client_broadcast_sync(struct clients_comm *c_comm);
+int client_broadcast(struct clients_comm *c_comm, char *mesg);
 
-int server_broadcast_sync(struct servers_comm *s_comm);
+int server_broadcast(struct servers_comm *s_comm, char *mesg);
 
 
 

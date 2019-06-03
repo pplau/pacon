@@ -152,12 +152,31 @@ int setup_servers_comm(struct servers_comm *s_comm)
 	}
 }
 
-int client_broadcast_sync(struct clients_comm *c_comm)
+int client_broadcast(struct clients_comm *c_comm, char *mesg)
 {
 
 }
 
-int server_broadcast_sync(struct servers_comm *s_comm)
+int server_broadcast(struct servers_comm *s_comm, char *mesg)
 {
-
+	int ret;
+	int i;
+	for (i = 0; i < s_comm->servers_num; ++i)
+	{
+		if (s_comm->server_mq[i] != NULL)
+		{
+			char rep[2];
+			zmq_send(s_comm->server_mq[i], mesg, strlen(mesg), 0);
+			zmq_recv(s_comm->server_mq[i], rep, 1, 0);
+			if (rep[0] != '0')
+			{
+				printf("broadcast to server %s fail\n", s_comm->server_list[i]);
+				return -1;
+			}
+		}
+	}
+	return 0;
 }
+
+
+

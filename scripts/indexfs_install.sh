@@ -1,5 +1,6 @@
 # prepare evn and install indexfs
 
+yum install -y cmake
 yum install -y gcc g++ make flex bison
 yum install -y autoconf automake libtool
 yum install -y pkgconfig
@@ -32,3 +33,27 @@ export LANG=en_US.UTF-8
 export LC_ALL=en_US
 ./bootstrap.sh
 
+touch /tmp/giga_conf
+touch /tmp/idxfs_conf
+
+########## How to run IndexFS: ###########
+#
+#	1. add servers info in giga_conf (also in /etc/indexfs-distributed/server_list) :
+#		10.182.171.2:10086
+#		10.182.171.3:10086
+#
+#	2. add file path in idxfs_conf (also in /etc/indexfs-distributed/indexfs_conf) :
+#		leveldb_dir=/mnt/beegfs/indexfs/leveldb
+#		split_dir=/mnt/beegfs/indexfs/split
+#		file_dir=/mnt/beegfs/indexfs/files
+#
+#	3. /PATH/TO/INDEXFS/sbin/start-all.sh
+#
+#	4. /PATH/TO/INDEXFS/build/md_test/
+#		e.g. mpirun -machinefile ./host  -np 24 ./mdtest_nobk  -n 4166  -z 1 -L -R -D -C -T -d 
+#
+#	5. /PATH/TO/INDEXFS/sbin/stop-all.sh
+#
+#	6. rm /mnt/beegfs/indexfs/* -rf  && rm /tmp/indexfs/* -rf
+#
+############################################

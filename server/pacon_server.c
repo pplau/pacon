@@ -9,6 +9,7 @@
 #include "pacon_server.h"
 
 #define PATH_MAX 512
+#define TIMESTAMP_SIZE 11
 
 // opt type
 #define MKDIR ":1"
@@ -18,6 +19,8 @@
 #define LINK ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
+#define BARRIER ":8"
+#define DEL_BARRIER ":9"
 
 static uint32_t commit_barrier = 0;  // 0 is not barrier, != 0 is timestamp
 
@@ -397,9 +400,18 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 }
 
 // add the barrier in other node in the cluster, and set the commit_barrier in the local
-int broadcast_barrier_begin(struct pacon_server_info *ps_info)
+int broadcast_barrier_begin(struct pacon_server_info *ps_info, uint32_t timestamp)
 {
 	int ret;
+	// generate barrier mesg and broadcast it
+	char c_mesg[TIMESTAMP_SIZE+3];
+	char ts[TIMESTAMP_SIZE];
+	sprintf(ts, "%d", timestamp);
+	sprintf(c_mesg, "%s%s", BARRIER, ts);
+	ret = server_broadcast(ps_info->s_comm, c_mesg);
+	if (ret != 0)
+		return -1;
+	commit_barrier = timestamp;
 	return ret;
 }
 
@@ -407,7 +419,36 @@ int broadcast_barrier_begin(struct pacon_server_info *ps_info)
 int broadcast_barrier_end(struct pacon_server_info *ps_info)
 {
 	int ret;
+	// generate barrier mesg and broadcast it
+	char c_mesg[3];
+	strcpy(c_mesg, DEL_BARRIER);
+	ret = server_broadcast(ps_info->s_comm, c_mesg);
+	if (ret != 0)
+		return -1;
+	commit_barrier = 0;
 	return ret;
+}
+
+void traversedir_dmkv_del(char *path)
+{
+	int ret;
+	char dir_new[PATH_MAX];
+	DIR *pd;
+	pd = opendir(path);
+	while ((entry = readdir(pd)) != NULL)
+	{
+		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+			continue;
+		int c_len = strlen(entry->d_name);
+		memcpy(dir_new + p_len + 1, entry->d_name, c_len);
+		dir_new[p_len+1+c_len] = '\0';
+		dmkv_del(dir_new);
+
+		if (entry->d_type == DT_DIR)
+		{
+			traversedir_dmkv_del(dir_new);
+		}
+	}
 }
 
 int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
@@ -428,17 +469,15 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	}
 	path[i] = '\0';
 
-	if (commit_barrier != 0)
+	// get timestamp
+	uint32_t timestamp;
+	timestamp = atoi(mesg+i+2);
+	ret = broadcast_barrier_begin(ps_info, timestamp);
+	if (ret != 0)
 	{
-		// get timestamp
-		uint32_t timestamp;
-		timestamp = atoi(mesg+i+2);
-		if (timestamp > commit_barrier)
-		{
-			while (commit_barrier != 0);
-		}
+		printf("broadcast barrier error\n");
+		return -1;
 	}
-
 	switch (mesg[mesg_len-1])
 	{
 		case '4':
@@ -448,6 +487,13 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			 * 2. del them in the dmkv
 			 * 3. call rmdir
 			 */
+			traversedir_dmkv_del(path);
+			ret = remove(path);
+			if (ret != 0)
+			{
+				printf("remove dir error, %s\n", path);
+				return -1;
+			}
 			break;
 
 		default:
@@ -457,6 +503,35 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	ret = broadcast_barrier_end(ps_info);
 
 	return ret;
+}
+
+int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
+{
+	int ret;
+	switch (mesg[1])
+	{
+		case '8':
+			//printf("set timestamp\n");
+			uint32_t timestamp;
+			timestamp = atoi(mesg+2);
+			if (timestamp == 0)
+			{
+				printf("timestamp = 0, error\n");
+				return -1;
+			}
+			commit_barrier = timestamp;
+			break
+
+		case '9':
+			//printf("del timestamp\n");
+			commit_barrier = 0;
+			break	
+
+		default:
+			printf("handle cluster mesg error\n");
+			return -1;
+	}
+	return 0;
 }
 
 void *listen_commit_mq(struct pacon_server_info *ps_info_t)
@@ -526,6 +601,16 @@ void *listen_cluster_rpc(struct pacon_server_info *ps_info_t)
 			continue;
 		}
 		mesg[ms_size] = '\0';
+		ret = handle_cluster_mesg(ps_info, mesg);
+		char rep[1];
+		if (ret == 0)
+		{
+			rep[0] = '0';			
+		} else {
+			printf("some errors in cluster rpc\n");
+			rep[0] = '1';
+		}
+		zmq_send(ps_info->cluster_rpc_rep, rep, 1, 0);
 	}
 }
 

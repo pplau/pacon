@@ -31,6 +31,7 @@
 #define DEFAULT_DIRMORE S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH
 
 #define SECTOR_SIZE 512
+#define TIMESTAMP_SIZE 11
 
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
@@ -564,10 +565,10 @@ int add_to_mq(struct pacon *pacon, char *path, char *opt_type, uint32_t timestam
 		printf("mq: path is too long\n");
 		return -1;
 	}
-	char mesg[PATH_MAX+11];
+	char mesg[PATH_MAX+TIMESTAMP_SIZE];
 	//sprintf(mesg, "%s%s", path, opt_type);
 	// add timestamp
-	char ts[11];
+	char ts[TIMESTAMP_SIZE];
 	sprintf(ts, "%d", timestamp);
 	sprintf(mesg, "%s%s%s", path, opt_type, ts);
 	//mesg[path_len+2] = '\0';

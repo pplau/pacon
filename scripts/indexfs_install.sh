@@ -37,6 +37,9 @@ export LC_ALL=en_US
 touch /tmp/giga_conf
 touch /tmp/idxfs_conf
 
+echo '/usr/local/lib' >> /etc/ld.so.conf
+ldconfig
+
 ########## How to run IndexFS: ###########
 #
 #	1. add servers info in giga_conf (also in /etc/indexfs-distributed/server_list) :
@@ -50,11 +53,13 @@ touch /tmp/idxfs_conf
 #
 #	3. /PATH/TO/INDEXFS/sbin/start-all.sh
 #
-#	4. /PATH/TO/INDEXFS/build/md_test/
+#	4. add /usr/local/lib to /etc/ld.so.conf  and then ldconfig
+#
+#	5. /PATH/TO/INDEXFS/build/md_test/
 #		e.g. mpirun -machinefile ./host  -np 24 ./mdtest_nobk  -n 4166  -z 1 -L -R -D -C -T -d 
 #
-#	5. /PATH/TO/INDEXFS/sbin/stop-all.sh
+#	6. /PATH/TO/INDEXFS/sbin/stop-all.sh
 #
-#	6. rm /mnt/beegfs/indexfs/* -rf  && rm /tmp/indexfs/* -rf
+#	7. rm /mnt/beegfs/indexfs/* -rf  && rm /tmp/indexfs/* -rf
 #
 ############################################

@@ -1,5 +1,6 @@
 # prepare evn and install indexfs
-
+cd ..
+cd ..
 yum install -y cmake
 yum install -y gcc g++ make flex bison
 yum install -y autoconf automake libtool

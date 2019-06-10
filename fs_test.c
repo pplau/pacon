@@ -306,7 +306,7 @@ int main(int argc, char const *argv[])
 		}
 
 		printf("\n");
-		printf("/********** rm test **********/\n");
+		printf("/********** rmdir test **********/\n");
 		ret = test_rmdir(pacon, "/mnt/beegfs/test");
 		if (ret != 0)
 		{

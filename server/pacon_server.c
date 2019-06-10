@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <fcntl.h>
+#include <unistd.h>
 #include <zmq.h>
 #include "pacon_server.h"
 
@@ -292,12 +293,8 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		timestamp = atoi(mesg+i+2);
 		if (timestamp > commit_barrier)
 		{
-			while (commit_barrier != 0)
-			{
-				if (time(NULL) - commit_barrier >= 1)
-					break;
-			}
 			reach_barrier = 0;
+			while (commit_barrier != 0)
 		}
 	}
 	
@@ -462,6 +459,7 @@ void traversedir_dmkv_del(struct pacon_server_info *ps_info, char *path)
 			traversedir_dmkv_del(ps_info, dir_new);
 		}
 	}
+	closedir(pd);
 }
 
 int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
@@ -491,7 +489,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 		printf("broadcast barrier error\n");
 		return -1;
 	}
-	switch (mesg[mesg_len-1])
+	switch (mesg[i+1])
 	{
 		case '4':
 			//printf("commit to fs, typs: RMDIR\n");

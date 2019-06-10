@@ -1086,13 +1086,37 @@ int pacon_rm(struct pacon *pacon, const char *path)
 int pacon_rmdir(struct pacon *pacon, const char *path)
 {
 	int ret;
+	uint64_t cas, cas_temp;
+	struct pacon_stat p_st;
+	char *val;
+	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+	if (val == NULL)
+	{
+		printf("rmdir: dir is not existed %s\n", path);
+		return -1;
+	}
+	cas_temp = cas;
+	deseri_val(&p_st, val);
+	set_stat_flag(&p_st, STAT_rm, 1);
+	seri_val(&p_st, val);
+	ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
+	while (ret == 1)
+	{
+		val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+		cas_temp = cas;
+		deseri_val(&p_st, val);
+		set_stat_flag(&p_st, STAT_rm, 1);
+		seri_val(&p_st, val);
+		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
+	}
+
 	ret = add_to_local_rpc(pacon, path, RMDIR, time(NULL));
 	if (ret == -1)
 	{
 		printf("rmdir error: %s\n", path);
 		return -1;
 	}
-	ret = dmkv_del(pacon->kv_handle, path);
+	//ret = dmkv_del(pacon->kv_handle, path);
 	return ret;
 }
 

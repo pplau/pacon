@@ -23,6 +23,14 @@ cd ./memcached-1.5.14
 make && make install
 cd ..
 
+#install libmemcached
+wget https://launchpad.net/libmemcached/1.0/1.0.18/+download/libmemcached-1.0.18.tar.gz
+tar -xvf libmemcached-1.0.18.tar.gz
+cd ./libmemcached-1.0.18
+./configure
+make && make install
+export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+
 # isntall zeromq
 yum install -y uuid*
 yum install -y libuuid-devel

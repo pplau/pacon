@@ -2,8 +2,8 @@
 # start pacon
 #
 
-CONFIG = '/root/yubo/mdtest_pacon/config'
-SSH = 'ssh '
+CONFIG='/root/yubo/mdtest_pacon/config'
+SSH='ssh '
 
 for node in $(cat $CONFIG)
 do

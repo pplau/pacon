@@ -297,7 +297,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		if (timestamp > commit_barrier)
 		{
 			remote_reach_barrier = 1;
-			while (commit_barrier != 0)
+			while (commit_barrier != 0);
 		}
 	}
 	
@@ -466,9 +466,22 @@ void traversedir_dmkv_del(struct pacon_server_info *ps_info, char *path)
 		if (entry->d_type == DT_DIR)
 		{
 			traversedir_dmkv_del(ps_info, dir_new);
+		} else {
+			ret = remove(dir_new);
+			if (ret != 0)
+			{
+				printf("traverse remove file error, %s\n", dir_new);
+				return -1;
+			}
 		}
 	}
 	closedir(pd);
+	ret = rmdir(path);
+	if (ret != 0)
+	{
+		printf("traverse remove dir error, %s\n", path);
+		return -1;
+	}
 }
 
 int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
@@ -509,7 +522,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			 */
 			while (reach_barrier != 2);
 			traversedir_dmkv_del(ps_info, path);
-			ret = remove(path);
+			ret = rmdir(path);
 			if (ret != 0)
 			{
 				printf("remove dir error, %s\n", path);

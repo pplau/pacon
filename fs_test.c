@@ -298,13 +298,6 @@ int main(int argc, char const *argv[])
 		else
 			printf("rm test error\n");
 
-		ret = test_free(pacon);
-		if (ret != 0)
-		{
-			printf("free pacon error\n");
-			return -1;
-		}
-
 		printf("\n");
 		printf("/********** rmdir test **********/\n");
 		ret = test_rmdir(pacon, "/mnt/beegfs/test");
@@ -318,6 +311,16 @@ int main(int argc, char const *argv[])
 			printf("rmdir test succee\n");
 		else
 			printf("rmdir test error\n");
+
+		printf("\n");
+		printf("/********** free pacon **********/\n");
+		ret = test_free(pacon);
+		if (ret != 0)
+		{
+			printf("free pacon error\n");
+			return -1;
+		}
+		printf("free pacon success\n");
 	}
 
 	if (TEST_TYPE == 1)

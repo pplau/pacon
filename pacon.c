@@ -1086,6 +1086,7 @@ int pacon_rm(struct pacon *pacon, const char *path)
 int pacon_rmdir(struct pacon *pacon, const char *path)
 {
 	int ret;
+	/* old version
 	uint64_t cas, cas_temp;
 	struct pacon_stat p_st;
 	char *val;
@@ -1109,6 +1110,7 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 		seri_val(&p_st, val);
 		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
 	}
+	*/
 
 	add_to_mq(pacon, path, RMDIR, time(NULL));
 	ret = add_to_local_rpc(pacon, path, RMDIR, time(NULL));
@@ -1117,7 +1119,15 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 		printf("rmdir error: %s\n", path);
 		return -1;
 	}
-	//ret = dmkv_del(pacon->kv_handle, path);
+
+	/* new version */
+	ret = dmkv_del(pacon->kv_handle, path);
+	if (ret != 0)
+	{
+		printf("rmdir error: %s\n", path);
+		return -1;
+	}
+	
 	return ret;
 }
 

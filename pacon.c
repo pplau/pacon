@@ -1112,6 +1112,15 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 	}
 	*/
 
+	char *val;
+	val = dmkv_get(pacon->kv_handle, path);
+	// if not in pacon, try to get from DFS
+	if (val == NULL)
+	{
+		printf("rmdir: dir is not existed %s\n", path);
+		return -1;
+	}
+	
 	add_to_mq(pacon, path, RMDIR, time(NULL));
 	ret = add_to_local_rpc(pacon, path, RMDIR, time(NULL));
 	if (ret == -1)

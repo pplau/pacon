@@ -136,11 +136,11 @@ int setup_servers_comm(struct servers_comm *s_comm)
 		char *port = ":12580";
 		strcpy(bind_addr, head);
 		strcpy(bind_addr+strlen(head), s_comm->server_list[i]);
-		strcpy(bind_addr+strlen(head)+strlen(ip), port);
+		strcpy(bind_addr+strlen(head)+strlen(s_comm->server_list[i]), port);
 		void *context_cluster_rpc = zmq_ctx_new();
 		int q_len = 0;
 		rc = zmq_setsockopt(context_cluster_rpc, ZMQ_RCVHWM, &q_len, sizeof(q_len));
-		void *cluster_rpc_req = zmq_socket(context_cluster_rpc, ZMQ_REP);
+		void *cluster_rpc_req = zmq_socket(context_cluster_rpc, ZMQ_REQ);
 		rc = zmq_connect(cluster_rpc_req, bind_addr);
 		if (rc != 0)
 		{
@@ -149,6 +149,7 @@ int setup_servers_comm(struct servers_comm *s_comm)
 		}
 		s_comm->server_mq[i] = cluster_rpc_req;
 		s_comm->server_contx[i] = context_cluster_rpc;
+		printf("bind cluster rpc: %s\n", s_comm->server_list[i]);
 	}
 }
 

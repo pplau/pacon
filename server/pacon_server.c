@@ -205,8 +205,8 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	strcpy(bind_addr+strlen(head)+strlen(local_ip), port);
 
 	void *context_cluster_rpc = zmq_ctx_new();
-	rc = zmq_setsockopt(context_cluster_rpc, ZMQ_RCVHWM, &q_len, sizeof(q_len));
 	void *cluster_rpc_rep = zmq_socket(context_cluster_rpc, ZMQ_REP);
+	rc = zmq_setsockopt(context_cluster_rpc, ZMQ_RCVHWM, &q_len, sizeof(q_len));
 	rc = zmq_bind(cluster_rpc_rep, bind_addr);
 	if (rc != 0)
 	{
@@ -522,12 +522,12 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			 */
 			while (reach_barrier != 2);
 			traversedir_dmkv_del(ps_info, path);
-			ret = rmdir(path);
+			/*ret = rmdir(path);
 			if (ret != 0)
 			{
 				printf("remove dir error, %s\n", path);
 				return -1;
-			}
+			}*/
 			break;
 
 		default:
@@ -554,7 +554,7 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 				return -1;
 			}
 			commit_barrier = timestamp;
-			while (remote_reach_barrier == 0);
+			while (remote_reach_barrier == 0)
 			{
 				if (time(NULL) - commit_barrier >= 1)
 					remote_reach_barrier = 1;

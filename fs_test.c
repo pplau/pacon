@@ -239,6 +239,13 @@ int main(int argc, char const *argv[])
 			return -1;
 		}
 		printf("create file test succee, path: /mnt/beegfs/file\n");
+		ret = test_create(pacon, "/mnt/beegfs/test/f1", S_IFREG | 0644);
+		if (ret != 0)
+		{
+			printf("create error\n");
+			return -1;
+		}
+		printf("create file test succee, path: /mnt/beegfs/test/f1\n");
 
 		printf("\n");
 		printf("/********** open/rw test **********/\n");

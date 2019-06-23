@@ -1,6 +1,5 @@
 # Pacon
 
-***
 # Install:  
 `cd /pacon ` 
 `bash ./scripts/pacon_install.sh`    
@@ -15,7 +14,7 @@
 `pacon   // run test`  
 
 # Stop Pacon  
-`bash ./stop_pacon.sh`
+`bash ./scripts/stop_pacon.sh`
 
 ***
 # Pacon Interfaces

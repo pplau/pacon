@@ -1110,6 +1110,7 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
 	}
 
+	add_to_mq(pacon, path, RMDIR, time(NULL));
 	ret = add_to_local_rpc(pacon, path, RMDIR, time(NULL));
 	if (ret == -1)
 	{

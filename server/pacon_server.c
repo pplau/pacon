@@ -27,6 +27,8 @@
 
 static uint32_t commit_barrier = 0;  // 0 is not barrier, != 0 is timestamp
 static int reach_barrier = 0;
+static int remote_reach_barrier = 0;
+
 
 enum statflags
 {
@@ -286,6 +288,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	}
 	path[i] = '\0';
 
+	// only the remote barrier will go into this logic
 	if (commit_barrier != 0)
 	{
 		// get timestamp
@@ -293,7 +296,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		timestamp = atoi(mesg+i+2);
 		if (timestamp > commit_barrier)
 		{
-			reach_barrier = 0;
+			remote_reach_barrier = 1;
 			while (commit_barrier != 0)
 		}
 	}
@@ -383,6 +386,8 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '4':
 			//printf("commit to fs, typs: RMDIR\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0)
 			break;
 
 		case '5':
@@ -416,8 +421,11 @@ int broadcast_barrier_begin(struct pacon_server_info *ps_info, uint32_t timestam
 	ret = server_broadcast(ps_info->s_comm, c_mesg);
 	if (ret != 0)
 		return -1;
-	commit_barrier = timestamp;
-	reach_barrier = 1;
+	//commit_barrier = timestamp;
+	if (reach_barrier != 2)
+	{
+		reach_barrier = 1;
+	}
 	return ret;
 }
 
@@ -432,6 +440,7 @@ int broadcast_barrier_end(struct pacon_server_info *ps_info)
 	if (ret != 0)
 		return -1;
 	commit_barrier = 0;
+	reach_barrier = 0;
 	return ret;
 }
 
@@ -498,7 +507,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			 * 2. del them in the dmkv
 			 * 3. call rmdir
 			 */
-			while (reach_barrier == 1);
+			while (reach_barrier != 2);
 			traversedir_dmkv_del(ps_info, path);
 			ret = remove(path);
 			if (ret != 0)
@@ -532,13 +541,17 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 				return -1;
 			}
 			commit_barrier = timestamp;
-			reach_barrier = 1;
-			while (reach_barrier == 1);
+			while (remote_reach_barrier == 0);
+			{
+				if (time(NULL) - commit_barrier >= 1)
+					remote_reach_barrier = 1;
+			}
 			break;
 
 		case '9':
 			//printf("del timestamp\n");
 			commit_barrier = 0;
+			remote_reach_barrier = 0;
 			break;	
 
 		default:

@@ -149,7 +149,7 @@ int setup_servers_comm(struct servers_comm *s_comm)
 		}
 		s_comm->server_mq[i] = cluster_rpc_req;
 		s_comm->server_contx[i] = context_cluster_rpc;
-		printf("bind cluster rpc: %s\n", s_comm->server_list[i]);
+		printf("bind cluster rpc: %s\n", bind_addr);
 	}
 }
 

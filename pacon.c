@@ -366,7 +366,7 @@ int init_pacon(struct pacon *pacon)
     void *local_rpc_req = zmq_socket(context_local_rpc, ZMQ_REQ);
     //int q_len = 0;
     //int rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, &q, sizeof(q_len));
-    rc = zmq_connect(local_rpc_req, "ipc:///run/pacon_local_rpc");
+    rc = zmq_connect(local_rpc_req, "tcp://127.0.0.1:5555");
     if (rc != 0)
     {
     	printf("init local rpc error\n");
@@ -427,6 +427,8 @@ int free_pacon(struct pacon *pacon)
 	dmkv_free(pacon->kv_handle);
 	zmq_close(pacon->publisher);
 	zmq_ctx_destroy(pacon->context);
+	zmq_close(pacon->local_rpc_req);
+	zmq_ctx_destroy(pacon->context_local_rpc);
 	return 0;
 } 
 
@@ -592,6 +594,7 @@ int add_to_local_rpc(struct pacon *pacon, char *path, char *opt_type, uint32_t t
 	char rep[2];
 	zmq_send(pacon->local_rpc_req, mesg, strlen(mesg), 0);
 	zmq_recv(pacon->local_rpc_req, rep, 1, 0);
+
 	// return 0 means success, 1 means error
 	if (rep[0] == '0')
 		return 0;
@@ -1120,7 +1123,7 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 		printf("rmdir: dir is not existed %s\n", path);
 		return -1;
 	}
-	
+
 	add_to_mq(pacon, path, RMDIR, time(NULL));
 	ret = add_to_local_rpc(pacon, path, RMDIR, time(NULL));
 	if (ret == -1)

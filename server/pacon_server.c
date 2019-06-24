@@ -26,8 +26,11 @@
 #define DEL_BARRIER ":9"
 
 static uint32_t commit_barrier = 0;  // 0 is not barrier, != 0 is timestamp
-static int reach_barrier = 0;
+static int reach_barrier = 0;        // 0 is not barrier
+									 // 1 is local rpc receives a barrier but commit mq doesn't reach barrier
+									 // 2 is commit mq already reached to the barrier
 static int remote_reach_barrier = 0;
+static int mesg_count = 0; 
 
 
 enum statflags
@@ -183,7 +186,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	void *context_local_rpc = zmq_ctx_new();
 	void *local_rpc_rep = zmq_socket(context_local_rpc, ZMQ_REP);
 	rc = zmq_setsockopt(local_rpc_rep, ZMQ_RCVHWM, &q_len, sizeof(q_len));
-	rc = zmq_bind(local_rpc_rep, "ipc:///run/pacon_local_rpc");
+	rc = zmq_bind(local_rpc_rep, "tcp://127.0.0.1:5555");
 	if (rc != 0)
 	{
 		printf("init local rpc error\n");
@@ -299,6 +302,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			remote_reach_barrier = 1;
 			while (commit_barrier != 0);
 		}
+		mesg_count++;
 	}
 	
 	//switch (mesg[mesg_len-1])
@@ -441,6 +445,7 @@ int broadcast_barrier_end(struct pacon_server_info *ps_info)
 		return -1;
 	commit_barrier = 0;
 	reach_barrier = 0;
+	mesg_count = 0;
 	return ret;
 }
 
@@ -556,8 +561,16 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 			commit_barrier = timestamp;
 			while (remote_reach_barrier == 0)
 			{
-				if (time(NULL) - commit_barrier >= 1)
-					remote_reach_barrier = 1;
+				if (time(NULL) - timestamp >= 1)
+				{
+					if (mesg_count == 0)
+					{
+						remote_reach_barrier = 1;
+					} else {
+						timestamp = time(NULL);
+						mesg_count = 0;
+					}
+				}
 			}
 			break;
 
@@ -565,6 +578,7 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 			//printf("del timestamp\n");
 			commit_barrier = 0;
 			remote_reach_barrier = 0;
+			mesg_count = 0;
 			break;	
 
 		default:

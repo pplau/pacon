@@ -18,7 +18,7 @@
 #define SERI_TYPE 0 // 0 is memcpy, 1 is json
 #define BUFFER_SIZE 64
 
-// opt type
+// opt type for commit
 #define MKDIR ":1"
 #define CREATE ":2"
 #define RM ":3"
@@ -26,6 +26,23 @@
 #define LINK ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
+#define READ ":8"
+#define WRITE ":9"
+
+// opt type for permission check
+#define READDIR_PC 0
+#define MKDIR_PC 1
+#define CREATE_PC 2
+#define RM_PC 3
+#define RMDIR_PC 4
+#define LINK_PC 5
+#define OWRITE_PC 6  // data size is larger than the INLINE_MAX, write it back to DFS
+#define FSYNC_PC 7
+#define READ_PC 8
+#define WRITE_PC 9
+#define RW_PC 10
+#define CREATEW_PC 11
+
 
 #define DEFAULT_FILEMODE S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH
 #define DEFAULT_DIRMORE S_IRUSR|S_IWUSR|S_IXUSR|S_IRGRP|S_IWGRP|S_IXGRP|S_IROTH|S_IXOTH
@@ -419,6 +436,8 @@ int init_pacon(struct pacon *pacon)
     }
     pacon->fsync_log_fd = fd;
 
+    pacon->perm_info = NULL;
+
 	return 0;
 }
 
@@ -632,6 +651,139 @@ void free_pacon_file(struct pacon_file *p_file)
 	//p_file = NULL;
 }
 
+/* type = 0 is dir, = 1 is file */
+int mask_compare(mode_t perm_mode, int type, int opt)
+{
+	char mode[5];
+	sprintf(mode, "%d", perm_mode);
+	switch (mode[1])
+	{
+		case '7':
+			return 0;
+
+		case '6':
+			if (opt != READDIR_PC ||
+				opt != READ_PC ||
+				opt != WRITE_PC ||
+				opt != RW_PC)
+				return -1;
+			return 0;
+
+		case '5':
+			if (opt != READDIR_PC || 
+				opt != READ_PC)
+				return -1;
+			return 0;
+
+		case '4':
+			if (opt != READ_PC)
+				return -1;
+			return 0;
+
+		case '3':
+			if (opt != MKDIR_PC ||
+				opt != CREATE_PC ||
+				opt != RM_PC ||
+				opt != RMDIR_PC ||
+				opt != WRITE_PC ||
+				opt != CREATEW_PC)
+				return -1;
+			return 0;
+
+		case '2':
+			if (opt != WRITE_PC)
+				return -1;
+			return 0;
+
+		case '1':
+			return -1;
+
+		case '0':
+			return -1;
+	}
+}
+
+/* 
+ * type = 0 is dir, = 1 is file
+ * return 0 is legal, -1 is illegal 
+ */
+int check_permission(struct pacon *pacon, char *path, int type, int opt)
+{
+	int ret;
+	int i;
+
+	// if opt is create/remove file, check its parent first
+	if (type == 1)
+	{
+		if (opt == CREATE_PC || opt == CREATEW_PC || opt == RM_PC)
+		{
+			char p_path[PATH_MAX];
+			int len = strlen(path);
+			for (i = len-1; i >= 0; --i)
+			{
+				if (path[i] == '/')
+					break;
+			}
+			strncpy(p_path, path, i);
+			p_path[i] = '\0';
+			ret = check_permission(pacon, p_path, 0, opt);
+			if (ret != 0)
+				return -1;
+		}
+	}
+
+	if (type == 0)
+	{
+		// check normal permission
+		ret = mask_compare(pacon->perm_info->nom_dir_mode, type, opt);
+		if (ret == -1)
+		{
+			printf("pacon dir check: permission denied %s\n", path);
+			return -1;
+		}
+
+		// check special permission
+		for (i = 0; i < pacon->perm_info->sp_num; ++i)
+		{
+			ret = child_cmp(path, pacon->perm_info->sp_path[i], 1);
+			if (ret == 1)
+			{
+				ret = mask_compare(pacon->perm_info->sp_dir_modes[i], type, opt);
+				if (ret == -1)
+				{
+					printf("pacon dir check: permission denied %s\n", path);
+					return -1;
+				}
+			}
+		}
+		return 0;
+	} else {
+		// check normal permission
+		ret = mask_compare(pacon->perm_info->nom_f_mode, type, opt);
+		if (ret == -1)
+		{
+			printf("pacon file check: permission denied %s\n", path);
+			return -1;
+		}
+
+		// check special permission
+		for (i = 0; i < pacon->perm_info->sp_num; ++i)
+		{
+			ret = child_cmp(path, pacon->perm_info->sp_path[i], 1);
+			if (ret == 1)
+			{
+				ret = mask_compare(pacon->perm_info->sp_f_modes[i], type, opt);
+				if (ret == -1)
+				{
+					printf("pacon file check: permission denied %s\n", path);
+					return -1;
+				}
+			}
+		}
+		return 0;
+	}
+}
+
 /**************** file interfaces ***************/
 
 /* 
@@ -642,6 +794,12 @@ void free_pacon_file(struct pacon_file *p_file)
 int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, struct pacon_file *p_file)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, RW_PC);
+		if (ret != 0)
+			return -1;
+	}
 	/*ret = child_cmp(path, mount_path, 1);
 	if (ret != 1)
 	{
@@ -772,6 +930,13 @@ int pacon_close(struct pacon *pacon, struct pacon_file *p_file)
 int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, CREATE_PC);
+		if (ret != 0)
+			return -1;
+	}
+
 	uint32_t timestamp = time(NULL);
 	if (PARENT_CHECK == 1)
 	{
@@ -853,6 +1018,13 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const char *buf, size_t size, struct pacon_file *p_file)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, CREATE_PC);
+		if (ret != 0)
+			return -1;
+	}
+
 	if (PARENT_CHECK == 1)
 	{
 		ret = check_parent_dir(pacon, path);
@@ -917,6 +1089,13 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 0, MKDIR_PC);
+		if (ret != 0)
+			return -1;
+	}
+
 	if (PARENT_CHECK == 1)
 	{
 		ret = check_parent_dir(pacon, path);
@@ -970,6 +1149,14 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 
 int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 {
+	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, READ_PC);
+		if (ret != 0)
+			return -1;
+	}
+
 	char *val;
 	val = dmkv_get(pacon->kv_handle, path);
 	// if not in pacon, try to get from DFS
@@ -1054,6 +1241,13 @@ out:
 int pacon_rm(struct pacon *pacon, const char *path)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, RM_PC);
+		if (ret != 0)
+			return -1;
+	}
+
 	uint64_t cas, cas_temp;
 	//ret = dmkv_del(pacon->kv_handle, path);
 	struct pacon_stat p_st;
@@ -1089,6 +1283,13 @@ int pacon_rm(struct pacon *pacon, const char *path)
 int pacon_rmdir(struct pacon *pacon, const char *path)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 0, RMDIR_PC);
+		if (ret != 0)
+			return -1;
+	}
+
 	/* old version
 	uint64_t cas, cas_temp;
 	struct pacon_stat p_st;
@@ -1147,6 +1348,12 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, READ_PC);
+		if (ret != 0)
+			return -1;
+	}
 	/*if (p_file->size == 0)
 	{
 		buf = NULL;
@@ -1226,6 +1433,13 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, WRITE_PC);
+		if (ret != 0)
+			return -1;
+	}
+
 	int data_size = strlen(buf);
 	if (data_size > size)
 	{
@@ -1360,6 +1574,13 @@ retry:
 int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 {
 	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, WRITE_PC);
+		if (ret != 0)
+			return -1;
+	}
+
 	// large file, call DFS fsync
 	if (p_file->fd != -1)
 	{
@@ -1407,6 +1628,12 @@ int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 			return -1;
 		}
 	}
+	return 0;
+}
+
+int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info)
+{
+	pacon->perm_info = perm_info;
 	return 0;
 }
 

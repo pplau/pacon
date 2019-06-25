@@ -18,10 +18,22 @@
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
 #define MOUNT_PATH_MAX 128
 #define PATH_MAX 128
+#define SP_LIST_MAX 8;
 
 #define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log/"
 
 
+
+
+struct permission_info
+{
+	mode_t nom_dir_mode;
+	mode_t nom_f_mode;
+	int sp_num;
+	char sp_path[SP_LIST_MAX][PATH_MAX];
+	mode_t sp_dir_modes[SP_LIST_MAX];
+	mode_t sp_f_modes[SP_LIST_MAX];
+};
 
 struct pacon
 {
@@ -39,6 +51,8 @@ struct pacon
 	void *context_local_rpc;
 	// fsync log file
 	int fsync_log_fd;
+	// batch permission info
+	struct permission_info *perm_info;
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11
@@ -138,6 +152,9 @@ int pacon_access(struct pacon *pacon, const char *path, int amode);
 int pacon_symlink(struct pacon *pacon, const char *oldpath, const char * newpath);
 
 int pacon_readlink(struct pacon *pacon, const char *path, char * buf, size_t size);
+
+int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info);
+
 
 
 /**************** consistency area interfaces ****************/

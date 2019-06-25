@@ -18,7 +18,7 @@
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
 #define MOUNT_PATH_MAX 128
 #define PATH_MAX 128
-#define SP_LIST_MAX 8;
+#define SP_LIST_MAX 8
 
 #define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log/"
 

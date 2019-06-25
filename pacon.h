@@ -53,6 +53,8 @@ struct pacon
 	int fsync_log_fd;
 	// batch permission info
 	struct permission_info *perm_info;
+	mode_t df_dir_mode;
+	mode_t df_f_mode;
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11

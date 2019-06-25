@@ -177,7 +177,7 @@ int dir_check_local(char *parent_dir)
 
 /************ some tool funcs ************/
 /* 
- * ret = 0 means recursive sub file/dir, 1 means not recursive sub file/dir,  
+ * ret = 1 means recursive sub file/dir, 0 means not recursive sub file/dir
  * recursive = 0 means not recursive, =1 means recursive search all sub dir 
  */
 int child_cmp(char *path, char *p_path, int recursive)
@@ -221,6 +221,32 @@ int child_cmp(char *path, char *p_path, int recursive)
 		return 1;
 	}		
 	return -1;
+}
+
+/* 
+ * ret = 1 means it is sub file/dir, 0 means it isnot sub file/dir, 2 mean they are the same path
+ */
+int child_cmp_new(char *path, char *p_path, int recursive)
+{
+	int len = strlen(path);
+	int p_len = strlen(p_path); 
+	if (len <= p_len)
+		return 0;    // not the child dentry
+
+	int i;
+	for (i = 0; i < p_len; ++i)
+	{
+		if (path[i] == p_path[i])
+			continue;
+		if (path[i] != p_path[i])
+			return 0;
+	}
+	if (path[i] != '/')
+		return 0;
+	if (p_len != len)
+		return 1;
+	if (p_len == len)
+		return 2;
 }
 
 
@@ -437,6 +463,8 @@ int init_pacon(struct pacon *pacon)
     pacon->fsync_log_fd = fd;
 
     pacon->perm_info = NULL;
+    pacon->df_dir_mode = 0755;
+    pacon->df_f_mode = 0644;
 
 	return 0;
 }
@@ -705,12 +733,13 @@ int mask_compare(mode_t perm_mode, int type, int opt)
 
 /* 
  * type = 0 is dir, = 1 is file
- * return 0 is legal, -1 is illegal 
+ * return 0 is legal for normal, 1 is legal for spcial -1 is illegal 
  */
 int check_permission(struct pacon *pacon, char *path, int type, int opt)
 {
 	int ret;
 	int i;
+	int nor_or_sp = 0; // 0 is nor, 1 is sp
 
 	// if opt is create/remove file, check its parent first
 	if (type == 1)
@@ -748,6 +777,7 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 			ret = child_cmp(path, pacon->perm_info->sp_path[i], 1);
 			if (ret == 1)
 			{
+				nor_or_sp = 1;
 				ret = mask_compare(pacon->perm_info->sp_dir_modes[i], type, opt);
 				if (ret == -1)
 				{
@@ -756,7 +786,10 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 				}
 			}
 		}
-		return 0;
+		if (nor_or_sp == 0)
+			return 0;
+		else
+			return 1;
 	} else {
 		// check normal permission
 		ret = mask_compare(pacon->perm_info->nom_f_mode, type, opt);
@@ -772,6 +805,7 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 			ret = child_cmp(path, pacon->perm_info->sp_path[i], 1);
 			if (ret == 1)
 			{
+				nor_or_sp = 1;
 				ret = mask_compare(pacon->perm_info->sp_f_modes[i], type, opt);
 				if (ret == -1)
 				{
@@ -780,7 +814,10 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 				}
 			}
 		}
-		return 0;
+		if (nor_or_sp == 0)
+			return 0;
+		else
+			return 1;
 	}
 }
 
@@ -930,11 +967,22 @@ int pacon_close(struct pacon *pacon, struct pacon_file *p_file)
 int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 {
 	int ret;
+	int f_mode;
+	f_mode = pacon->df_f_mode;
+
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, CREATE_PC);
 		if (ret != 0)
 			return -1;
+		int i;
+		for (i = 0; i < pacon->perm_info->sp_num; ++i)
+		{
+			if (child_cmp())
+			{
+				/* code */
+			}
+		}
 	}
 
 	uint32_t timestamp = time(NULL);

@@ -275,11 +275,18 @@ int set_root_path(struct pacon *pacon, char *r_path)
 int load_to_pacon(struct pacon *pacon, char *path)
 {
 	int ret;
+	ret = child_cmp_new(path, pacon->mount_path, 1);
+	if (ret == 0)
+	{
+		printf("path doesn't belong to the workspace\n");
+		return -1;
+	}
+	
 	struct stat buf;
 	ret = stat(path, &buf);
 	if (ret != 0)
 	{
-		printf("root dir not existed on DFS\n");
+		printf("load to pacon: target dir not existed on DFS\n");
 		return -1;
 	}
 	if (SERI_TYPE == 0)
@@ -1245,9 +1252,12 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 	// if not in pacon, try to get from DFS
 	if (val == NULL)
 	{
-		int ret;
+		ret = child_cmp_new(path, pacon->mount_path, 1);
 		struct stat buf;
-		ret = stat(path, &buf);
+		if (ret > 0)
+			ret = stat(path, &buf);
+		else
+			ret = -1;
 		if (ret != 0)
 		{
 			printf("getattr: path not existed: %s\n", path);

@@ -26,8 +26,7 @@
 #define LINK ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
-#define READ ":8"
-#define WRITE ":9"
+#define READDIR ":8"
 
 // opt type for permission check
 #define READDIR_PC 0
@@ -224,7 +223,7 @@ int child_cmp(char *path, char *p_path, int recursive)
 }
 
 /* 
- * ret = 1 means it is sub file/dir, 0 means it isnot sub file/dir, 2 mean they are the same path
+ * ret = 1 means it is sub file/dir, 0 means it is not sub file/dir, 2 mean they are the same path
  */
 int child_cmp_new(char *path, char *p_path, int recursive)
 {
@@ -461,10 +460,12 @@ int init_pacon(struct pacon *pacon)
 	    }
     }
     pacon->fsync_log_fd = fd;
-
+    // init permission info
     pacon->perm_info = NULL;
-    pacon->df_dir_mode = 0755;
-    pacon->df_f_mode = 0644;
+    pacon->df_dir_mode =  S_IFDIR | 0755;
+    pacon->df_f_mode = S_IFREG | 0644;
+    // init joint cr info
+    pacon->cr_num = 0;
 
 	return 0;
 }
@@ -855,6 +856,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 	}*/
 	p_file->open_flags = flags;
 	p_file->open_mode = mode;
+	p_file->hit_remote_cr = 0;
 	char *val;
 	uint64_t cas;
 
@@ -863,6 +865,34 @@ retry:
 	// not be cached
 	if (val == NULL)
 	{
+		// remote cregion begin 
+		ret = child_cmp_new(path, pacon->mount_path);
+		if (ret == 0)
+		{
+			if (pacon->cr_num == 0)
+				return -1;
+			int cr;
+			for (int cr = 0; cr < pacon->cr_num; ++cr)
+			{
+				ret = child_cmp_new(path, pacon->remote_cr_root[cr], 1);
+				if (ret > 0)
+				{
+					ret = pacon_open(pacon->remote_pacon_lsit[cr], path, flags, mode, p_file);
+					if (ret != 0)
+					{
+						printf("open: path not existed in remote cregions: %s\n", path);
+						return -1;
+					} else {
+						p_file->hit_remote_cr = 1;
+						return 0;
+					}
+				}
+			}
+			printf("open: path not existed in remote cregions: %s\n", path);
+			return -1;	
+		}
+		// remote cregion end 
+
 		struct stat buf;
 		int st_ret = stat(path, &buf);
 		int fd = open(path, flags, mode);
@@ -1057,6 +1087,8 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
  * This func is used to fast write after create
  * It combine create, open, write and close together 
  * offset is 0 becase the file should be an empty file
+ *
+ * ONLY THIS FILE DATA FUNC DOES NOT NEED TO OPEN FILE !!
  */
 int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const char *buf, size_t size, struct pacon_file *p_file)
 {
@@ -1219,6 +1251,31 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 		if (ret != 0)
 		{
 			printf("getattr: path not existed: %s\n", path);
+
+			// remote cregion begin
+			if (pacon->cr_num > 0)
+			{
+				int cr;
+				for (int cr = 0; cr < pacon->cr_num; ++cr)
+				{
+					ret = child_cmp_new(path, pacon->remote_cr_root[cr], 1);
+					if (ret > 0)
+					{
+						ret = pacon_getattr(pacon->remote_pacon_lsit[cr], path, st);
+						if (ret != 0)
+						{
+							printf("getattr: path not existed in remote cregions: %s\n", path);
+							return -1;
+						} else {
+							return 0;
+						}
+					}
+				}
+				printf("getattr: path not existed in remote cregions: %s\n", path);
+				return -1;		
+			}
+			// remote cregion end
+
 			return -1;
 		}
 		st->flags = 0;
@@ -1306,8 +1363,13 @@ int pacon_rm(struct pacon *pacon, const char *path)
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	if (val == NULL)
 	{
-		printf("rm: file is not existed %s\n", path);
-		return -1;
+		ret = load_to_pacon(pacon, path);
+		if (ret == -1)
+		{
+			printf("rm: file is not existed %s\n", path);
+			return -1;
+		}
+		val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	}
 	cas_temp = cas;
 	deseri_val(&p_st, val);
@@ -1372,8 +1434,13 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 	// if not in pacon, try to get from DFS
 	if (val == NULL)
 	{
-		printf("rmdir: dir is not existed %s\n", path);
-		return -1;
+		ret = load_to_pacon(pacon, path);
+		if (ret == -1)
+		{
+			printf("rmdir: dir is not existed %s\n", path);
+			return -1;
+		}
+		val = dmkv_get(pacon->kv_handle, path, &cas);
 	}
 
 	add_to_mq(pacon, path, RMDIR, time(NULL));
@@ -1410,6 +1477,19 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 		buf = NULL;
 		return 0;
 	}*/
+
+	// remote cregion begin
+	if (p_file->hit_remote_cr > 0)
+	{
+		ret = pacon_read(pacon->remote_pacon_lsit[p_file->hit_remote_cr], path, p_file, buf, size, offset);
+		if (ret == -1)
+		{
+			printf("read from remote cregion error\n");
+			return -1;
+		}
+		return ret;
+	}
+	// remote cregion end
 
 	// DFS case
 	if (p_file->fd != -1)
@@ -1688,16 +1768,45 @@ int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info)
 	return 0;
 }
 
+int pacon_readdir(struct pacon *pacon, const char *path, void *buf, off_t offset)
+{
+	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 0, READDIR_PC);
+		if (ret < 0)
+			return -1;
+	}
+
+	char *val;
+	val = dmkv_get(pacon->kv_handle, path);
+	// if not in pacon, try to get from DFS
+	if (val == NULL)
+	{
+		ret = load_to_pacon(pacon, path);
+		if (ret == -1)
+		{
+			printf("readdir: dir is not existed %s\n", path);
+			return -1;
+		}
+		val = dmkv_get(pacon->kv_handle, path);
+	}
+	/*
+	add_to_mq(pacon, path, READDIR, time(NULL));
+	ret = add_to_local_rpc(pacon, path, READDIR, time(NULL));
+	if (ret == -1)
+	{
+		printf("readdir server error: %s\n", path);
+		return -1;
+	}
+	*/
+	return ret;
+}
+
 /*
 int pacon_opendir(struct pacon *pacon, const char *path)
 {
 	return fs_opendir(fs, path);
-}
-
-int pacon_readdir(struct pacon *pacon, const char *path, void *buf, off_t offset)
-{
-	// need implement a filler function
-	return fs_readdir(fs, path, buf, filler, offset);
 }
 
 int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
@@ -1755,4 +1864,125 @@ int pacon_readlink(struct pacon *pacon, const char * path, char * buf, size_t si
 	return fs_readlink(fs, path, buf, size);
 }
 */
+
+
+/**************** cregion interfaces ***************/
+
+int init_remote_pacon(struct pacon *pacon, int remote_cr_num)
+{
+	int ret;
+	struct dmkv *kv = (struct dmkv *)malloc(sizeof(struct dmkv));
+	ret = dmkv_remote_init(kv, remote_cr_num);
+	if (ret != 0)
+	{
+		printf("init dmkv fail\n");
+		return -1;
+	}
+	//kv_handle = kv;
+	pacon->kv_handle = kv;
+
+	// inital permission check info
+	ret = init_pcheck_info(pacon->mount_path);
+	if (ret != 0)
+	{
+		printf("inital permission check info error\n");
+		return -1;
+	}
+
+	int i;
+	for (i = 0; i < MOUNT_PATH_MAX-1; ++i)
+	{
+		if (pacon->mount_path != '\0')
+		{
+			mount_path[i] = pacon->mount_path[i];
+		} else {
+			break;
+		}
+	}
+	mount_path[i] = '\0';
+    
+    // init the root dir of the consistent area
+    // get the root dir stat from DFS
+    ret = load_to_pacon(pacon, pacon->mount_path);
+    if (ret != 0)
+    {
+    	printf("inital root dir fail\n");
+    	return -1;
+    }
+    add_to_dir_check_table(pacon->mount_path);
+
+    // init permission info
+    pacon->perm_info = NULL;
+    pacon->df_dir_mode =  S_IFDIR | 0755;
+    pacon->df_f_mode = S_IFREG | 0644;
+    // init joint cr info
+    pacon->joint_cr = NULL;
+
+	return 0;
+}
+
+/*
+ * 1. reslove the joint config file 
+ * 2. connect to the distributed caches of other cregions
+ * 3. get the permisstion infos if other cregions 
+ */
+int cregion_joint(struct pacon *pacon, int remote_cr_num)
+{
+	int ret;
+	int i;
+	if (remote_cr_num < 1 || remote_cr_num > CR_JOINT_MAX)
+	{
+		printf("cregion num error\n");
+		return -1;
+	}
+	pacon->cr_num = remote_cr_num;
+
+	FILE *fp;
+	fp = fopen(CRJ_INFO_PATH, "r");
+	if (fp == NULL)
+	{
+		printf("cannot open config file\n");
+		return -1;
+	}
+
+	int n = 0;
+	while ( fgets(pacon->remote_cr_root[i], MOUNT_PATH_MAX, fp) )
+	{
+		n++;
+	}
+	fclose(fp);
+
+	for (i = 0; i < remote_cr_num; ++i)
+	{
+		struct pacon *r_pacon = (struct pacon *)malloc(sizeof(struct pacon));
+		ret = set_root_path(r_pacon, pacon->remote_cr_root[i]);
+		ret = init_remote_pacon(r_pacon, i);
+		if (ret != 0)
+		{
+			printf("init remote pacon error\n");
+			return -1;
+		}
+		pacon->remote_pacon_lsit[i] = r_pacon;
+	}
+	return 0;
+}
+
+int cregion_split(struct pacon *pacon, int remote_cr_num)
+{
+	int ret;
+	int i;
+	for (i = 0; i < remote_cr_num; ++i)
+	{
+		ret = dmkv_free(pacon->remote_pacon_lsit[i]->kv_handle);
+		if (ret != 0)
+		{
+			printf("free remote pacon error\n");
+			return -1;
+		}
+	}
+	pacon->cr_num = 0;
+	return 0;
+}
+
+
 

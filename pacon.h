@@ -19,8 +19,10 @@
 #define MOUNT_PATH_MAX 128
 #define PATH_MAX 128
 #define SP_LIST_MAX 8
+#define CR_JOINT_MAX 8
 
 #define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log/"
+#define CRJ_INFO_PATH "./crj_info"
 
 
 
@@ -55,6 +57,10 @@ struct pacon
 	struct permission_info *perm_info;
 	mode_t df_dir_mode;
 	mode_t df_f_mode;
+	// inter cregion control (used for cregion joint)
+	int cr_num;
+	char remote_cr_root[CR_JOINT_MAX][MOUNT_PATH_MAX];
+	struct pacon *remote_pacon_lsit[CR_JOINT_MAX];
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11
@@ -95,6 +101,7 @@ struct pacon_file
 	int fd; // fd only be used when the file data does not be cached in pacon
 	int p_fd; // p_fd only be used when the file data are cached in pacon 
 	char *buf; // buffer for inline file data, its largest size is 1KB
+	int hit_remote_cr;
 };
 
 
@@ -159,11 +166,11 @@ int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info)
 
 
 
-/**************** consistency area interfaces ****************/
+/**************** consistent region interfaces ****************/
 
-int carea_joint(void);
+int cregion_joint(struct pacon *pacon, int cr_num);
 
-int carea_split(void);
+int cregion_split(struct pacon *pacon, int cr_num);
 
 
 #endif

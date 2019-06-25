@@ -9,6 +9,7 @@
 
 #define CONFIG_FILE_PATH_CLIENT "./config"
 #define CONFIG_FILE_PATH_SERVER "../config"
+#define CRJ_CONFIG_FILE_PATH "./cr_joint_config"
 static int config_type = 0;  // 0 is pacon client, 1 is pacon server
 
 /*
@@ -229,6 +230,51 @@ int get_cluster_info(struct cluster_info *c_info)
 	return 0;
 }
 
+int get_remote_cluster_info(struct cluster_info *c_info, char *cf_path)
+{
+	FILE *fp;
+	fp = fopen(cf_path, "r");
+	if (fp == NULL)
+	{
+		printf("cannot open config file\n");
+		return -1;
+	}
+
+	int i = 0;
+	char ip[17];
+	while ( fgets(ip, 17, fp) )
+	{
+		if (ip[0] == '#')
+			continue;
+
+		int c;
+		for (c = 0; i < 16; ++c)
+		{
+			if ((ip[c] >= '0' && ip[c] <= '9') || ip[c] == '.')
+			{
+				c_info->node_list[i][c] = ip[c];
+			} else {
+				break;
+			}
+		}
+		c_info->node_list[i][c] = '\0';
+		i++;
+		if (i >= NODE_MAX)
+		{
+			printf("kv cluster overflow\n");
+			return -1;
+		}
+	}
+	fclose(fp);
+	if (i == 0)
+	{
+		printf("read config error\n");
+		return -1;
+	}
+	c_info->node_num = i;
+	return 0;
+}
+
 int dmkv_init(struct dmkv *dmkv)
 {
 	int ret;
@@ -298,5 +344,30 @@ int dmkv_del(struct dmkv *dmkv, char *key)
 {
 	//unsigned long hash = crc32(key, strlen(key));
 	return memc_del(dmkv->memc, key);
+}
+
+int dmkv_remote_init(struct dmkv *dmkv, int num)
+{
+	int ret;
+	pthread_rwlock_init(&(dmkv->rwlock_t), NULL);
+	pthread_rwlock_wrlock(&(dmkv->rwlock_t));
+	struct cluster_info *c_info = (struct cluster_info *)malloc(sizeof(struct cluster_info));
+	char cf_path[128];
+	sprintf(CRJ_CONFIG_FILE_PATH, "%d", num);
+	ret = get_remote_cluster_info(c_info, cf_path);
+	if (ret != 0)
+	{
+		printf("remote dmkv init error 1\n");
+		return -1;
+	}
+	dmkv->c_info = c_info;
+	ret = memc_new(dmkv);
+	pthread_rwlock_unlock(&(dmkv->rwlock_t));
+	if (ret != 0)
+	{
+		printf("remote dmkv init error 2\n");
+		return -1;
+	}
+	return 0;	
 }
 

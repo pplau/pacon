@@ -44,6 +44,7 @@ char* dmkv_get_cas(struct dmkv *dmkv, char *key, uint64_t *ret_cas);
 
 int dmkv_del(struct dmkv *dmkv, char *key);
 
+int dmkv_remote_init(struct dmkv *dmkv, int num);
 
 
 #endif

@@ -733,7 +733,7 @@ int mask_compare(mode_t perm_mode, int type, int opt)
 
 /* 
  * type = 0 is dir, = 1 is file
- * return 0 is legal for normal, 1 is legal for spcial -1 is illegal 
+ * return 0 is legal for normal, i is legal for spcial location, -1 is illegal 
  */
 int check_permission(struct pacon *pacon, char *path, int type, int opt)
 {
@@ -774,10 +774,11 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 		// check special permission
 		for (i = 0; i < pacon->perm_info->sp_num; ++i)
 		{
-			ret = child_cmp(path, pacon->perm_info->sp_path[i], 1);
-			if (ret == 1)
+			ret = child_cmp_new(path, pacon->perm_info->sp_path[i], 1);
+			if (ret > 0)
 			{
-				nor_or_sp = 1;
+				if (ret == 2)
+					nor_or_sp = i;
 				ret = mask_compare(pacon->perm_info->sp_dir_modes[i], type, opt);
 				if (ret == -1)
 				{
@@ -786,10 +787,10 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 				}
 			}
 		}
-		if (nor_or_sp == 0)
-			return 0;
+		if (nor_or_sp > 0)
+			return nor_or_sp;
 		else
-			return 1;
+			return 0;
 	} else {
 		// check normal permission
 		ret = mask_compare(pacon->perm_info->nom_f_mode, type, opt);
@@ -802,10 +803,11 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 		// check special permission
 		for (i = 0; i < pacon->perm_info->sp_num; ++i)
 		{
-			ret = child_cmp(path, pacon->perm_info->sp_path[i], 1);
-			if (ret == 1)
+			ret = child_cmp_new(path, pacon->perm_info->sp_path[i], 1);
+			if (ret > 0)
 			{
-				nor_or_sp = 1;
+				if (ret == 2)
+					nor_or_sp = i;
 				ret = mask_compare(pacon->perm_info->sp_f_modes[i], type, opt);
 				if (ret == -1)
 				{
@@ -814,10 +816,10 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 				}
 			}
 		}
-		if (nor_or_sp == 0)
-			return 0;
+		if (nor_or_sp > 0)
+			return nor_or_sp;
 		else
-			return 1;
+			return 0;
 	}
 }
 
@@ -834,7 +836,7 @@ int pacon_open(struct pacon *pacon, const char *path, int flags, mode_t mode, st
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, RW_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
 	}
 	/*ret = child_cmp(path, mount_path, 1);
@@ -973,16 +975,9 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, CREATE_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
-		int i;
-		for (i = 0; i < pacon->perm_info->sp_num; ++i)
-		{
-			if (child_cmp())
-			{
-				/* code */
-			}
-		}
+		f_mode = pacon->perm_info->sp_f_modes[ret];
 	}
 
 	uint32_t timestamp = time(NULL);
@@ -1002,7 +997,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		struct pacon_stat p_st;
 		p_st.flags = 0;
 		set_stat_flag(&p_st, STAT_type, 1);
-		p_st.mode = mode;
+		p_st.mode = f_mode;
 		p_st.ctime = timestamp;
 		p_st.atime = timestamp;
 		p_st.mtime = timestamp;
@@ -1066,11 +1061,15 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const char *buf, size_t size, struct pacon_file *p_file)
 {
 	int ret;
+	int f_mode;
+	f_mode = pacon->df_f_mode;
+
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, CREATE_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
+		f_mode = pacon->perm_info->sp_f_modes[ret];
 	}
 
 	if (PARENT_CHECK == 1)
@@ -1090,7 +1089,7 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 		p_st.flags = 0;
 		set_stat_flag(&p_st, STAT_type, 1);
 		set_stat_flag(&p_st, STAT_inline, 1);
-		p_st.mode = mode;
+		p_st.mode = f_mode;
 		p_st.ctime = time(NULL);
 		p_st.atime = time(NULL);
 		p_st.mtime = time(NULL);
@@ -1137,11 +1136,15 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 {
 	int ret;
+	int dir_mode;
+	dir_mode = pacon->df_dir_mode;
+
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 0, MKDIR_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
+		dir_mode = pacon->perm_info->sp_dir_modes[ret];
 	}
 
 	if (PARENT_CHECK == 1)
@@ -1159,7 +1162,7 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 	{
 		//struct pacon_stat p_st;
 		p_st.flags = 0;
-		p_st.mode = mode;
+		p_st.mode = dir_mode;
 		p_st.ctime = time(NULL);
 		p_st.atime = time(NULL);
 		p_st.mtime = time(NULL);
@@ -1201,7 +1204,7 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, READ_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
 	}
 
@@ -1292,7 +1295,7 @@ int pacon_rm(struct pacon *pacon, const char *path)
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, RM_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
 	}
 
@@ -1334,7 +1337,7 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 0, RMDIR_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
 	}
 
@@ -1399,7 +1402,7 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, READ_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
 	}
 	/*if (p_file->size == 0)
@@ -1484,7 +1487,7 @@ int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, cons
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, WRITE_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
 	}
 
@@ -1625,7 +1628,7 @@ int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 	if (pacon->perm_info != NULL)
 	{
 		ret = check_permission(pacon, path, 1, WRITE_PC);
-		if (ret != 0)
+		if (ret < 0)
 			return -1;
 	}
 

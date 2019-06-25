@@ -866,13 +866,13 @@ retry:
 	if (val == NULL)
 	{
 		// remote cregion begin 
-		ret = child_cmp_new(path, pacon->mount_path);
+		ret = child_cmp_new(path, pacon->mount_path, 1);
 		if (ret == 0)
 		{
 			if (pacon->cr_num == 0)
 				return -1;
 			int cr;
-			for (int cr = 0; cr < pacon->cr_num; ++cr)
+			for (cr = 0; cr < pacon->cr_num; ++cr)
 			{
 				ret = child_cmp_new(path, pacon->remote_cr_root[cr], 1);
 				if (ret > 0)
@@ -1256,7 +1256,7 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 			if (pacon->cr_num > 0)
 			{
 				int cr;
-				for (int cr = 0; cr < pacon->cr_num; ++cr)
+				for (cr = 0; cr < pacon->cr_num; ++cr)
 				{
 					ret = child_cmp_new(path, pacon->remote_cr_root[cr], 1);
 					if (ret > 0)
@@ -1440,7 +1440,7 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 			printf("rmdir: dir is not existed %s\n", path);
 			return -1;
 		}
-		val = dmkv_get(pacon->kv_handle, path, &cas);
+		val = dmkv_get(pacon->kv_handle, path);
 	}
 
 	add_to_mq(pacon, path, RMDIR, time(NULL));
@@ -1916,7 +1916,7 @@ int init_remote_pacon(struct pacon *pacon, int remote_cr_num)
     pacon->df_dir_mode =  S_IFDIR | 0755;
     pacon->df_f_mode = S_IFREG | 0644;
     // init joint cr info
-    pacon->joint_cr = NULL;
+    pacon->cr_num = 0;
 
 	return 0;
 }

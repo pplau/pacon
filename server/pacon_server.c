@@ -498,6 +498,27 @@ void traversedir_dmkv_del(struct pacon_server_info *ps_info, char *path)
 	}
 }
 
+void checkpoint(char *path)
+{
+	char cp_path[128];
+	int i;
+	for (i = strlen(path)-1; i >= 0; --i)
+	{
+		if (path[i] == '/')
+			break;
+	}
+	sprintf(cp_path, "%s%s", CHECKPOINT_PATH, path+i);
+	char rm_cmd[128];
+	char rm_head = "rm -rf ";
+	sprintf(rm_cmd, "%s%s", rm_head, cp_path);
+	system(rm_cmd);
+
+	char cmd[128];
+	char head = "cp -rf ";
+	sprintf(cmd, "%s%s%s%s", head, path, " ", CHECKPOINT_PATH);
+	system(cmd);
+}
+
 int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret = -1;
@@ -550,23 +571,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 
 		case '0':
 			//printf("b commit to fs, typs: CHECKPOINT\n");
-			char cp_path[PATH_MAX];
-			int i;
-			for (i = strlen(path)-1; i >= 0; --i)
-			{
-				if (path[i] == '/')
-					break;
-			}
-			sprintf(cp_path, "%s%s", CHECKPOINT_PATH, path+i);
-			char rm_cmd[128];
-			char rm_head = "rm -rf ";
-			sprintf(rm_cmd, "%s%s", rm_head, cp_path);
-			system(rm_cmd);
-
-			char cmd[128];
-			char head = "cp -rf ";
-			sprintf(cmd, "%s%s%s%s", head, path, " ", CHECKPOINT_PATH);
-			system(cmd);
+			checkpoint(path);
 			break;
 
 		default:

@@ -12,6 +12,9 @@
 #include "../comm/comm.h"
 #include "../kv/dmkv.h"
 
+#define CHECKPOINT_TIME 0  // 0 mean no need checkpoint, >0 mean the perriod of checkpoint (second)
+#define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
+
 
 struct carea_info
 {

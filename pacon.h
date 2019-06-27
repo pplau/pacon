@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdint.h>
+#include <dirent.h>
+#include <unistd.h> 
 #include <fcntl.h>
 #include <zmq.h>
 #include "kv/dmkv.h"
@@ -22,6 +24,7 @@
 #define CR_JOINT_MAX 8
 
 #define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log/"
+#define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
 #define CRJ_INFO_PATH "./crj_info"
 
 
@@ -101,7 +104,7 @@ struct pacon_file
 	int fd; // fd only be used when the file data does not be cached in pacon
 	int p_fd; // p_fd only be used when the file data are cached in pacon 
 	char *buf; // buffer for inline file data, its largest size is 1KB
-	int hit_remote_cr;
+	int hit_remote_cr;  // 1 is hit in other cregion
 };
 
 
@@ -128,7 +131,11 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode);
 
 int pacon_opendir(struct pacon *pacon, const char *path);
 
-int pacon_readdir(struct pacon *pacon, const char *path, void *buf, off_t offset);
+DIR * pacon_opendir(struct pacon, const char *path);
+
+struct dirent * pacon_readdir(DIR dir);
+
+void pacon_closedir(struct pacon *pacon, DIR *dir);
 
 int pacon_getattr(struct pacon *pacon, const char *path, struct pacon_stat* st);
 
@@ -171,6 +178,10 @@ int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info)
 int cregion_joint(struct pacon *pacon, int cr_num);
 
 int cregion_split(struct pacon *pacon, int cr_num);
+
+int cregion_checkpoint(struct pacon *pacon);
+
+int cregion_recover(struct pacon *pacon);
 
 
 #endif

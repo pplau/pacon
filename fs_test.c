@@ -5,6 +5,8 @@
 #include <stdio.h>
 #include <sys/stat.h>
 #include <time.h>
+#include <dirent.h>
+#include <unistd.h>
 #include "pacon.h"
 
 #define TEST_TYPE 0  // 0 is mirco test, 1 is pressure test
@@ -33,11 +35,6 @@ int test_create(struct pacon *pacon, char *path, mode_t mode)
 int test_stat(struct pacon *pacon, char *path, struct pacon_stat* st)
 {
 	return pacon_getattr(pacon, path, st);
-}
-
-int test_readdir(struct pacon *pacon, char *path)
-{
-	return 0;
 }
 
 int test_rm(struct pacon *pacon, char *path)
@@ -143,6 +140,20 @@ int test_fsync(struct pacon *pacon, char *path)
 		printf("fsync error\n");
 		return -1;
 	}
+	return 0;
+}
+
+int test_readdir(struct pacon *pacon, char *path)
+{
+	int ret;
+	DIR *dir;
+	dirent *entry;
+	dir = pacon_opendir(pacon, path);
+	while (entry = pacon_readdir(dir) != NULL)
+	{
+		printf("entry name: %s\n", entry->d_name);
+	}
+	pacon_closedir(dir);
 	return 0;
 }
 
@@ -304,6 +315,14 @@ int main(int argc, char const *argv[])
 			printf("rm test succee\n");
 		else
 			printf("rm test error\n");
+
+		printf("\n");
+		printf("/********** readdir test **********/\n");
+		ret = test_readdir(pacon, "/mnt/beegfs/test");
+		if (ret != 0)
+			printf("readdir test succee\n");
+		else
+			printf("readdir test error\n");
 
 		printf("\n");
 		printf("/********** rmdir test **********/\n");

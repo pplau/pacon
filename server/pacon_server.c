@@ -19,11 +19,12 @@
 #define CREATE ":2"
 #define RM ":3"
 #define RMDIR ":4"
-#define LINK ":5"
+#define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
 #define BARRIER ":8"
 #define DEL_BARRIER ":9"
+#define CHECKPOINT ":0"
 
 static uint32_t commit_barrier = 0;  // 0 is not barrier, != 0 is timestamp
 static int reach_barrier = 0;        // 0 is not barrier
@@ -395,7 +396,9 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			break;
 
 		case '5':
-			//printf("commit to fs, typs: LINK\n");
+			//printf("commit to fs, typs: READDIR\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0)
 			break;
 
 		case '6':
@@ -404,6 +407,12 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '7':
 			//printf("commit to fs, typs: FSYNC\n");
+			break;
+
+		case '0':
+			//printf("commit to fs, typs: CHECKPOINT\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0)
 			break;
 
 		default:
@@ -519,7 +528,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	switch (mesg[i+1])
 	{
 		case '4':
-			//printf("commit to fs, typs: RMDIR\n");
+			//printf("b commit to fs, typs: RMDIR\n");
 			/*
 			 * 1. call readdir to get all sub dirs and files under the target dir
 			 * 2. del them in the dmkv
@@ -533,6 +542,31 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 				printf("remove dir error, %s\n", path);
 				return -1;
 			}*/
+			break;
+
+		case '5':
+			//printf("b commit to fs, typs: READDIR\n");
+			break;
+
+		case '0':
+			//printf("b commit to fs, typs: CHECKPOINT\n");
+			char cp_path[PATH_MAX];
+			int i;
+			for (i = strlen(path)-1; i >= 0; --i)
+			{
+				if (path[i] == '/')
+					break;
+			}
+			sprintf(cp_path, "%s%s", CHECKPOINT_PATH, path+i);
+			char rm_cmd[128];
+			char rm_head = "rm -rf ";
+			sprintf(rm_cmd, "%s%s", rm_head, cp_path);
+			system(rm_cmd);
+
+			char cmd[128];
+			char head = "cp -rf ";
+			sprintf(cmd, "%s%s%s%s", head, path, " ", CHECKPOINT_PATH);
+			system(cmd);
 			break;
 
 		default:
@@ -667,6 +701,7 @@ void *listen_cluster_rpc(struct pacon_server_info *ps_info_t)
 		zmq_send(ps_info->cluster_rpc_rep, rep, 1, 0);
 	}
 }
+
 
 
 int main(int argc, char const *argv[])

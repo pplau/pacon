@@ -18,15 +18,15 @@
 #define SERI_TYPE 0 // 0 is memcpy, 1 is json
 #define BUFFER_SIZE 64
 
-// opt type for commit
+// opt type for commi
+#define CHECKPOINT ":0"
 #define MKDIR ":1"
 #define CREATE ":2"
 #define RM ":3"
 #define RMDIR ":4"
-#define LINK ":5"
+#define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
-#define READDIR ":8"
 
 // opt type for permission check
 #define READDIR_PC 0
@@ -229,7 +229,7 @@ int child_cmp_new(char *path, char *p_path, int recursive)
 {
 	int len = strlen(path);
 	int p_len = strlen(p_path); 
-	if (len <= p_len)
+	if (len < p_len)
 		return 0;    // not the child dentry
 
 	int i;
@@ -240,7 +240,7 @@ int child_cmp_new(char *path, char *p_path, int recursive)
 		if (path[i] != p_path[i])
 			return 0;
 	}
-	if (path[i] != '/')
+	if (path[i] != '/' && p_len != len)
 		return 0;
 	if (p_len != len)
 		return 1;
@@ -281,7 +281,7 @@ int load_to_pacon(struct pacon *pacon, char *path)
 		printf("path doesn't belong to the workspace\n");
 		return -1;
 	}
-	
+
 	struct stat buf;
 	ret = stat(path, &buf);
 	if (ret != 0)
@@ -1778,7 +1778,7 @@ int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info)
 	return 0;
 }
 
-int pacon_readdir(struct pacon *pacon, const char *path, void *buf, off_t offset)
+DIR * pacon_opendir(struct pacon, const char *path)
 {
 	int ret;
 	if (pacon->perm_info != NULL)
@@ -1801,7 +1801,7 @@ int pacon_readdir(struct pacon *pacon, const char *path, void *buf, off_t offset
 		}
 		val = dmkv_get(pacon->kv_handle, path);
 	}
-	/*
+	
 	add_to_mq(pacon, path, READDIR, time(NULL));
 	ret = add_to_local_rpc(pacon, path, READDIR, time(NULL));
 	if (ret == -1)
@@ -1809,8 +1809,21 @@ int pacon_readdir(struct pacon *pacon, const char *path, void *buf, off_t offset
 		printf("readdir server error: %s\n", path);
 		return -1;
 	}
-	*/
-	return ret;
+
+	DIR *dir;
+	dir = opendir(path);
+	return dir;
+}
+
+
+struct dirent * pacon_readdir(DIR dir)
+{
+	return readdir(dir);
+}
+
+void pacon_closedir(struct pacon *pacon, DIR *dir)
+{
+	closedir(dir);
 }
 
 /*
@@ -1994,5 +2007,46 @@ int cregion_split(struct pacon *pacon, int remote_cr_num)
 	return 0;
 }
 
+/*
+ * app can impelement a period thread to execute the checkpoint
+ * don't call this func in multiple clients
+ */ 
+int cregion_checkpoint(struct pacon *pacon)
+{
+	int ret;
+	add_to_mq(pacon, pacon->mount_path, CHECKPOINT, time(NULL));
+	ret = add_to_local_rpc(pacon, pacon->mount_path, CHECKPOINT, time(NULL));
+	if (ret == -1)
+	{
+		printf("checkpoint error: %s\n", pacon->mount_path);
+		return -1;
+	}
+	return 0;
+}
 
+/*
+ * Pacon does't monitor the heath status of the modes
+ * app can call this func to roll the workspace to the lastest version if some node crash during app run
+ */
+int cregion_recover(struct pacon *pacon)
+{
+	char cp_path[PATH_MAX];
+	int i;
+	for (i = strlen(pacon->mount_path)-1; i >= 0; --i)
+	{
+		if (path[i] == '/')
+			break;
+	}
+	sprintf(cp_path, "%s%s%s", CHECKPOINT_PATH, (pacon->mount_path)+i, "/*");
 
+	char rm_cmd[128];
+	char rm_head = "rm -rf ";
+	sprintf(rm_cmd, "%s%s%s", rm_head, pacon->mount_path, "/*");
+	system(rm_cmd);
+
+	char cp_cmd[128];
+	char cp_head = "cp -rf ";
+	sprintf(cp_cmd, "%s%s%s%s", cp_head, cp_path, " ", pacon->mount_path);
+	system(cp_cmd);
+	return 0;
+}

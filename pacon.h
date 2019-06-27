@@ -129,9 +129,7 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 
 int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode);
 
-int pacon_opendir(struct pacon *pacon, const char *path);
-
-DIR * pacon_opendir(struct pacon, const char *path);
+DIR * pacon_opendir(struct pacon *pacon, const char *path);
 
 struct dirent * pacon_readdir(DIR dir);
 

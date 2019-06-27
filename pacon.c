@@ -1778,7 +1778,7 @@ int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info)
 	return 0;
 }
 
-DIR * pacon_opendir(struct pacon, const char *path)
+DIR * pacon_opendir(struct pacon *pacon, const char *path)
 {
 	int ret;
 	if (pacon->perm_info != NULL)
@@ -1816,7 +1816,7 @@ DIR * pacon_opendir(struct pacon, const char *path)
 }
 
 
-struct dirent * pacon_readdir(DIR dir)
+struct dirent * pacon_readdir(DIR *dir)
 {
 	return readdir(dir);
 }
@@ -2034,7 +2034,7 @@ int cregion_recover(struct pacon *pacon)
 	int i;
 	for (i = strlen(pacon->mount_path)-1; i >= 0; --i)
 	{
-		if (path[i] == '/')
+		if (pacon->mount_path[i] == '/')
 			break;
 	}
 	sprintf(cp_path, "%s%s%s", CHECKPOINT_PATH, (pacon->mount_path)+i, "/*");

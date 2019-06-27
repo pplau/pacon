@@ -439,6 +439,7 @@ int broadcast_barrier_begin(struct pacon_server_info *ps_info, uint32_t timestam
 	{
 		reach_barrier = 1;
 	}
+	while (reach_barrier != 2);
 	return ret;
 }
 

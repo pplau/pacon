@@ -321,7 +321,7 @@ int main(int argc, char const *argv[])
 		printf("\n");
 		printf("/********** readdir test **********/\n");
 		ret = test_readdir(pacon, "/mnt/beegfs/test");
-		if (ret != 0)
+		if (ret == 0)
 			printf("readdir test succee\n");
 		else
 			printf("readdir test error\n");

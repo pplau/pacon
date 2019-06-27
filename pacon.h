@@ -131,7 +131,7 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode);
 
 DIR * pacon_opendir(struct pacon *pacon, const char *path);
 
-struct dirent * pacon_readdir(DIR dir);
+struct dirent * pacon_readdir(DIR *dir);
 
 void pacon_closedir(struct pacon *pacon, DIR *dir);
 

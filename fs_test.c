@@ -149,9 +149,11 @@ int test_readdir(struct pacon *pacon, char *path)
 	DIR *dir;
 	struct dirent *entry;
 	dir = pacon_opendir(pacon, path);
-	while ((entry = pacon_readdir(dir)) != NULL)
+	entry = pacon_readdir(dir);
+	while (entry != NULL)
 	{
 		printf("entry name: %s\n", entry->d_name);
+		entry = pacon_readdir(dir);
 	}
 	pacon_closedir(pacon, dir);
 	return 0;

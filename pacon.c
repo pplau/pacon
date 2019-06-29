@@ -884,7 +884,7 @@ retry:
 				ret = child_cmp_new(path, pacon->remote_cr_root[cr], 1);
 				if (ret > 0)
 				{
-					ret = pacon_open(pacon->remote_pacon_lsit[cr], path, flags, mode, p_file);
+					ret = pacon_open(pacon->remote_pacon_list[cr], path, flags, mode, p_file);
 					if (ret != 0)
 					{
 						printf("open: path not existed in remote cregions: %s\n", path);
@@ -1271,7 +1271,7 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 					ret = child_cmp_new(path, pacon->remote_cr_root[cr], 1);
 					if (ret > 0)
 					{
-						ret = pacon_getattr(pacon->remote_pacon_lsit[cr], path, st);
+						ret = pacon_getattr(pacon->remote_pacon_list[cr], path, st);
 						if (ret != 0)
 						{
 							printf("getattr: path not existed in remote cregions: %s\n", path);
@@ -1491,7 +1491,7 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 	// remote cregion begin
 	if (p_file->hit_remote_cr > 0)
 	{
-		ret = pacon_read(pacon->remote_pacon_lsit[p_file->hit_remote_cr], path, p_file, buf, size, offset);
+		ret = pacon_read(pacon->remote_pacon_list[p_file->hit_remote_cr], path, p_file, buf, size, offset);
 		if (ret == -1)
 		{
 			printf("read from remote cregion error\n");
@@ -1969,8 +1969,17 @@ int cregion_joint(struct pacon *pacon, int remote_cr_num)
 	}
 
 	int n = 0;
-	while ( fgets(pacon->remote_cr_root[i], MOUNT_PATH_MAX, fp) )
+	char t_path[MOUNT_PATH_MAX];
+	while ( fgets(t_path, MOUNT_PATH_MAX, fp) )
 	{
+		int c;
+		for (c = 0; c < MOUNT_PATH_MAX; ++c)
+		{
+			if (t_path[c] == '\0' || t_path[c] == '\n')
+				break;
+			pacon->remote_cr_root[n][c] = t_path[c];
+		}
+		pacon->remote_cr_root[n][c] = '\0';
 		n++;
 	}
 	fclose(fp);
@@ -1985,7 +1994,7 @@ int cregion_joint(struct pacon *pacon, int remote_cr_num)
 			printf("init remote pacon error\n");
 			return -1;
 		}
-		pacon->remote_pacon_lsit[i] = r_pacon;
+		pacon->remote_pacon_list[i] = r_pacon;
 	}
 	return 0;
 }
@@ -1996,12 +2005,12 @@ int cregion_split(struct pacon *pacon, int remote_cr_num)
 	int i;
 	for (i = 0; i < remote_cr_num; ++i)
 	{
-		ret = dmkv_free(pacon->remote_pacon_lsit[i]->kv_handle);
+		/*ret = dmkv_free(pacon->remote_pacon_list[i]->kv_handle);
 		if (ret != 0)
 		{
 			printf("free remote pacon error\n");
 			return -1;
-		}
+		}*/
 	}
 	pacon->cr_num = 0;
 	return 0;

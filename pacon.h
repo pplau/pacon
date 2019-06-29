@@ -63,7 +63,7 @@ struct pacon
 	// inter cregion control (used for cregion joint)
 	int cr_num;
 	char remote_cr_root[CR_JOINT_MAX][MOUNT_PATH_MAX];
-	struct pacon *remote_pacon_lsit[CR_JOINT_MAX];
+	struct pacon *remote_pacon_list[CR_JOINT_MAX];
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11

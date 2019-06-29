@@ -352,9 +352,9 @@ int dmkv_remote_init(struct dmkv *dmkv, int num)
 	pthread_rwlock_init(&(dmkv->rwlock_t), NULL);
 	pthread_rwlock_wrlock(&(dmkv->rwlock_t));
 	struct cluster_info *c_info = (struct cluster_info *)malloc(sizeof(struct cluster_info));
-	char cf_path[128];
-	sprintf(CRJ_CONFIG_FILE_PATH, "%d", num);
-	ret = get_remote_cluster_info(c_info, cf_path);
+	//char cf_path[128];
+	//sprintf(CRJ_CONFIG_FILE_PATH, "%d", num);
+	ret = get_remote_cluster_info(c_info, CRJ_CONFIG_FILE_PATH);
 	if (ret != 0)
 	{
 		printf("remote dmkv init error 1\n");

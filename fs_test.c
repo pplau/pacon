@@ -209,7 +209,10 @@ int main(int argc, char const *argv[])
 	struct pacon *pacon = (struct pacon *)malloc(sizeof(struct pacon));
 	/*pacon->mount_path[0] = '/';
 	pacon->mount_path[1] = '\0'; */
-	ret = set_root_path(pacon, "/mnt/beegfs");
+    if (TEST_TYPE != 2)
+            ret = set_root_path(pacon, "/mnt/beegfs");
+    else
+            ret = set_root_path(pacon, "/mnt/beegfs/cr0");
 	if (ret != 0)
 	{
 		printf("init pacon error\n");
@@ -367,7 +370,7 @@ int main(int argc, char const *argv[])
 
 	if (TEST_TYPE == 2)
 	{
-		int cr_num = 2;
+		int cr_num = 1;
 		int num = 0;
 
 		// create dir and file

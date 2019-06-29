@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include "pacon.h"
 
-#define TEST_TYPE 0  // 0 is mirco test, 1 is pressure test
+#define TEST_TYPE 2  // 0 is mirco test, 1 is pressure test, 2 is cregion joint test
 
 
 int test_init(struct pacon *pacon)
@@ -364,6 +364,61 @@ int main(int argc, char const *argv[])
         printf("batch mkdir %ld us\n", timediff);
         //printf("throughput: %ld OPS\n", test_num/t);
 	}
-	
+
+	if (TEST_TYPE == 2)
+	{
+		int cr_num = 2;
+		int num = 0;
+
+		// create dir and file
+		if (num == 0)
+		{
+			ret = test_mkdir(pacon, "/mnt/beegfs/cr0/d", S_IFDIR | 0755);
+			//ret = test_create(pacon, "/mnt/beegfs/cr0/f", S_IFREG | 0644);
+			if (ret != 0)
+			{
+				printf("mkdir in cr0 error\n");
+				return -1;
+			}
+		}
+
+		// joint to cregion 0 and stat dir/file in it
+		if (num == 1)
+		{
+			ret = cregion_joint(pacon, cr_num);
+			if (ret != 0)
+			{
+				printf("joint cregions error\n");
+				return -1;
+			}
+			struct pacon_stat* r_st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
+			ret = test_stat(pacon, "/mnt/beegfs/cr0/d", r_st);
+			if (ret == 0)
+			{
+				printf("mode: %d\n", st->mode);
+				printf("size: %d\n", st->size);
+				printf("stat joint cregions success\n");
+			} else {
+				printf("stat joint cregions error\n");
+				return -1;
+			}
+			ret = cregion_split(pacon, cr_num);
+			if (ret == 0)
+			{
+				printf("split cregions success\n");
+			} else {
+				printf("split cregions error\n");
+				return -1;
+			}
+		}
+
+		ret = test_free(pacon);
+		if (ret != 0)
+		{
+			printf("free pacon error\n");
+			return -1;
+		}
+		printf("free pacon success\n");
+	}
 	return 0;
 }

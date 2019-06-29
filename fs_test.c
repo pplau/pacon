@@ -395,8 +395,8 @@ int main(int argc, char const *argv[])
 			ret = test_stat(pacon, "/mnt/beegfs/cr0/d", r_st);
 			if (ret == 0)
 			{
-				printf("mode: %d\n", st->mode);
-				printf("size: %d\n", st->size);
+				printf("mode: %d\n", r_st->mode);
+				printf("size: %d\n", r_st->size);
 				printf("stat joint cregions success\n");
 			} else {
 				printf("stat joint cregions error\n");

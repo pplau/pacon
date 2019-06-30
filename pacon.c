@@ -27,6 +27,7 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
+#define RENAME ":A"
 
 // opt type for permission check
 #define READDIR_PC 0
@@ -41,6 +42,7 @@
 #define WRITE_PC 9
 #define RW_PC 10
 #define CREATEW_PC 11
+#define RENAME_PC 12
 
 
 #define DEFAULT_FILEMODE S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH
@@ -722,7 +724,8 @@ int mask_compare(mode_t perm_mode, int type, int opt)
 				opt != RM_PC ||
 				opt != RMDIR_PC ||
 				opt != WRITE_PC ||
-				opt != CREATEW_PC)
+				opt != CREATEW_PC ||
+				opt != RENAME_PC)
 				return -1;
 			return 0;
 
@@ -1826,17 +1829,63 @@ void pacon_closedir(struct pacon *pacon, DIR *dir)
 	closedir(dir);
 }
 
-/*
-int pacon_opendir(struct pacon *pacon, const char *path)
-{
-	return fs_opendir(fs, path);
-}
 
 int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 {
-	return fs_rename(fs, path, newpath);
+	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 0, RENAME_PC);
+		if (ret < 0)
+			return -1;
+	}
+
+	char *val;
+	// check old file/dir
+	val = dmkv_get(pacon->kv_handle, path);
+	// if not in pacon, try to get from DFS
+	if (val == NULL)
+	{
+		ret = load_to_pacon(pacon, path);
+		if (ret == -1)
+		{
+			printf("readdir: dir is not existed %s\n", path);
+			return -1;
+		}
+		val = dmkv_get(pacon->kv_handle, path);
+	}
+
+	// check new file/dir
+	val = dmkv_get(pacon->kv_handle, newpath);
+	if (val != NULL)
+	{
+		printf("rename: new name existed%s\n", newpath);
+	}
+	ret = load_to_pacon(pacon, path);
+	if (ret != -1)
+	{
+		printf("rename: new name existed %s\n", newpath);
+		return -1;
+	}
+
+	if (strlen(path) > PATH_MAX/2 || strlen(newpath) > PATH_MAX/2)
+	{
+		printf("rename: path too long\n");
+		return -1;
+	}
+	joint_path[PATH_MAX];
+	sprintf(joint_path, "%s%s%s", path, "|", newpath);
+	add_to_mq(pacon, joint_path, RENAME, time(NULL));
+	ret = add_to_local_rpc(pacon, joint_path, RENAME, time(NULL));
+	if (ret == -1)
+	{
+		printf("readdir server error: %s\n", path);
+		return -1;
+	}
+	return 0;
 }
 
+/*
 int pacon_release(struct pacon *pacon, const char *path)
 {
 	 return fs_release(fs, path, file_info);

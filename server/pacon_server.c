@@ -15,6 +15,7 @@
 #define TIMESTAMP_SIZE 11
 
 // opt type
+#define CHECKPOINT ":0"
 #define MKDIR ":1"
 #define CREATE ":2"
 #define RM ":3"
@@ -22,9 +23,11 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
+#define RENAME ":A"
+
 #define BARRIER ":8"
 #define DEL_BARRIER ":9"
-#define CHECKPOINT ":0"
+
 
 static uint32_t commit_barrier = 0;  // 0 is not barrier, != 0 is timestamp
 static int reach_barrier = 0;        // 0 is not barrier
@@ -415,6 +418,12 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			while (reach_barrier != 0)
 			break;
 
+		case 'A':
+			//printf("commit to fs, typs: RENAME\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0)
+			break;
+
 		default:
 			printf("opt type error\n");
 			return -1;
@@ -520,6 +529,84 @@ void checkpoint(char *path)
 	system(cmd);
 }
 
+void traversedir_dmkv_rename(struct pacon_server_info *ps_info, char *oldpath, char *newpath)
+{
+	char dir_new[PATH_MAX];
+	DIR *pd;
+	struct dirent *entry;
+	pd = opendir(oldpath);
+	while ((entry = readdir(pd)) != NULL)
+	{
+		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+			continue;
+		int c_len = strlen(entry->d_name);
+		int p_len = strlen(path);
+		memcpy(dir_new, path, p_len);
+		dir_new[p_len] = '/';
+		memcpy(dir_new + p_len + 1, entry->d_name, c_len);
+		dir_new[p_len+1+c_len] = '\0';
+
+		if (entry->d_type == DT_DIR)
+		{
+			ret = dmkv_del(ps_info->kv_handle, dir_new);
+			if (ret != 0)
+			{
+				printf("traverse rename: del dir error%s\n", dir_new);
+				return;
+			}
+			traversedir_dmkv_rename(ps_info, dir_new, newpath);
+		} else {
+			ret = dmkv_del(ps_info->kv_handle, dir_new);
+			if (ret != 0)
+			{
+				printf("traverse rename del file error%s\n", dir_new);
+				return;
+			}
+		}
+	}
+	closedir(pd);
+}
+
+void rename_update_dc(struct pacon_server_info *ps_info, char *path)
+{
+	int ret;
+	char oldpath[PATH_MAX/2];
+	char newpath[PATH_MAX/2];
+	if (strlen(path) >= 1)
+	{
+		printf("rename error in pacon server: path too short\n");
+		return;
+	}
+	int i;
+	int loc = 0;
+	for (i = 0; i < PATH_MAX; ++i)
+	{
+		if (path[i] == '\0')
+		{
+			newpath[i-loc-1] = '\0';
+			break;
+		}
+		if (loc == 0 && path[i] != '|')
+		{
+			oldpath[i] = path[i];
+		} else if (path[i] == '|') {
+			loc = i;
+			oldpath[i] = '\0';
+		} else if (loc > 0) {
+			newpath[i-loc-1] = path[i];
+		}
+	}
+
+	// update chlidren in the distributed cache of the old path
+	traversedir_dmkv_rename(ps_info, oldpath, newpath);
+	ret = rename(oldpath, newpath);
+	if (ret != 0)
+	{
+		printf("rename error in pacon server: %s\n", oldpath);
+		return;
+	}
+}
+
 int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret = -1;
@@ -573,6 +660,11 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 		case '0':
 			//printf("b commit to fs, typs: CHECKPOINT\n");
 			checkpoint(path);
+			break;
+
+		case 'A':
+			//printf("b commit to fs, typs: RENAME\n");
+			rename_update_dc(ps_info, path);
 			break;
 
 		default:

@@ -159,6 +159,11 @@ int test_readdir(struct pacon *pacon, char *path)
 	return 0;
 }
 
+int test_rename((struct pacon *pacon, char *oldpath, char *newpath)
+{
+	return pacon_rename(pacon, oldpath, newpath);
+}
+
 int test_rmdir(struct pacon *pacon, char *path)
 {
 	return pacon_rmdir(pacon, path);
@@ -328,6 +333,14 @@ int main(int argc, char const *argv[])
 			printf("readdir test succee\n");
 		else
 			printf("readdir test error\n");
+
+		printf("\n");
+		printf("/********** rename test **********/\n");
+		ret = test_rename(pacon, "/mnt/beegfs/test", "/mnt/beegfs/test1");
+		if (ret == 0)
+			printf("rename test succee\n");
+		else
+			printf("rename test error\n");
 
 		printf("\n");
 		printf("/********** rmdir test **********/\n");

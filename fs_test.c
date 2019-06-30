@@ -159,7 +159,7 @@ int test_readdir(struct pacon *pacon, char *path)
 	return 0;
 }
 
-int test_rename((struct pacon *pacon, char *oldpath, char *newpath)
+int test_rename(struct pacon *pacon, char *oldpath, char *newpath)
 {
 	return pacon_rename(pacon, oldpath, newpath);
 }

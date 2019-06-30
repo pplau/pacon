@@ -531,6 +531,7 @@ void checkpoint(char *path)
 
 void traversedir_dmkv_rename(struct pacon_server_info *ps_info, char *oldpath, char *newpath)
 {
+	int ret;
 	char dir_new[PATH_MAX];
 	DIR *pd;
 	struct dirent *entry;
@@ -540,8 +541,8 @@ void traversedir_dmkv_rename(struct pacon_server_info *ps_info, char *oldpath, c
 		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
 			continue;
 		int c_len = strlen(entry->d_name);
-		int p_len = strlen(path);
-		memcpy(dir_new, path, p_len);
+		int p_len = strlen(oldpath);
+		memcpy(dir_new, oldpath, p_len);
 		dir_new[p_len] = '/';
 		memcpy(dir_new + p_len + 1, entry->d_name, c_len);
 		dir_new[p_len+1+c_len] = '\0';

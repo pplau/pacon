@@ -1873,7 +1873,7 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 		printf("rename: path too long\n");
 		return -1;
 	}
-	joint_path[PATH_MAX];
+	char joint_path[PATH_MAX];
 	sprintf(joint_path, "%s%s%s", path, "|", newpath);
 	add_to_mq(pacon, joint_path, RENAME, time(NULL));
 	ret = add_to_local_rpc(pacon, joint_path, RENAME, time(NULL));

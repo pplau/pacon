@@ -344,13 +344,13 @@ int main(int argc, char const *argv[])
 
 		printf("\n");
 		printf("/********** rmdir test **********/\n");
-		ret = test_rmdir(pacon, "/mnt/beegfs/test");
+		ret = test_rmdir(pacon, "/mnt/beegfs/test1");
 		if (ret != 0)
 		{
 			printf("rmdir error\n");
 			return -1;
 		}
-		ret = test_stat(pacon, "/mnt/beegfs/test1", st);
+		ret = test_stat(pacon, "/mnt/beegfs/test", st);
 		if (ret != 0)
 			printf("rmdir test succee\n");
 		else

@@ -25,9 +25,9 @@
 #define RM ":3"
 #define RMDIR ":4"
 #define READDIR ":5"
-#define RENAME ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
+#define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
-#define OWRITE ":A"
+#define RENAME ":A"
 
 // opt type for permission check
 #define READDIR_PC 0
@@ -36,13 +36,13 @@
 #define RM_PC 3
 #define RMDIR_PC 4
 #define LINK_PC 5
-#define RENAME_PC 6  // data size is larger than the INLINE_MAX, write it back to DFS
+#define OWRITE_PC 6  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC_PC 7
 #define READ_PC 8
 #define WRITE_PC 9
 #define RW_PC 10
 #define CREATEW_PC 11
-#define OWRITE_PC 12
+#define RENAME_PC 12
 
 
 #define DEFAULT_FILEMODE S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH

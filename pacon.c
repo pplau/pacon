@@ -445,7 +445,7 @@ int init_pacon(struct pacon *pacon)
     		return -1;
     	}
     }
-    char fsync_logfile_path[128];
+    //char fsync_logfile_path[128];
     char local_ip[17];
     get_local_addr(local_ip);
     int pid = (int)getpid();
@@ -455,13 +455,13 @@ int init_pacon(struct pacon *pacon)
     strcpy(filename, local_ip);
     filename[strlen(local_ip)] = '.';
     strcpy(filename + strlen(local_ip) + 1, pid_s);
-    strcpy(fsync_logfile_path, FSYNC_LOG_PATH);
-    strcpy(fsync_logfile_path + strlen(FSYNC_LOG_PATH), filename);
+    strcpy(pacon->fsync_logfile_path, FSYNC_LOG_PATH);
+    strcpy(pacon->fsync_logfile_path + strlen(FSYNC_LOG_PATH), filename);
     int fd;
-    fd = open(fsync_logfile_path, O_RDWR | O_DIRECT);
+    fd = open(pacon->fsync_logfile_path, O_RDWR | O_DIRECT);
     if (fd == -1) 
     {
-	    fd = creat(fsync_logfile_path, DEFAULT_FILEMODE);
+	    fd = creat(pacon->fsync_logfile_path, DEFAULT_FILEMODE);
 	    if (fd == -1)
 	    {
 	    	printf("create fsync log file error\n");
@@ -469,6 +469,7 @@ int init_pacon(struct pacon *pacon)
 	    }
     }
     pacon->fsync_log_fd = fd;
+    pacon->log_size = 0;
     // init permission info
     pacon->perm_info = NULL;
     pacon->df_dir_mode =  S_IFDIR | 0755;
@@ -1765,10 +1766,21 @@ int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 		strcpy(buf, path);
 		strcpy(buf + strlen(path), inline_data);
 		posix_memalign(&inline_data, SECTOR_SIZE, strlen(buf));
+		int offset = pacon->log_size;
 		ret = write(pacon->fsync_log_fd, inline_data, strlen(buf));
 		if (ret <= 0)
 		{
 			printf("fail to sync file to the log: %s\n", path);
+			return -1;
+		}
+		pacon->log_size = pacon->log_size + ret;
+
+		char tmp_path[PATH_MAX];
+		sprintf(tmp_path, "%s%s%s%s%d%s%d", path, "|", pacon->fsync_logfile_path, "|", offset, "|", ret);
+		ret = add_to_mq(pacon, tmp_path, FSYNC, p_st.ctime);
+		if (ret != 0)
+		{
+			printf("fsync add to mq error%s\n", path);
 			return -1;
 		}
 	}

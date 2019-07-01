@@ -13,6 +13,7 @@
 
 #define PATH_MAX 512
 #define TIMESTAMP_SIZE 11
+#define INLINE_DATA_MAX 468
 
 // opt type
 #define CHECKPOINT ":0"
@@ -277,6 +278,77 @@ int retry_commit(struct pacon_server_info *ps_info, char *path, int type)
 	return -1;
 }
 
+int fsync_from_log(struct pacon_server *ps_info, char *path)
+{
+	int ret;
+	char f_path[PATH_MAX];
+	char log_path[PATH_MAX];
+	int i;
+	int loc = 0;
+	int flag = 0;
+	int offset = 0;
+	int size = 0;
+	for (i = 0; i < strlen(path); ++i)
+	{
+		if (path[i] == '|')
+		{
+			loc = i;
+			if (flag == 0)
+				f_path[loc] = '\0';
+			if (flag == 1)
+				log_path[loc] = '\0';
+			flag++;
+			continue;
+		}
+		if (flag == 0)
+		{
+			f_path[i] = path[i];
+		} else if (flag == 1) {
+			log_path[i-loc-1] = path[i];
+		} else if (flag == 2) {
+			if (path[i-1] == '|')
+				offset = atoi(path+i);
+			else
+				continue;
+		} else if (flag == 3) {
+			if (path[i-1] == '|')
+				size = atoi(path+i);
+			else
+				continue;
+		} else {
+			printf("fsync from log: reslove mesg error\n");
+			return -1;
+		}
+	}
+	int log_fp;
+	log_fp = open(log_path, O_RDONLY);
+	char data[INLINE_DATA_MAX];
+	ret = pread(log_fp, data, size, offset);
+	if (ret == -1)
+	{
+		printf("read fsync log error\n");
+		return -1;
+	}
+	close(log_fp);
+
+	int fp;
+	while ((fp = open(f_path, O_RDWR)) < 0);
+	ret = pwrite(fp, data, size, 0);
+	if (ret == -1)
+	{
+		printf("write file error\n");
+		return -1;
+	}
+	ret = fsync(fp);
+	if (ret != 0)
+	{
+		printf("fsync file error\n");
+		return -1;
+	}
+	close(fp);
+	return 0;
+}
+
 int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret = -1;
@@ -410,6 +482,12 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '7':
 			//printf("commit to fs, typs: FSYNC\n");
+			ret = fsync_from_log(ps_info, path);
+			if (ret != 0)
+			{
+				printf("pacon server: fsync from log error%s\n", path);
+				return -1;
+			}
 			break;
 
 		case '0':

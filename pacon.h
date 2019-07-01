@@ -55,7 +55,9 @@ struct pacon
 	void *local_rpc_req;
 	void *context_local_rpc;
 	// fsync log file
+	char fsync_logfile_path[PATH_MAX];
 	int fsync_log_fd;
+	int log_size;
 	// batch permission info
 	struct permission_info *perm_info;
 	mode_t df_dir_mode;

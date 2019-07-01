@@ -334,23 +334,23 @@ int main(int argc, char const *argv[])
 		else
 			printf("readdir test error\n");
 
-		printf("\n");
-		printf("/********** rename test **********/\n");
-		ret = test_rename(pacon, "/mnt/beegfs/test", "/mnt/beegfs/test1");
+		//printf("\n");
+		//printf("/********** rename test **********/\n");
+		/*ret = test_rename(pacon, "/mnt/beegfs/test", "/mnt/beegfs/test1");
 		if (ret == 0)
 			printf("rename test succee\n");
 		else
-			printf("rename test error\n");
+			printf("rename test error\n");*/
 
 		printf("\n");
 		printf("/********** rmdir test **********/\n");
-		ret = test_rmdir(pacon, "/mnt/beegfs/test1");
+		ret = test_rmdir(pacon, "/mnt/beegfs/test");
 		if (ret != 0)
 		{
 			printf("rmdir error\n");
 			return -1;
 		}
-		ret = test_stat(pacon, "/mnt/beegfs/test1", st);
+		ret = test_stat(pacon, "/mnt/beegfs/test", st);
 		if (ret != 0)
 			printf("rmdir test succee\n");
 		else

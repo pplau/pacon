@@ -22,9 +22,9 @@
 #define RM ":3"
 #define RMDIR ":4"
 #define READDIR ":5"
-#define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
+#define RENAME ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
-#define RENAME ":A"
+#define OWRITE ":A"
 
 #define BARRIER ":8"
 #define DEL_BARRIER ":9"
@@ -477,7 +477,9 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			break;
 
 		case '6':
-			//printf("commit to fs, typs: OWRITE\n");
+			//printf("commit to fs, typs: RENAME\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0)
 			break;
 
 		case '7':
@@ -497,9 +499,6 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			break;
 
 		case 'A':
-			//printf("commit to fs, typs: RENAME\n");
-			reach_barrier = 2;
-			while (reach_barrier != 0)
 			break;
 
 		default:
@@ -651,7 +650,7 @@ void rename_update_dc(struct pacon_server_info *ps_info, char *path)
 	int ret;
 	char oldpath[PATH_MAX/2];
 	char newpath[PATH_MAX/2];
-	if (strlen(path) >= 1)
+	if (strlen(path) <= 1)
 	{
 		printf("rename error in pacon server: path too short\n");
 		return;
@@ -736,6 +735,11 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			//printf("b commit to fs, typs: READDIR\n");
 			break;
 
+		case '6':
+			//printf("b commit to fs, typs: RENAME\n");
+			rename_update_dc(ps_info, path);
+			break;
+
 		case '0':
 			//printf("b commit to fs, typs: CHECKPOINT\n");
 			checkpoint(path);
@@ -743,7 +747,6 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 
 		case 'A':
 			//printf("b commit to fs, typs: RENAME\n");
-			rename_update_dc(ps_info, path);
 			break;
 
 		default:

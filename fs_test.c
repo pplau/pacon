@@ -350,7 +350,7 @@ int main(int argc, char const *argv[])
 			printf("rmdir error\n");
 			return -1;
 		}
-		ret = test_stat(pacon, "/mnt/beegfs/test", st);
+		ret = test_stat(pacon, "/mnt/beegfs/test1", st);
 		if (ret != 0)
 			printf("rmdir test succee\n");
 		else

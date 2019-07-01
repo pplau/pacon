@@ -25,9 +25,9 @@
 #define RM ":3"
 #define RMDIR ":4"
 #define READDIR ":5"
-#define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
+#define RENAME ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
-#define RENAME ":A"
+#define OWRITE ":A"
 
 // opt type for permission check
 #define READDIR_PC 0
@@ -36,13 +36,13 @@
 #define RM_PC 3
 #define RMDIR_PC 4
 #define LINK_PC 5
-#define OWRITE_PC 6  // data size is larger than the INLINE_MAX, write it back to DFS
+#define RENAME_PC 6  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC_PC 7
 #define READ_PC 8
 #define WRITE_PC 9
 #define RW_PC 10
 #define CREATEW_PC 11
-#define RENAME_PC 12
+#define OWRITE_PC 12
 
 
 #define DEFAULT_FILEMODE S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH
@@ -1777,7 +1777,7 @@ int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 
 		char tmp_path[PATH_MAX];
 		sprintf(tmp_path, "%s%s%s%s%d%s%d", path, "|", pacon->fsync_logfile_path, "|", offset, "|", ret);
-		ret = add_to_mq(pacon, tmp_path, FSYNC, p_st.ctime);
+		ret = add_to_mq(pacon, tmp_path, FSYNC, st.ctime);
 		if (ret != 0)
 		{
 			printf("fsync add to mq error%s\n", path);
@@ -1873,7 +1873,7 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 	{
 		printf("rename: new name existed%s\n", newpath);
 	}
-	ret = load_to_pacon(pacon, path);
+	ret = load_to_pacon(pacon, newpath);
 	if (ret != -1)
 	{
 		printf("rename: new name existed %s\n", newpath);

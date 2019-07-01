@@ -27,7 +27,7 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
-#define RENAME ":A"
+#define RENAME ":8"
 
 // opt type for permission check
 #define READDIR_PC 0

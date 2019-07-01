@@ -24,7 +24,7 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
-#define RENAME ":8"
+#define RENAME ":A"
 
 #define BARRIER ":8"
 #define DEL_BARRIER ":9"
@@ -490,21 +490,21 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			}
 			break;
 
-		case '8':
-			//printf("commit to fs, typs: RENAME\n");
-			reach_barrier = 2;
-			while (reach_barrier != 0)
-			break;
-
 		case '0':
 			//printf("commit to fs, typs: CHECKPOINT\n");
 			reach_barrier = 2;
 			while (reach_barrier != 0)
 			break;
 
+		case 'A':
+			//printf("commit to fs, typs: RENAME\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0)
+			break;
+
 		default:
-			printf("opt type error\n");
-			return -1;
+			printf("opt type error, type: %c\n", mesg[i+1]);
+			//return -1;
 	}
 	return 0;
 }
@@ -665,10 +665,10 @@ void rename_update_dc(struct pacon_server_info *ps_info, char *path)
 			newpath[i-loc-1] = '\0';
 			break;
 		}
-		if (loc == 0 && path[i] != '|')
+		if (loc == 0 && path[i] != '-')
 		{
 			oldpath[i] = path[i];
-		} else if (path[i] == '|') {
+		} else if (path[i] == '-') {
 			loc = i;
 			oldpath[i] = '\0';
 		} else if (loc > 0) {
@@ -736,14 +736,16 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			//printf("b commit to fs, typs: READDIR\n");
 			break;
 
-		case '8':
-			//printf("b commit to fs, typs: RENAME\n");
-			rename_update_dc(ps_info, path);
-			break;
-
 		case '0':
 			//printf("b commit to fs, typs: CHECKPOINT\n");
+			while (reach_barrier != 2);
 			checkpoint(path);
+			break;
+
+		case 'A':
+			//printf("b commit to fs, typs: RENAME\n");
+			while (reach_barrier != 2);
+			rename_update_dc(ps_info, path);
 			break;
 
 		default:

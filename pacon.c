@@ -27,7 +27,7 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
-#define RENAME ":8"
+#define RENAME ":A"
 
 // opt type for permission check
 #define READDIR_PC 0
@@ -1886,7 +1886,7 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 		return -1;
 	}
 	char joint_path[PATH_MAX];
-	sprintf(joint_path, "%s%s%s", path, "|", newpath);
+	sprintf(joint_path, "%s%c%s", path, '-', newpath);
 	add_to_mq(pacon, joint_path, RENAME, time(NULL));
 	ret = add_to_local_rpc(pacon, joint_path, RENAME, time(NULL));
 	if (ret == -1)

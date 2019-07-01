@@ -9,7 +9,7 @@
 #include <unistd.h>
 #include "pacon.h"
 
-#define TEST_TYPE 2  // 0 is mirco test, 1 is pressure test, 2 is cregion joint test
+#define TEST_TYPE 0  // 0 is mirco test, 1 is pressure test, 2 is cregion joint test
 
 
 int test_init(struct pacon *pacon)
@@ -350,7 +350,7 @@ int main(int argc, char const *argv[])
 			printf("rmdir error\n");
 			return -1;
 		}
-		ret = test_stat(pacon, "/mnt/beegfs/test", st);
+		ret = test_stat(pacon, "/mnt/beegfs/test1", st);
 		if (ret != 0)
 			printf("rmdir test succee\n");
 		else

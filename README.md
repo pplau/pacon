@@ -16,12 +16,10 @@
 # Stop Pacon  
 `bash ./scripts/stop_pacon.sh`
 
-***
 # Pacon Interfaces
 
 
-***
 # How to joint CRegions
-`add all addresses of remote cregion into ./cr_joint_config`
-`add the workspace of remote cregion into ./crj_info`
-`call cregion_joint() func in the app`
+`add all addresses of remote cregion into ./cr_joint_config`  
+`add the workspace of remote cregion into ./crj_info`  
+`call cregion_joint() func in the app`  

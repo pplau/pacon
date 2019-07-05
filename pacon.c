@@ -28,6 +28,7 @@
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
 #define RENAME ":A"
+#define FLUSHDIR ":B"
 
 // opt type for permission check
 #define READDIR_PC 0
@@ -274,6 +275,138 @@ int set_root_path(struct pacon *pacon, char *r_path)
 	return 0;
 }
 
+/* similar to rmdir, but do not need to remove dir on DFS */
+int flush_dir(struct pacon *pacon, char *path)
+{
+	int ret;
+	add_to_mq(pacon, path, FLUSHDIR, time(NULL));
+	ret = add_to_local_rpc(pacon, path, FLUSHDIR, time(NULL));
+	if (ret == -1)
+	{
+		printf("flush dir error: %s\n", path);
+		return -1;
+	}
+	return ret;
+}
+
+int flush_file(struct pacon *pacon, char *path)
+{
+	int ret;
+	struct stat buf;
+	while (stat(path, &buf) != 0)
+	ret = dmkv_del(pacon->kv_handle, path);
+	if (ret != 0)
+	{
+		printf("flush file error\n");
+		return -1;
+	}
+	return 0;
+}
+
+/*
+ * Policy:
+ * 1. 
+ */
+int evict_metadata(struct pacon *pacon)
+{
+	int ret;
+	// get evict lock
+	char *val;
+	uint64_t cas;
+	uint64_t cas_temp;
+	char evict_lock = "evict_lock";
+retry:
+	val = dmkv_get_cas(pacon->kv_handle, evict_lock, &cas);
+	if (val == NULL)
+	{
+		printf("get evict lock error: not existed\n");
+		return -1;
+	}
+	if (val[0] == '0')
+	{
+		ret = dmkv_cas(pacon->kv_handle, evict_lock, "1", strlen("1"), cas);
+		if (ret == 1)
+			goto retry;
+	} else if (val[0] == '1') {
+		goto retry;
+	} else {
+		printf("evict lock val error\n");
+		return -1;
+	}
+
+	// find a entry to be evicted
+	char *record_val;
+	char evict_record = "evict_record";
+	record_val = dmkv_get(pacon->kv_handle, evict_record, record_val);
+	if (record_val == NULL)
+	{
+		printf("get evict record val error\n");
+		return -1;
+	}
+	int rr = atoi(record_val);
+	int c;
+
+	DIR *dir;
+	struct dirent *entry;
+
+find_again:
+	dir = pacon_opendir(pacon, pacon->mount_path);
+	entry = pacon_readdir(dir);
+	c = 0;
+	while (entry != NULL)
+	{
+		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+			continue;
+		if (c == rr)
+		{
+			char evict_path[PATH_MAX];
+			sprintf(evict_path, "%s%s%s", pacon->mount_path, "/", entry->d_name);
+			if (entry->d_type == DT_DIR)
+			{
+				ret = flush_dir(pacon, evict_path);
+				if (ret != 0 )
+				{
+					printf("evict metadata: flush dir error\n");
+					return -1;
+				}
+			} else {
+				ret = flush_file(pacon, evict_path);
+				if (ret != 0)
+				{
+					printf("evict metadata: flush file error\n");
+					return -1;
+				}
+			}
+			rr++;
+		}
+		entry = pacon_readdir(dir);
+	}
+	pacon_closedir(pacon, pacon->mount_path);
+	if (c < rr)
+	{
+		rr = 0;
+		goto find_again;
+	}
+
+	char new_evict_record[128];
+	sprintf(new_evict_record, "%d", rr);
+	ret = dmkv_set(pacon->kv_handle, evict_record, new_evict_record, strlen(new_evict_record));
+	if (ret != 0)
+	{
+		printf("update evict record error\n");
+		return -1;
+	}
+
+	// free evict lock, doesn't need cas, becasue only the item has already been locked
+	ret = dmkv_set(pacon->kv_handle, evict_lock, "0", strlen("0"));
+	if (ret != 0)
+	{
+		printf("free evict lock error\n");
+		return -1;
+	}
+	return 0;
+}
+
 int load_to_pacon(struct pacon *pacon, char *path)
 {
 	int ret;
@@ -316,7 +449,18 @@ int load_to_pacon(struct pacon *pacon, char *path)
 		p_st.open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
+evict_ok:
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
+		if (ret != 0)
+		{
+			// memory is insufficient
+			if (ret == -2)
+			{
+				evict_metadata(pacon);
+				goto evict_ok;
+			}
+			return ret;
+		}
 	} else{
 		cJSON *j_body;
 		j_body = cJSON_CreateObject();
@@ -477,6 +621,23 @@ int init_pacon(struct pacon *pacon)
     // init joint cr info
     pacon->cr_num = 0;
 
+    // init evict lock, 0 is unlock, 1 is lock
+    char evict_lock = "evict_lock";
+    char lock_val = "0";
+    ret = dmkv_add(pacon->kv_handle, evict_lock, lock_val, strlen(evict_lock));
+    if (ret != 0)
+    {
+    	printf("init evict lock error\n");
+    	return -1;
+    }
+    char evict_record = "evict_record";
+    char record_val = "?";
+    ret = dmkv_add(pacon->kv_handle, evict_record, record_val, strlen(record_val));
+    if (ret != 0)
+    {
+    	printf("init evict record error\n");
+    	return -1;
+    }
 	return 0;
 }
 
@@ -835,6 +996,7 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 	}
 }
 
+
 /**************** file interfaces ***************/
 
 /* 
@@ -930,9 +1092,17 @@ retry:
 			p_st.open_counter++;  // only be used when file was created in DFS
 			char val[PSTAT_SIZE];
 			seri_val(&p_st, val);
+evict_ok:
 			res = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 			if (res != 0)
+			{
+				if (res == -2)
+				{
+					evict_metadata(pacon);
+					goto evict_ok;
+				}
 				goto retry;
+			}
 			p_file->fd = fd;
 		} else {
 			/*cJSON *j_body;
@@ -1049,6 +1219,7 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.open_counter = 0;
 		//char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
+evict_ok:
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 	} else {
 		cJSON *j_body;
@@ -1071,6 +1242,12 @@ int pacon_create(struct pacon *pacon, const char *path, mode_t mode)
 	// the file may be existed or be removed
 	if (ret != 0)
 	{
+		if (ret == -2)
+		{
+			evict_metadata(pacon);
+			goto evict_ok;
+		}
+
 		char *tmp_val;
 		struct pacon_stat tmp_p_st;
 		tmp_val = dmkv_get(pacon->kv_handle, path);
@@ -1143,11 +1320,18 @@ int pacon_create_write(struct pacon *pacon, const char *path, mode_t mode, const
 		p_st.open_counter = 0;
 		char val[PSTAT_SIZE+INLINE_MAX];
 		seri_inline_data(&p_st, buf, val);
+evict_ok:
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE + size);
 
 		// the file may be existed or be removed
 		if (ret != 0)
 		{
+			if (ret == -2)
+			{
+				evict_metadata(pacon);
+				goto evict_ok;
+			}
+
 			char *tmp_val;
 			struct pacon_stat tmp_p_st;
 			tmp_val = dmkv_get(pacon->kv_handle, path);
@@ -1216,6 +1400,7 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
+evict_ok:
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
 	} else {
 		cJSON *j_body;
@@ -1235,7 +1420,14 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 		ret = dmkv_add(pacon->kv_handle, path, value, PSTAT_SIZE);
 	}
 	if (ret != 0)
+	{
+		if (ret == -2)
+		{
+			evict_metadata(pacon);
+			goto evict_ok;
+		}
 		return ret;
+	}
 	//ret = add_to_mq(pacon, path, MKDIR);
 	ret = add_to_mq(pacon, path, MKDIR, p_st.ctime);
 	return ret;
@@ -1304,7 +1496,13 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 		st->open_counter = 0;
 		char val[PSTAT_SIZE];
 		seri_val(st, val);
+evict_ok:
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
+		if (ret == -2)
+		{
+			evict_metadata(pacon);
+			goto evict_ok;
+		}
 		goto out;
 	}
 

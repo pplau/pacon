@@ -25,6 +25,7 @@
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
 #define RENAME ":A"
+#define FLUSHDIR ":B"
 
 #define BARRIER ":8"
 #define DEL_BARRIER ":9"
@@ -502,6 +503,12 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			while (reach_barrier != 0)
 			break;
 
+		case 'B':
+			//printf("commit to fs, typs: FLUSHDIR\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0)
+			break;
+
 		default:
 			printf("opt type error, type: %c\n", mesg[i+1]);
 			//return -1;
@@ -584,6 +591,33 @@ void traversedir_dmkv_del(struct pacon_server_info *ps_info, char *path)
 		printf("traverse remove dir error, %s\n", path);
 		return -1;
 	}
+}
+
+void traversedir_dmkv_flush(struct pacon_server_info *ps_info, char *path)
+{
+	int ret;
+	char dir_new[PATH_MAX];
+	DIR *pd;
+	struct dirent *entry;
+	pd = opendir(path);
+	while ((entry = readdir(pd)) != NULL)
+	{
+		if(strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+			continue;
+		int c_len = strlen(entry->d_name);
+		int p_len = strlen(path);
+		memcpy(dir_new, path, p_len);
+		dir_new[p_len] = '/';
+		memcpy(dir_new + p_len + 1, entry->d_name, c_len);
+		dir_new[p_len+1+c_len] = '\0';
+		dmkv_del(ps_info->kv_handle, dir_new);
+
+		if (entry->d_type == DT_DIR)
+		{
+			traversedir_dmkv_del(ps_info, dir_new);
+		}
+	}
+	closedir(pd);
 }
 
 void checkpoint(char *path)
@@ -746,6 +780,12 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			//printf("b commit to fs, typs: RENAME\n");
 			while (reach_barrier != 2);
 			rename_update_dc(ps_info, path);
+			break;
+
+		case 'B':
+			//printf("b commit to fs, typs: FLUSHDIR\n");
+			while (reach_barrier != 2);
+			traversedir_dmkv_flush(ps_info, path);
 			break;
 
 		default:

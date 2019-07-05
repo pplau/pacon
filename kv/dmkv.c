@@ -22,6 +22,13 @@ static char node_address[12][4] = {
 */
 
 /************* memc3 wrapper **************/
+/* 
+ * return value:
+ * 1: success
+ * 2: data exist
+ * -1: put error
+ * -2: memory is insufficient
+ */
 
 int memc_new(struct dmkv *dmkv)
 {
@@ -63,7 +70,11 @@ int memc_put(memcached_st *memc, char *key, char *val, int val_len)
 	}
 	rc = memcached_set(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
+	{
+		if (rc == MEMCACHED_MEMORY_ALLOCATION_FAILURE)
+			return -2;
 		return -1;
+	}
 	return 0;
 }
 
@@ -76,7 +87,11 @@ int memc_add(memcached_st *memc, char *key, char *val, int val_len)
 		key_len--;
 	rc = memcached_add(memc, key, key_len, val, val_len, (time_t) 0, (uint32_t) 0);
 	if (rc != MEMCACHED_SUCCESS)
+	{
+		if (rc == MEMCACHED_MEMORY_ALLOCATION_FAILURE)
+			return -2;
 		return -1;
+	}
 	return 0;
 }
 
@@ -91,7 +106,8 @@ int memc_cas(memcached_st *memc, char *key, char *val, int val_len, uint64_t cas
 		return 1;
 	if (rc == MEMCACHED_SUCCESS)
 		return 0;
-	
+	if (rc == MEMCACHED_MEMORY_ALLOCATION_FAILURE)
+		return -2;
 	return -1;
 }
 

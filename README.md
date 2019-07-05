@@ -22,4 +22,4 @@
 # How to joint CRegions
 `add all addresses of remote cregion into ./cr_joint_config`  
 `add the workspace of remote cregion into ./crj_info`  
-`call cregion_joint() func in the app`  
+`call cregion_joint() func in the app  // only need to be called by one client in the app`   

@@ -214,10 +214,15 @@ int main(int argc, char const *argv[])
 	struct pacon *pacon = (struct pacon *)malloc(sizeof(struct pacon));
 	/*pacon->mount_path[0] = '/';
 	pacon->mount_path[1] = '\0'; */
-    if (TEST_TYPE != 2)
+    if (TEST_TYPE == 0 || TEST_TYPE == 1)
+    {
             ret = set_root_path(pacon, "/mnt/beegfs");
-    else
-            ret = set_root_path(pacon, "/mnt/beegfs/cr0");
+    } else if (TEST_TYPE == 2) {
+    	ret = set_root_path(pacon, "/mnt/beegfs/cr0");
+    } else if (TEST_TYPE == 3) {
+    	ret = set_root_path(pacon, "/mnt/beegfs/pacon");
+    }
+    
 	if (ret != 0)
 	{
 		printf("init pacon error\n");
@@ -435,6 +440,33 @@ int main(int argc, char const *argv[])
 			return -1;
 		}
 		printf("free pacon success\n");
+	}
+
+	if (TEST_TYPE == 3)
+	{
+		int ret1, ret2, ret3;
+		ret1 = test_mkdir(pacon, "/mnt/beegfs/pacon/test", S_IFDIR | 0755);
+		ret2 = test_mkdir(pacon, "/mnt/beegfs/pacon/test/d1", S_IFDIR | 0755);
+		ret3 = test_create(pacon, "/mnt/beegfs/pacon/test/f1", S_IFREG | 0644);
+		if (ret1 != 0 || ret2 != 0 || ret3 != 0)
+		{
+			printf("mkdir or create error\n");
+			return -1;
+		}
+		ret = evict_metadata(pacon);
+		if (ret != 0)
+		{
+			printf("evict error 1\n");
+			return -1;
+		}
+		ret = test_stat(pacon, "/mnt/beegfs/pacon/test/d1", r_st);
+		if (ret == 0)
+		{
+			printf("evict error 2\n")
+			return -1;
+		} else {
+			printf("evict test success\n");
+		}
 	}
 	return 0;
 }

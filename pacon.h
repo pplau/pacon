@@ -190,4 +190,11 @@ int cregion_checkpoint(struct pacon *pacon);
 int cregion_recover(struct pacon *pacon);
 
 
+/**************** only for test ****************/
+
+int evict_metadata(struct pacon *pacon);
+
+
+
+
 #endif

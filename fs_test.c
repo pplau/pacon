@@ -10,6 +10,7 @@
 #include "pacon.h"
 
 #define TEST_TYPE 0  // 0 is mirco test, 1 is pressure test, 2 is cregion joint test
+					 // 3 is eviction test, 4 is batch permission test
 
 
 int test_init(struct pacon *pacon)
@@ -214,7 +215,7 @@ int main(int argc, char const *argv[])
 	struct pacon *pacon = (struct pacon *)malloc(sizeof(struct pacon));
 	/*pacon->mount_path[0] = '/';
 	pacon->mount_path[1] = '\0'; */
-    if (TEST_TYPE == 0 || TEST_TYPE == 1)
+    if (TEST_TYPE == 0 || TEST_TYPE == 1 || TEST_TYPE == 4)
     {
             ret = set_root_path(pacon, "/mnt/beegfs");
     } else if (TEST_TYPE == 2) {
@@ -469,5 +470,37 @@ int main(int argc, char const *argv[])
 			printf("evict test success\n");
 		}*/
 	}
+
+	if (TEST_TYPE == 4)
+	{
+		struct permission_info *perm_info = (struct permission_info *)malloc(sizeof(struct permission_info));
+		perm_info->nom_dir_mode = 0755;
+		perm_info->nom_f_mode = 0644;
+		perm_info->sp_num = 1;
+		char *sp = "/mnt/beegfs/sp";
+		sprintf(perm_info->sp_path[0], "%s", sp);
+		perm_info->sp_dir_modes[0] = 0111;
+		
+		ret = pacon_set_permission(pacon, perm_info);
+		if (ret != 0)
+		{
+			printf("batch set permission error\n");
+			return -1;
+		}
+		ret = test_mkdir(pacon, "/mnt/beegfs/sp", S_IFDIR | 0755);
+		if (ret != 0)
+		{
+			printf("sp path mkdir error\n");
+			return -1;
+		}
+		ret = test_mkdir(pacon, "/mnt/beegfs/sp/d1", S_IFDIR | 0755);
+		if (ret != 0)
+		{
+			printf("batch permission test success\n");
+		} else {
+			printf("batch permission test error\n");
+		}
+	}
+
 	return 0;
 }

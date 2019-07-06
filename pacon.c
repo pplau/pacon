@@ -922,7 +922,7 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 	int nor_or_sp = 0; // 0 is nor, 1 is sp
 
 	// if opt is create/remove file, check its parent first
-	if (type == 1)
+	/*if (type == 1)
 	{
 		if (opt == CREATE_PC || opt == CREATEW_PC || opt == RM_PC)
 		{
@@ -939,9 +939,30 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 			if (ret != 0)
 				return -1;
 		}
+	}*/
+
+	int type_tmp;
+	char check_path[PATH_MAX];
+	int len = strlen(path);
+
+	// if opt is create / mkdir (the md doesn't exist before), check its parent
+	if (opt == CREATE_PC || opt == CREATEW_PC || opt == MKDIR_PC)
+	{
+		for (i = len-1; i >= 0; --i)
+		{
+			if (path[i] == '/')
+				break;
+		}
+		strncpy(check_path, path, i);
+		check_path[i] = '\0';
+		type_tmp = 0;
+	} else {
+		strncpy(check_path, path, len);
+		check_path[len] = '\0';
+		type_tmp = type_tmp;
 	}
 
-	if (type == 0)
+	if (type_tmp == 0)
 	{
 		// check normal permission
 		ret = mask_compare(pacon->perm_info->nom_dir_mode, type, opt);
@@ -954,7 +975,7 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 		// check special permission
 		for (i = 0; i < pacon->perm_info->sp_num; ++i)
 		{
-			ret = child_cmp_new(path, pacon->perm_info->sp_path[i], 1);
+			ret = child_cmp_new(check_path, pacon->perm_info->sp_path[i], 1);
 			if (ret > 0)
 			{
 				if (ret == 2)
@@ -983,7 +1004,7 @@ int check_permission(struct pacon *pacon, char *path, int type, int opt)
 		// check special permission
 		for (i = 0; i < pacon->perm_info->sp_num; ++i)
 		{
-			ret = child_cmp_new(path, pacon->perm_info->sp_path[i], 1);
+			ret = child_cmp_new(check_path, pacon->perm_info->sp_path[i], 1);
 			if (ret > 0)
 			{
 				if (ret == 2)

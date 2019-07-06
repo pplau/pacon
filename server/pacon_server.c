@@ -614,7 +614,7 @@ void traversedir_dmkv_flush(struct pacon_server_info *ps_info, char *path)
 
 		if (entry->d_type == DT_DIR)
 		{
-			traversedir_dmkv_del(ps_info, dir_new);
+			traversedir_dmkv_flush(ps_info, dir_new);
 		}
 	}
 	closedir(pd);

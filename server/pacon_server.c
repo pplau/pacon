@@ -468,13 +468,13 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		case '4':
 			//printf("commit to fs, typs: RMDIR\n");
 			reach_barrier = 2;
-			while (reach_barrier != 0)
+			while (reach_barrier != 0);
 			break;
 
 		case '5':
 			//printf("commit to fs, typs: READDIR\n");
 			reach_barrier = 2;
-			while (reach_barrier != 0)
+			while (reach_barrier != 0);
 			break;
 
 		case '6':
@@ -494,20 +494,20 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		case '0':
 			//printf("commit to fs, typs: CHECKPOINT\n");
 			reach_barrier = 2;
-			while (reach_barrier != 0)
+			while (reach_barrier != 0);
 			break;
 
 		case 'A':
 			//printf("commit to fs, typs: RENAME\n");
 			reach_barrier = 2;
-			while (reach_barrier != 0)
-			break;
+			while (reach_barrier != 0);
+			return 0;
 
 		case 'B':
 			//printf("commit to fs, typs: FLUSHDIR\n");
 			reach_barrier = 2;
-			while (reach_barrier != 0)
-			break;
+			while (reach_barrier != 0);
+			return 0;
 
 		default:
 			printf("opt type error, type: %c\n", mesg[i+1]);

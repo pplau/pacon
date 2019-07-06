@@ -459,15 +459,15 @@ int main(int argc, char const *argv[])
 			printf("evict error 1\n");
 			return -1;
 		}
-		struct pacon_stat* r_st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
+		/*struct pacon_stat* r_st = (struct pacon_stat *)malloc(sizeof(struct pacon_stat));
 		ret = test_stat(pacon, "/mnt/beegfs/pacon/test/d1", r_st);
-		if (ret == 0)
+		if (ret != 0)
 		{
 			printf("evict error 2\n");
 			return -1;
 		} else {
 			printf("evict test success\n");
-		}
+		}*/
 	}
 	return 0;
 }

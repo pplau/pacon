@@ -314,7 +314,7 @@ int evict_metadata(struct pacon *pacon)
 	char *val;
 	uint64_t cas;
 	uint64_t cas_temp;
-	char evict_lock = "evict_lock";
+	char *evict_lock = "evict_lock";
 retry:
 	val = dmkv_get_cas(pacon->kv_handle, evict_lock, &cas);
 	if (val == NULL)
@@ -336,8 +336,8 @@ retry:
 
 	// find a entry to be evicted
 	char *record_val;
-	char evict_record = "evict_record";
-	record_val = dmkv_get(pacon->kv_handle, evict_record, record_val);
+	char *evict_record = "evict_record";
+	record_val = dmkv_get(pacon->kv_handle, evict_record);
 	if (record_val == NULL)
 	{
 		printf("get evict record val error\n");
@@ -353,10 +353,14 @@ find_again:
 	dir = pacon_opendir(pacon, pacon->mount_path);
 	entry = pacon_readdir(dir);
 	c = 0;
+	int found = 0;
 	while (entry != NULL)
 	{
 		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+		{
+			entry = pacon_readdir(dir);
 			continue;
+		}
 		if (c == rr)
 		{
 			char evict_path[PATH_MAX];
@@ -378,11 +382,14 @@ find_again:
 				}
 			}
 			rr++;
+			found = 1;
+			break;
 		}
+		c++;
 		entry = pacon_readdir(dir);
 	}
-	pacon_closedir(pacon, pacon->mount_path);
-	if (c < rr)
+	pacon_closedir(pacon, dir);
+	if (found == 0)
 	{
 		rr = 0;
 		goto find_again;
@@ -622,16 +629,16 @@ int init_pacon(struct pacon *pacon)
     pacon->cr_num = 0;
 
     // init evict lock, 0 is unlock, 1 is lock
-    char evict_lock = "evict_lock";
-    char lock_val = "0";
+    char *evict_lock = "evict_lock";
+    char *lock_val = "0";
     ret = dmkv_add(pacon->kv_handle, evict_lock, lock_val, strlen(evict_lock));
     if (ret != 0)
     {
     	printf("init evict lock error\n");
     	return -1;
     }
-    char evict_record = "evict_record";
-    char record_val = "?";
+    char *evict_record = "evict_record";
+    char *record_val = "?";
     ret = dmkv_add(pacon->kv_handle, evict_record, record_val, strlen(record_val));
     if (ret != 0)
     {

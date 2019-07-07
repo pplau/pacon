@@ -399,7 +399,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 					perm_info.sp_path[perm_info.sp_num][pos] = sp_val[j];
 				} else if (sp_val[j] == ':') {
 					char mode_tmp[5];
-					j++
+					j++;
 					int pos_tmp = j;
 					while (sp_val[j] != 'd' && sp_val[j] != 'f')
 					{
@@ -421,6 +421,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 				}
 			}
 			perm_info.sp_num++;
+			sp_permission = 1;
 		}
 	}
 

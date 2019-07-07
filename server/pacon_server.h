@@ -24,16 +24,6 @@ struct carea_info
 
 };
 
-struct permission_info
-{
-	mode_t nom_dir_mode;
-	mode_t nom_f_mode;
-	int sp_num;
-	char sp_path[SP_LIST_MAX][PATH_MAX];
-	mode_t sp_dir_modes[SP_LIST_MAX];
-	mode_t sp_f_modes[SP_LIST_MAX];
-};
-
 struct pacon_server_info
 {
 	int carea_num;

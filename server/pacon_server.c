@@ -37,7 +37,7 @@ static int reach_barrier = 0;        // 0 is not barrier
 static int remote_reach_barrier = 0;
 static int mesg_count = 0; 
 
-static int sp_permission -1;  // 0 means using default setting, 1 means using special setting
+static int sp_permission = -1;  // 0 means using default setting, 1 means using special setting
 static struct permission_info perm_info; 
 
 
@@ -384,19 +384,19 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		{
 			sp_permission = 0;
 		} else {
-			perm_info->nom_dir_mode = atoi(nom_dir_mode_val);
+			perm_info.nom_dir_mode = atoi(nom_dir_mode_val);
 			nom_f_mode_val = dmkv_get(ps_info->kv_handle, nom_dir_mode);
-			perm_info->nom_f_mode = atoi(nom_f_mode_val);
+			perm_info.nom_f_mode = atoi(nom_f_mode_val);
 			sp_val = dmkv_get(ps_info->kv_handle, sp_path);
 			int j = 0;
 			int pos = j;
 			int val_len = strlen(sp_val);
-			perm_info->sp_num = 0
+			perm_info.sp_num = 0;
 			for (; j < strlen(sp_val); ++j)
 			{
 				if (sp_val[j] != ':' && sp_val[j] != '|')
 				{
-					perm_info->sp_path[perm_info->sp_num][pos] = sp_val[j];
+					perm_info.sp_path[perm_info.sp_num][pos] = sp_val[j];
 				} else if (sp_val[j] == ':') {
 					char mode_tmp[5];
 					j++
@@ -409,18 +409,18 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 					mode_tmp[j-pos_tmp] = '\0';
 					if (sp_val[j] == 'd')
 					{
-						perm_info->sp_dir_modes[perm_info->sp_num] = atoi(mode_tmp);
-						perm_info->sp_f_modes[perm_info->sp_num] = 999;
+						perm_info.sp_dir_modes[perm_info.sp_num] = atoi(mode_tmp);
+						perm_info.sp_f_modes[perm_info.sp_num] = 999;
 					} else {
-						perm_info->sp_f_modes[perm_info->sp_num] = atoi(mode_tmp);
-						perm_info->sp_dir_modes[perm_info->sp_num] = 999;
+						perm_info.sp_f_modes[perm_info.sp_num] = atoi(mode_tmp);
+						perm_info.sp_dir_modes[perm_info.sp_num] = 999;
 					}
 				} else if (sp_val[j] == '|') {
 					pos = 0;
-					perm_info->sp_num++;
+					perm_info.sp_num++;
 				}
 			}
-			perm_info->sp_num++;
+			perm_info.sp_num++;
 		}
 	}
 

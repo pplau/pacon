@@ -474,12 +474,14 @@ int main(int argc, char const *argv[])
 	if (TEST_TYPE == 4)
 	{
 		struct permission_info *perm_info = (struct permission_info *)malloc(sizeof(struct permission_info));
-		perm_info->nom_dir_mode = 0755;
-		perm_info->nom_f_mode = 0644;
+		pacon_init_perm_info(perm_info);
+		perm_info->nom_dir_mode = 755;
+		perm_info->nom_f_mode = 644;
 		perm_info->sp_num = 1;
 		char *sp = "/mnt/beegfs/sp";
 		sprintf(perm_info->sp_path[0], "%s", sp);
-		perm_info->sp_dir_modes[0] = 0111;
+		perm_info->sp_dir_modes
+		perm_info->sp_dir_modes[0] = 111;
 		
 		ret = pacon_set_permission(pacon, perm_info);
 		if (ret != 0)

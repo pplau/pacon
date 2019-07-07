@@ -15,10 +15,23 @@
 #define CHECKPOINT_TIME 0  // 0 mean no need checkpoint, >0 mean the perriod of checkpoint (second)
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
 
+#define PATH_MAX 128
+#define SP_LIST_MAX 16
+
 
 struct carea_info
 {
 
+};
+
+struct permission_info
+{
+	mode_t nom_dir_mode;
+	mode_t nom_f_mode;
+	int sp_num;
+	char sp_path[SP_LIST_MAX][PATH_MAX];
+	mode_t sp_dir_modes[SP_LIST_MAX];
+	mode_t sp_f_modes[SP_LIST_MAX];
 };
 
 struct pacon_server_info

@@ -11,7 +11,6 @@
 #include <zmq.h>
 #include "pacon_server.h"
 
-#define PATH_MAX 512
 #define TIMESTAMP_SIZE 11
 #define INLINE_DATA_MAX 468
 
@@ -37,6 +36,9 @@ static int reach_barrier = 0;        // 0 is not barrier
 									 // 2 is commit mq already reached to the barrier
 static int remote_reach_barrier = 0;
 static int mesg_count = 0; 
+
+static int sp_permission -1;  // 0 means using default setting, 1 means using special setting
+static struct permission_info perm_info; 
 
 
 enum statflags
@@ -368,6 +370,60 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	}
 	path[i] = '\0';
 
+	// batch permission
+	if (sp_permission == -1)
+	{
+		char *nom_dir_mode = "nom_dir_mode";
+		char *nom_f_mode = "nom_f_mode";
+		char *sp_path = "sp_path";
+		char *nom_dir_mode_val;
+		char *nom_f_mode_val;
+		char *sp_val;
+		nom_dir_mode_val = dmkv_get(ps_info->kv_handle, nom_dir_mode);
+		if (nom_dir_mode_val == NULL)
+		{
+			sp_permission = 0;
+		} else {
+			perm_info->nom_dir_mode = atoi(nom_dir_mode_val);
+			nom_f_mode_val = dmkv_get(ps_info->kv_handle, nom_dir_mode);
+			perm_info->nom_f_mode = atoi(nom_f_mode_val);
+			sp_val = dmkv_get(ps_info->kv_handle, sp_path);
+			int j = 0;
+			int pos = j;
+			int val_len = strlen(sp_val);
+			perm_info->sp_num = 0
+			for (; j < strlen(sp_val); ++j)
+			{
+				if (sp_val[j] != ':' && sp_val[j] != '|')
+				{
+					perm_info->sp_path[perm_info->sp_num][pos] = sp_val[j];
+				} else if (sp_val[j] == ':') {
+					char mode_tmp[5];
+					j++
+					int pos_tmp = j;
+					while (sp_val[j] != 'd' && sp_val[j] != 'f')
+					{
+						mode_tmp[j-pos_tmp] = sp_val[j];
+						j++;
+					}
+					mode_tmp[j-pos_tmp] = '\0';
+					if (sp_val[j] == 'd')
+					{
+						perm_info->sp_dir_modes[perm_info->sp_num] = atoi(mode_tmp);
+						perm_info->sp_f_modes[perm_info->sp_num] = 999;
+					} else {
+						perm_info->sp_f_modes[perm_info->sp_num] = atoi(mode_tmp);
+						perm_info->sp_dir_modes[perm_info->sp_num] = 999;
+					}
+				} else if (sp_val[j] == '|') {
+					pos = 0;
+					perm_info->sp_num++;
+				}
+			}
+			perm_info->sp_num++;
+		}
+	}
+
 	// only the remote barrier will go into this logic
 	if (commit_barrier != 0)
 	{
@@ -387,7 +443,16 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	{
 		case '1':
 			//printf("commit to fs, typs: MKDIR\n");
-			ret = mkdir(path, ps_info->batch_dir_mode);
+			if (sp_permission == 0)
+			{
+				ret = mkdir(path, S_IFDIR | 0755);
+			} else if (sp_permission == 1) {
+				ret = mkdir(path, S_IFDIR | 0755);
+			} else {
+				printf("batch permission error\n");
+				return -1;
+			} 
+
 			if (ret == -1)
 			{
 				ret = retry_commit(ps_info, path, 1);
@@ -401,7 +466,16 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '2':
 			//printf("commit to fs, typs: CREATE\n");	
-			fd = creat(path, ps_info->batch_file_mode);
+			if (sp_permission == 0)
+			{
+				fd = creat(path, S_IFREG | 0644);
+			} else if (sp_permission == 1) {
+				fd = creat(path, S_IFREG | 0644);
+			} else {
+				printf("batch permission error\n");
+				return -1;
+			}
+
 			if (fd == -1)
 			{
 				fd = retry_commit(ps_info, path, 2);

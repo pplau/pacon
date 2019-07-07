@@ -458,15 +458,11 @@ int load_to_pacon(struct pacon *pacon, char *path)
 		seri_val(&p_st, val);
 evict_ok:
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);
-		if (ret != 0)
+		// memory is insufficient
+		if (ret == -2)
 		{
-			// memory is insufficient
-			if (ret == -2)
-			{
-				evict_metadata(pacon);
-				goto evict_ok;
-			}
-			return ret;
+			evict_metadata(pacon);
+			goto evict_ok;
 		}
 	} else{
 		cJSON *j_body;
@@ -632,19 +628,19 @@ int init_pacon(struct pacon *pacon)
     char *evict_lock = "evict_lock";
     char *lock_val = "0";
     ret = dmkv_add(pacon->kv_handle, evict_lock, lock_val, strlen(evict_lock));
-    if (ret != 0)
+    /*if (ret != 0)
     {
     	printf("init evict lock error\n");
     	return -1;
-    }
+    }*/
     char *evict_record = "evict_record";
     char *record_val = "?";
     ret = dmkv_add(pacon->kv_handle, evict_record, record_val, strlen(record_val));
-    if (ret != 0)
+    /*if (ret != 0)
     {
     	printf("init evict record error\n");
     	return -1;
-    }
+    }*/
 	return 0;
 }
 
@@ -863,7 +859,7 @@ int mask_compare(mode_t perm_mode, int type, int opt)
 {
 	char mode[5];
 	sprintf(mode, "%d", perm_mode);
-	switch (mode[1])
+	switch (mode[0])
 	{
 		case '7':
 			return 0;
@@ -2013,9 +2009,65 @@ int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 	return 0;
 }
 
+void pacon_init_perm_info(struct permission_info *perm_info)
+{
+	int i;
+	for (i = 0; i < SP_LIST_MAX; ++i)
+	{
+		perm_info->sp_dir_modes[i] = 999;
+		perm_info->sp_f_modes[i] = 999;
+	}
+}
+
 int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info)
 {
+	int ret;
 	pacon->perm_info = perm_info;
+	char *nom_dir_mode = "nom_dir_mode";
+	char *nom_f_mode = "nom_f_mode";
+	char *sp_path = "sp_path";
+
+	char nom_dir_mode_val[5];
+	char nom_f_mode_val[5];
+	char sp_val[SP_LIST_MAX*(PATH_MAX+5)];
+
+	sprintf(nom_dir_mode_val, "%d", perm_info->nom_dir_mode);
+	sprintf(nom_f_mode_val, "%d", perm_info->nom_f_mode);
+
+	// sp_val: PATH : MODE TYPE | PATH : MODE TYPE | ....
+	int i;
+	for (i = 0; i < perm_info->sp_num; ++i)
+	{
+		if (i != (perm_info->sp_num)-1)
+		{
+			sprintf(sp_val, "%s%s", perm_info->sp_path[i], ":");
+			if (perm_info->sp_dir_modes[i] != 999)
+			{
+				sprintf(sp_val, "%d%s", perm_info->sp_dir_modes[i], "d|");
+			} else if (perm_info->sp_f_modes[i] != 999) {
+				sprintf(sp_val, "%d%s", perm_info->sp_f_modes[i], "f|");
+			} else {
+				printf("seri sp val: mask error\n");
+				return -1;
+			}
+		} else {
+			sprintf(sp_val, "%s%s", perm_info->sp_path[i], ":");
+			if (perm_info->sp_dir_modes[i] != 999)
+			{
+				sprintf(sp_val, "%d%s%c", perm_info->sp_dir_modes[i], "d", '\0');
+			} else if (perm_info->sp_f_modes[i] != 999) {
+				sprintf(sp_val, "%d%s%c", perm_info->sp_f_modes[i], "f", '\0');
+			} else {
+				printf("seri sp val: mask error\n");
+				return -1;
+			}
+		}
+	}
+
+	ret = dmkv_add(pacon->kv_handle, nom_dir_mode, nom_dir_mode_val, strlen(nom_dir_mode_val));
+	ret = dmkv_add(pacon->kv_handle, nom_f_mode, nom_f_mode_val, strlen(nom_f_mode_val));
+	ret = dmkv_add(pacon->kv_handle, sp_path, sp_val, strlen(sp_val));
+
 	return 0;
 }
 

@@ -20,13 +20,12 @@
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
 #define MOUNT_PATH_MAX 128
 #define PATH_MAX 128
-#define SP_LIST_MAX 8
+#define SP_LIST_MAX 16
 #define CR_JOINT_MAX 8
 
 #define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log/"
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
 #define CRJ_INFO_PATH "./crj_info"
-
 
 
 
@@ -168,6 +167,8 @@ int pacon_access(struct pacon *pacon, const char *path, int amode);
 int pacon_symlink(struct pacon *pacon, const char *oldpath, const char * newpath);
 
 int pacon_readlink(struct pacon *pacon, const char *path, char * buf, size_t size);
+
+void pacon_init_perm_info(struct permission_info *perm_info);
 
 int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info);
 

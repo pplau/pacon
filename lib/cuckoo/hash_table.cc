@@ -47,6 +47,11 @@ extern "C" int pdirht_del(char *key)
 	return 0;
 }
 
+extern "C" void pdirht_clean(void)
+{
+	dir_check_table.clear();
+}
+
 
 /****************** fd hash table ******************/
 
@@ -54,7 +59,7 @@ extern "C" int fdht_put(char *key, int val)
 {
 	int ret;
 	std::string k = key;
-	dir_check_table.insert(k, val);
+	fd_table.insert(k, val);
 	return 0;
 }
 
@@ -67,7 +72,7 @@ extern "C" int fdht_get(char *key)
 {
 	int ret;
 	std::string k = key;
-	if (dir_check_table.find(k, ret))
+	if (fd_table.find(k, ret))
 	{
 		return ret;
 	} else {
@@ -81,6 +86,10 @@ extern "C" int fdht_del(char *key)
 	return 0;
 }
 
+extern "C" void fdht_clean(void)
+{
+	fd_table.clear();
+}
 
 /****************** fd hash table ******************/
 
@@ -88,7 +97,7 @@ extern "C" int opc_put(char *key, int val)
 {
 	int ret;
 	std::string k = key;
-	dir_check_table.insert(k, val);
+	openc_table.insert(k, val);
 	return 0;
 }
 
@@ -101,7 +110,7 @@ extern "C" int opc_get(char *key)
 {
 	int ret;
 	std::string k = key;
-	if (dir_check_table.find(k, ret))
+	if (openc_table.find(k, ret))
 	{
 		return ret;
 	} else {
@@ -114,3 +123,9 @@ extern "C" int opc_del(char *key)
 {
 	return 0;
 }
+
+extern "C" void opc_clean(void)
+{
+	openc_table.clear();
+}
+

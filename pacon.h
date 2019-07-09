@@ -138,7 +138,18 @@ void pacon_closedir(struct pacon *pacon, DIR *dir);
 
 int pacon_getattr(struct pacon *pacon, const char *path, struct pacon_stat* st);
 
+/*
+ * these two funcs are cooperated to exectue rmdir
+ * usage:
+ *		MPI_Barrier();
+ *		if (rank == 0)
+ *			pacon_rmdir();
+ *		else
+ *			pacon_rmdir_clean();
+ *		MPI_Barrier();
+ */
 int pacon_rmdir(struct pacon *pacon, const char *path);
+int pacon_rmdir_clean(struct pacon *pacon, const char *path);
 
 int pacon_rename(struct pacon *pacon, const char *path, const char *newpath);
 

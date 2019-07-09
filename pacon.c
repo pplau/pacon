@@ -1628,6 +1628,7 @@ int pacon_rm(struct pacon *pacon, const char *path)
 /*
  * 1. push rmdir mesg to local rpc queue
  * 2. del the dir item in dmkv when pacon server complete the rmdir process
+ * 3. clean parent dir check table
  */
 int pacon_rmdir(struct pacon *pacon, const char *path)
 {
@@ -1694,8 +1695,17 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 		printf("rmdir error: %s\n", path);
 		return -1;
 	}
+
+	// clean parent dir check
+	fdht_clean();
 	
 	return ret;
+}
+
+int pacon_rmdir_clean(struct pacon *pacon, const char *path)
+{
+	fdht_clean();
+	return 0;
 }
 
 /* success: return read bytes, error: return -1 */

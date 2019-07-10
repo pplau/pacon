@@ -1333,7 +1333,7 @@ evict_ok:
 					int ret1 = check_rmdir_list(pacon, path);
 					if (ret1 == -1)
 					{
-						dmkv_set(pacon->kv_handle, path, value, PSTAT_SIZE);
+						dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE);
 						goto out;
 					}
 				}
@@ -1433,8 +1433,8 @@ evict_ok:
 						int ret1 = check_rmdir_list(pacon, path);
 						if (ret1 == -1)
 						{
-							dmkv_set(pacon->kv_handle, path, value, PSTAT_SIZE);
-							goto out;
+							dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE);
+							goto addmq;
 						}
 					}
 				}
@@ -1463,6 +1463,7 @@ evict_ok:
 			}
 			//return ret;
 		}
+addmq:
 		//ret = add_to_mq(pacon, path, CREATE);
 		ret = add_to_mq(pacon, path, CREATE, p_st.ctime);
 	} else {
@@ -1546,7 +1547,7 @@ evict_ok:
 						printf("path existed\n");
 						return -1;
 					} else {
-						dmkv_set(pacon->kv_handle, path, value, PSTAT_SIZE);
+						dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE);
 						goto out;
 					}
 				}

@@ -686,6 +686,17 @@ int free_pacon(struct pacon *pacon)
 	return 0;
 } 
 
+int check_rmdir_list(struct pacon *pacon, char *path)
+{
+	int i;
+	for (i = 0; i < pacon->rmdir_record->rmdir_num; ++i)
+	{
+		if (child_cmp_new(path, pacon->rmdir_record->rmdir_list[i], 1) != 0)
+			return -1;
+	}
+	return 0;
+}
+
 /* 
  * check the parent dir if existed
  * GET will cause unnecessary data transmition, so we use CAS here
@@ -693,6 +704,7 @@ int free_pacon(struct pacon *pacon)
  */
 int check_parent_dir(struct pacon *pacon, char *path)
 {
+	int ret;
 	char p_dir[PATH_MAX];
 	int path_len = strlen(path), i;
 	if (path_len == 1 && path[0] == '/')
@@ -724,7 +736,20 @@ int check_parent_dir(struct pacon *pacon, char *path)
 		p_dir[i] = path[i];
 	}
 
-	int ret;
+	// check in rmdir list
+	if (ASYNC_RPC == 1)
+	{
+		if (pacon->rmdir_record->rmdir_num > 0)
+		{
+			ret = check_rmdir_list(pacon, p_dir);
+			if (ret != 0)
+			{
+				printf("parent is removed\n");
+				return -1;
+			}
+		}
+	}
+
 	// check parent dir on local
 	ret = dir_check_local(p_dir);
 	if (ret != -1)
@@ -1428,14 +1453,6 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 		if (ret < 0)
 			return -1;
 		dir_mode = pacon->perm_info->sp_dir_modes[ret];
-	}
-
-	if (ASYNC_RPC == 1)
-	{
-		if (pacon->rmdir_record->rmdir_num > 0)
-		{
-			/* code */
-		}
 	}
 
 	if (PARENT_CHECK == 1)

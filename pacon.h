@@ -198,6 +198,8 @@ int pacon_rmdir(struct pacon *pacon, const char *path);
 int pacon_rmdir_clean(struct pacon *pacon);
 /**********************************************/
 
+int pacon_rmdir_async(struct pacon *pacon, const char *path);
+
 
 
 /**************** consistent region interfaces ****************/

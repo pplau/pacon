@@ -686,6 +686,7 @@ int free_pacon(struct pacon *pacon)
 	return 0;
 } 
 
+// 0: not in rmdir list, -1: in rmdir list
 int check_rmdir_list(struct pacon *pacon, char *path)
 {
 	int i;
@@ -1323,6 +1324,21 @@ evict_ok:
 	// the file may be existed or be removed
 	if (ret != 0)
 	{
+		if (ret == -1)
+		{
+			if (ASYNC_RPC == 1)
+			{
+				if (pacon->rmdir_record->rmdir_num > 0)
+				{
+					int ret1 = check_rmdir_list(pacon, path);
+					if (ret1 == -1)
+					{
+						dmkv_set(pacon->kv_handle, path, value, PSTAT_SIZE);
+						goto out;
+					}
+				}
+			}
+		}
 		if (ret == -2)
 		{
 			evict_metadata(pacon);
@@ -1347,6 +1363,7 @@ evict_ok:
 		}
 		//return ret;
 	}
+out:
 	//ret = add_to_mq(pacon, path, CREATE);
 	ret = add_to_mq(pacon, path, CREATE, timestamp);
 	return ret;
@@ -1407,6 +1424,21 @@ evict_ok:
 		// the file may be existed or be removed
 		if (ret != 0)
 		{
+			if (ret == -1)
+			{
+				if (ASYNC_RPC == 1)
+				{
+					if (pacon->rmdir_record->rmdir_num > 0)
+					{
+						int ret1 = check_rmdir_list(pacon, path);
+						if (ret1 == -1)
+						{
+							dmkv_set(pacon->kv_handle, path, value, PSTAT_SIZE);
+							goto out;
+						}
+					}
+				}
+			}
 			if (ret == -2)
 			{
 				evict_metadata(pacon);
@@ -1502,6 +1534,24 @@ evict_ok:
 	}
 	if (ret != 0)
 	{
+		if (ret == -1)
+		{
+			if (ASYNC_RPC == 1)
+			{
+				if (pacon->rmdir_record->rmdir_num > 0)
+				{
+					int ret1 = check_rmdir_list(pacon, path);
+					if (ret1 != -1)
+					{
+						printf("path existed\n");
+						return -1;
+					} else {
+						dmkv_set(pacon->kv_handle, path, value, PSTAT_SIZE);
+						goto out;
+					}
+				}
+			}
+		}
 		if (ret == -2)
 		{
 			evict_metadata(pacon);
@@ -1509,6 +1559,7 @@ evict_ok:
 		}
 		return ret;
 	}
+out:
 	//ret = add_to_mq(pacon, path, MKDIR);
 	ret = add_to_mq(pacon, path, MKDIR, p_st.ctime);
 	return ret;

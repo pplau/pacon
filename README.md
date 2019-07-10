@@ -8,7 +8,7 @@
 `make` 
 
 # Start Pacon  
-`echo #NODE_IP > /pacon/config`  
+`echo $NODE_IP > /pacon/config`  
 `modify the file path in start_pacon.sh`  
 `bash ./scripts/start_pacon.sh`  
 `pacon   // run test`  

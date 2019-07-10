@@ -641,16 +641,48 @@ int init_pacon(struct pacon *pacon)
     	printf("init evict record error\n");
     	return -1;
     }*/
+
+    // init share memory, for async rpc
+    if (ASYNC_RPC == 1)
+    {
+    	int shmid;
+    	void shm;
+    	shmid = shmget((key_t)SHMKEY, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
+    	if (shmid == -1)
+    	{
+    		printf("shmget error\n");
+    		return -1;
+    	}
+    	shm = shmat(shmid,  (void*)0, 0);
+    	if (shm == (void*) -1)
+    	{
+    		printf("shmat error\n");
+    		return -1;
+    	}
+    	pacon->rmdir_record = (struct rmdir_record *)shm;
+    	pacon->rmdir_record->rmdir_num = 0;
+    }
 	return 0;
 }
 
 int free_pacon(struct pacon *pacon)
 {
+	int ret;
 	dmkv_free(pacon->kv_handle);
 	zmq_close(pacon->publisher);
 	zmq_ctx_destroy(pacon->context);
 	zmq_close(pacon->local_rpc_req);
 	zmq_ctx_destroy(pacon->context_local_rpc);
+
+	if (ASYNC_RPC == 1)
+	{
+		ret = shmdt(pacon->rmdir_record);
+		if (ret == -1)
+		{
+			printf("free share memory error\n");
+			return -1;
+		}
+	}
 	return 0;
 } 
 
@@ -1398,6 +1430,14 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 		dir_mode = pacon->perm_info->sp_dir_modes[ret];
 	}
 
+	if (ASYNC_RPC == 1)
+	{
+		if (pacon->rmdir_record->rmdir_num > 0)
+		{
+			/* code */
+		}
+	}
+
 	if (PARENT_CHECK == 1)
 	{
 		ret = check_parent_dir(pacon, path);
@@ -1698,11 +1738,11 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 
 	// clean parent dir check
 	fdht_clean();
-	
+
 	return ret;
 }
 
-int pacon_rmdir_clean(struct pacon *pacon, const char *path)
+int pacon_rmdir_clean(struct pacon *pacon)
 {
 	fdht_clean();
 	return 0;

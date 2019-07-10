@@ -11,10 +11,12 @@
 #include <unistd.h> 
 #include <fcntl.h>
 #include <zmq.h>
+#include <sys/shm.h>
 #include "kv/dmkv.h"
 
 /******* pacon configure *******/
 #define PARENT_CHECK 1 // 0 is not check the parent dir when creating dir and file
+#define ASYNC_RPC 1  // 0 is sync rpc, 1 is async rpc
 
 
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
@@ -22,6 +24,8 @@
 #define PATH_MAX 128
 #define SP_LIST_MAX 16
 #define CR_JOINT_MAX 8
+#define RMDIRLIST_MAX 128
+#define SHMKEY 123
 
 #define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log/"
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
@@ -37,6 +41,12 @@ struct permission_info
 	char sp_path[SP_LIST_MAX][PATH_MAX];
 	mode_t sp_dir_modes[SP_LIST_MAX];
 	mode_t sp_f_modes[SP_LIST_MAX];
+};
+
+struct rmdir_record
+{
+	int rmdir_num;
+	char rmdir_list[RMDIRLIST_MAX][PATH_MAX];
 };
 
 struct pacon
@@ -65,6 +75,8 @@ struct pacon
 	int cr_num;
 	char remote_cr_root[CR_JOINT_MAX][MOUNT_PATH_MAX];
 	struct pacon *remote_pacon_list[CR_JOINT_MAX];
+	// for async rmdir
+	struct rmdir_record *rmdir_record;
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11
@@ -138,19 +150,6 @@ void pacon_closedir(struct pacon *pacon, DIR *dir);
 
 int pacon_getattr(struct pacon *pacon, const char *path, struct pacon_stat* st);
 
-/*
- * these two funcs are cooperated to exectue rmdir
- * usage:
- *		MPI_Barrier();
- *		if (rank == 0)
- *			pacon_rmdir();
- *		else
- *			pacon_rmdir_clean();
- *		MPI_Barrier();
- */
-int pacon_rmdir(struct pacon *pacon, const char *path);
-int pacon_rmdir_clean(struct pacon *pacon, const char *path);
-
 int pacon_rename(struct pacon *pacon, const char *path, const char *newpath);
 
 int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset);
@@ -182,6 +181,22 @@ int pacon_readlink(struct pacon *pacon, const char *path, char * buf, size_t siz
 void pacon_init_perm_info(struct permission_info *perm_info);
 
 int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info);
+
+/******* some notes in rmdir interface *********
+ * these two funcs are cooperated to exectue rmdir 
+ * app must clean the parent check table on each client after call rmdir
+ * example:
+ *		if (rank == 0)
+ *			pacon_rmdir();
+ *		else
+ *			pacon_rmdir_clean();
+ *		MPI_Barrier();  // it is optional
+ *						// because each client holds an independent parent check table
+ *						// but app needs to ensure that there is no ops under the deleted dir in the code behind this line
+ */
+int pacon_rmdir(struct pacon *pacon, const char *path);
+int pacon_rmdir_clean(struct pacon *pacon);
+/**********************************************/
 
 
 

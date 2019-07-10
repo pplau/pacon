@@ -976,7 +976,7 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 	{
 		case '4':
 			// printf("rmdir pre\n");
-			ret = rmdir_pre(ps_info, path, 1);
+			ret = rmdir_pre(ps_info, mesg+2, 1);
 			if (ret != 0)
 			{
 				printf("rmdir pre error\n");

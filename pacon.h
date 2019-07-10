@@ -193,23 +193,20 @@ int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info)
  *		MPI_Barrier();  // it is optional
  *						// because each client holds an independent parent check table
  *						// but app needs to ensure that there is no ops under the deleted dir in the code behind this line
- */
+ ***********************************************/
 int pacon_rmdir(struct pacon *pacon, const char *path);
 int pacon_rmdir_clean(struct pacon *pacon);
-/**********************************************/
-
-int pacon_rmdir_async(struct pacon *pacon, const char *path);
 
 
 
 /**************** consistent region interfaces ****************/
 
-/*
+/***************************************************************
  * how to join two cregions:
  * 1. add the root path of the external cregion into ./crj_info
  * 2. add the node list of the external cregion into ./cr_joint_config
  * 3. call this func, the cr_num is the number of external cregions (not the total num)
- */
+ **************************************************************/
 int cregion_joint(struct pacon *pacon, int cr_num);
 
 int cregion_split(struct pacon *pacon, int cr_num);

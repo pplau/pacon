@@ -903,12 +903,87 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	return ret;
 }
 
+// remote = 0 means taht it is used by local, =1 means that it is used by cluster handler
+int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
+{
+	int i;
+	int loc = ps_info->rmdir_record->rmdir_num;
+	for (i = 0; i < strlen(path); ++i)
+	{
+		ps_info->rmdir_record->rmdir_list[loc][i] = path[i];
+	}
+	if (i >= PATH_MAX)
+	{
+		printf("path too long\n");
+		return -1;
+	}
+	ps_info->rmdir_record->rmdir_list[loc][i] = '\0';
+	ps_info->rmdir_record->rmdir_num++;
+
+	if (remote == 0)
+	{
+		char c_mesg[PATH_MAX+3];
+		sprintf(c_mesg, "%s%s", RMDIR, path);
+		ret = server_broadcast(ps_info->s_comm, c_mesg);
+		if (ret != 0)
+			return -1;
+	}
+	return 0;
+}
+
+int commit_to_fs_barrier_pre(struct pacon_server_info *ps_info, char *mesg)
+{
+	int ret = -1;
+	int fd; 
+	int mesg_len = strlen(mesg);
+	char path[PATH_MAX];
+	//strncpy(path, mesg, mesg_len-2);
+	//path[mesg_len-2] = '\0';
+	int i;
+	for (i = 0; i < mesg_len; ++i)
+	{
+		if (mesg[i] != ':')
+			path[i] = mesg[i];
+		else
+			break;
+	}
+	path[i] = '\0';
+
+	switch (mesg[i+1])
+	{
+		case '4':
+			//printf("b commit to fs, typs: RMDIR\n");
+			ret = rmdir_pre(struct pacon_server_info *ps_info, char *path, 0);
+			if (ret != 0)
+			{
+				printf("rmdir pre error\n");
+				return -1;
+			}
+			break;
+
+		default:
+			printf("barrier pre opt type error\n");
+			return -1;
+	}
+	return 0;
+}
+
 int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret;
 	uint32_t timestamp;
 	switch (mesg[1])
 	{
+		case '4':
+			// printf("rmdir pre\n");
+			ret = rmdir_pre(struct pacon_server_info *ps_info, char *path, 1);
+			if (ret != 0)
+			{
+				printf("rmdir pre error\n");
+				return -1;
+			}
+			break;
+
 		case '8':
 			//printf("set timestamp\n");
 			timestamp = atoi(mesg+2);
@@ -999,6 +1074,57 @@ void *listen_local_rpc(struct pacon_server_info *ps_info_t)
 	}
 }
 
+void *listen_local_rpc_async(struct pacon_server_info *ps_info_t)
+{
+	printf("listening local rpc\n");
+	struct pacon_server_info *ps_info = (struct pacon_server_info *)ps_info_t;
+	int ret, ms_size, i;
+	char mesg[PATH_MAX];
+	while (1)
+	{
+		char rep[1];
+		ms_size = zmq_recv(ps_info->local_rpc_rep, mesg, PATH_MAX, 0);
+		if (ms_size == -1)
+		{
+			printf("local rpc get message error\n");
+			continue;
+		}
+		mesg[ms_size] = '\0';
+
+		while (mesg[i] != ':')
+			i++;
+
+		if (mesg[i+1] == '4')
+		{
+			/* async method */
+			ret = commit_to_fs_barrier_pre(ps_info, mesg);
+			if (ret != 0)
+			{
+				printf("async pre error%s\n", mesg);
+				rep[0] = '1';
+			} else {
+				rep[0] = '0';
+			}
+			zmq_send(ps_info->local_rpc_rep, rep, 1, 0);
+			ret = commit_to_fs_barrier(ps_info, mesg);
+			if (ret != 0)
+				printf("some errors in local rpc\n");
+
+		} else {
+			/* sync method */
+			ret = commit_to_fs_barrier(ps_info, mesg);
+			if (ret == 0)
+			{
+				rep[0] = '0';			
+			} else {
+				printf("some errors in local rpc\n");
+				rep[0] = '1';
+			}
+			zmq_send(ps_info->local_rpc_rep, rep, 1, 0);
+		}
+	}
+}
+
 void *listen_cluster_rpc(struct pacon_server_info *ps_info_t)
 {
 	printf("listening cluster rpc\n");
@@ -1049,11 +1175,22 @@ int main(int argc, char const *argv[])
 		printf("create commit mq thread error\n");
 		return -1;
 	}
-	if (pthread_create(&t_local_rpc, NULL, listen_local_rpc, (void *)ps_info) == -1)
+
+	if (ASYNC_RPC == 0)
 	{
-		printf("create local rpc thread error\n");
-		return -1;
+		if (pthread_create(&t_local_rpc, NULL, listen_local_rpc, (void *)ps_info) == -1)
+		{
+			printf("create local rpc thread error\n");
+			return -1;
+		}
+	} else {
+		if (pthread_create(&t_local_rpc, NULL, listen_local_rpc_async, (void *)ps_info) == -1)
+		{
+			printf("create local rpc thread error\n");
+			return -1;
+		}	
 	}
+
 	if (pthread_create(&t_cluster_rpc, NULL, listen_cluster_rpc, (void *)ps_info) == -1)
 	{
 		printf("create cluster rpc thread error\n");

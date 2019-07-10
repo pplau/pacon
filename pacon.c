@@ -1524,6 +1524,19 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 			return -1;
 	}
 
+	if (ASYNC_RPC == 1)
+	{
+		if (pacon->rmdir_record->rmdir_num > 0)
+		{
+			ret = check_rmdir_list(pacon, p_dir);
+			if (ret != 0)
+			{
+				printf("path is removed\n");
+				return -1;
+			}
+		}
+	}
+
 	char *val;
 	val = dmkv_get(pacon->kv_handle, path);
 	// if not in pacon, try to get from DFS
@@ -1697,6 +1710,19 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 			return -1;
 	}
 
+	if (ASYNC_RPC == 1)
+	{
+		if (pacon->rmdir_record->rmdir_num > 0)
+		{
+			ret = check_rmdir_list(pacon, p_dir);
+			if (ret != 0)
+			{
+				printf("path is removed\n");
+				return -1;
+			}
+		}
+	}
+
 	/* old version
 	uint64_t cas, cas_temp;
 	struct pacon_stat p_st;
@@ -1754,10 +1780,12 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 	}
 
 	// clean parent dir check
-	fdht_clean();
+	if (ASYNC_RPC == 0)
+		fdht_clean();
 
 	return ret;
 }
+
 
 int pacon_rmdir_clean(struct pacon *pacon)
 {
@@ -2148,6 +2176,19 @@ DIR * pacon_opendir(struct pacon *pacon, const char *path)
 			return -1;
 	}
 
+	if (ASYNC_RPC == 1)
+	{
+		if (pacon->rmdir_record->rmdir_num > 0)
+		{
+			ret = check_rmdir_list(pacon, p_dir);
+			if (ret != 0)
+			{
+				printf("path is removed\n");
+				return -1;
+			}
+		}
+	}
+
 	char *val;
 	val = dmkv_get(pacon->kv_handle, path);
 	// if not in pacon, try to get from DFS
@@ -2195,6 +2236,19 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 		ret = check_permission(pacon, path, 0, RENAME_PC);
 		if (ret < 0)
 			return -1;
+	}
+
+	if (ASYNC_RPC == 1)
+	{
+		if (pacon->rmdir_record->rmdir_num > 0)
+		{
+			ret = check_rmdir_list(pacon, p_dir);
+			if (ret != 0)
+			{
+				printf("path is removed\n");
+				return -1;
+			}
+		}
 	}
 
 	char *val;

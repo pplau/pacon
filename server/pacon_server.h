@@ -8,15 +8,19 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <sys/shm.h>
 
 #include "../comm/comm.h"
 #include "../kv/dmkv.h"
 
+#define ASYNC_RPC 1  // 0 is sync rpc, 1 is async rpc
 #define CHECKPOINT_TIME 0  // 0 mean no need checkpoint, >0 mean the perriod of checkpoint (second)
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
 
 #define PATH_MAX 128
 #define SP_LIST_MAX 16
+#define RMDIRLIST_MAX 128
+#define SHMKEY 123
 
 
 struct carea_info
@@ -50,6 +54,9 @@ struct pacon_server_info
 
 	// cluster info
 	struct servers_comm *s_comm;
+
+	// for rmdir
+	struct rmdir_record *rmdir_record;
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11

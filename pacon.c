@@ -646,7 +646,7 @@ int init_pacon(struct pacon *pacon)
     if (ASYNC_RPC == 1)
     {
     	int shmid;
-    	void shm;
+    	void* shm;
     	shmid = shmget((key_t)SHMKEY, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
     	if (shmid == -1)
     	{

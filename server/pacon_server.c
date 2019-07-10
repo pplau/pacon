@@ -235,6 +235,27 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	
 	ps_info->batch_dir_mode = S_IFDIR | 0755;
 	ps_info->batch_file_mode = S_IFREG | 0644;
+
+	// init share memory
+	if (ASYNC_RPC == 1)
+	{
+    	int shmid;
+    	void* shm;
+    	shmid = shmget((key_t)SHMKEY, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
+    	if (shmid == -1)
+    	{
+    		printf("shmget error\n");
+    		return -1;
+    	}
+    	shm = shmat(shmid,  (void*)0, 0);
+    	if (shm == (void*) -1)
+    	{
+    		printf("shmat error\n");
+    		return -1;
+    	}
+    	ps_info->rmdir_record = (struct rmdir_record *)shm;
+    	ps_info->rmdir_record->rmdir_num = 0;
+	}
 	return 0;
 }
 
@@ -249,6 +270,16 @@ int stop_pacon_server(struct pacon_server_info *ps_info)
 	zmq_ctx_destroy(ps_info->context_cluster_rpc);
 	free(ps_info->s_comm);
 	free(ps_info);
+
+	if (ASYNC_RPC == 1)
+	{
+		ret = shmdt(ps_info->rmdir_record);
+		if (ret == -1)
+		{
+			printf("free share memory error\n");
+			return -1;
+		}
+	}
 	return 0;
 }
 

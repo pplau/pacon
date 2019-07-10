@@ -1528,7 +1528,7 @@ int pacon_getattr(struct pacon *pacon, const char* path, struct pacon_stat* st)
 	{
 		if (pacon->rmdir_record->rmdir_num > 0)
 		{
-			ret = check_rmdir_list(pacon, p_dir);
+			ret = check_rmdir_list(pacon, path);
 			if (ret != 0)
 			{
 				printf("path is removed\n");
@@ -1714,7 +1714,7 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 	{
 		if (pacon->rmdir_record->rmdir_num > 0)
 		{
-			ret = check_rmdir_list(pacon, p_dir);
+			ret = check_rmdir_list(pacon, path);
 			if (ret != 0)
 			{
 				printf("path is removed\n");
@@ -2180,7 +2180,7 @@ DIR * pacon_opendir(struct pacon *pacon, const char *path)
 	{
 		if (pacon->rmdir_record->rmdir_num > 0)
 		{
-			ret = check_rmdir_list(pacon, p_dir);
+			ret = check_rmdir_list(pacon, path);
 			if (ret != 0)
 			{
 				printf("path is removed\n");
@@ -2242,7 +2242,7 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 	{
 		if (pacon->rmdir_record->rmdir_num > 0)
 		{
-			ret = check_rmdir_list(pacon, p_dir);
+			ret = check_rmdir_list(pacon, path);
 			if (ret != 0)
 			{
 				printf("path is removed\n");
@@ -2270,7 +2270,20 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 	val = dmkv_get(pacon->kv_handle, newpath);
 	if (val != NULL)
 	{
+		if (ASYNC_RPC == 1)
+		{
+			if (pacon->rmdir_record->rmdir_num > 0)
+			{
+				ret = check_rmdir_list(pacon, path);
+				if (ret == 0)
+				{
+					printf("rename: new name existed%s\n", newpath);
+					return -1;
+				}
+			}
+		}
 		printf("rename: new name existed%s\n", newpath);
+		return -1;
 	}
 	ret = load_to_pacon(pacon, newpath);
 	if (ret != -1)

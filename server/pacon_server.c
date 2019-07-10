@@ -906,7 +906,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 // remote = 0 means taht it is used by local, =1 means that it is used by cluster handler
 int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
 {
-	int i;
+	int ret, i;
 	int loc = ps_info->rmdir_record->rmdir_num;
 	for (i = 0; i < strlen(path); ++i)
 	{
@@ -953,7 +953,7 @@ int commit_to_fs_barrier_pre(struct pacon_server_info *ps_info, char *mesg)
 	{
 		case '4':
 			//printf("b commit to fs, typs: RMDIR\n");
-			ret = rmdir_pre(struct pacon_server_info *ps_info, char *path, 0);
+			ret = rmdir_pre(ps_info, path, 0);
 			if (ret != 0)
 			{
 				printf("rmdir pre error\n");
@@ -976,7 +976,7 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 	{
 		case '4':
 			// printf("rmdir pre\n");
-			ret = rmdir_pre(struct pacon_server_info *ps_info, char *path, 1);
+			ret = rmdir_pre(ps_info, path, 1);
 			if (ret != 0)
 			{
 				printf("rmdir pre error\n");

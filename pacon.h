@@ -47,6 +47,7 @@ struct rmdir_record
 {
 	int rmdir_num;
 	char rmdir_list[RMDIRLIST_MAX][PATH_MAX];
+	int shmid_count;
 };
 
 struct pacon

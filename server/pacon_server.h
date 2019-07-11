@@ -20,7 +20,6 @@
 #define PATH_MAX 128
 #define SP_LIST_MAX 16
 #define RMDIRLIST_MAX 128
-#define SHMKEY 123
 
 
 struct carea_info

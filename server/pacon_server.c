@@ -276,7 +276,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
     		printf("shmget error\n");
     		return -1;
     	}
-    	shm = shmat(shmid,  (void*)0, 0);
+    	shm = shmat(shmid, (void*)0, 0);
     	if (shm == (void*) -1)
     	{
     		printf("shmat error\n");
@@ -897,7 +897,9 @@ int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
 
 	// the first rmdir_record stores the total rmdir num
 	ps_info->rmdir_record->rmdir_num++;
-	ps_info->rmdir_record->shmid_count++;
+	if (ps_info->rmdir_record->rmdir_num <= (shmkey-1)*RMDIRLIST_MAX &&
+		shmkey > 1)
+		ps_info->rmdir_record->shmid_count++;
 
 	if (remote == 0)
 	{
@@ -967,12 +969,13 @@ int rmdir_post(struct pacon_server_info *ps_info, char *path, int remote)
 				{
 					sprintf(last_r->rmdir_list[last_pos], "%s", "\0");
 				} else {
-					sprintf(rmdir_record->rmdir_list[pos], last_r->rmdir_list[last_pos]);
+					sprintf(rmdir_record->rmdir_list[pos], "%s", last_r->rmdir_list[last_pos]);
 					sprintf(last_r->rmdir_list[last_pos], "%s", "\0");
 				}
 				ps_info->rmdir_record->rmdir_num--;
-				if (ps_info->rmdir_record->rmdir_num <= (last_shmkey-1))
-					ps_info->rmdir_record->rmdir_num--;
+				if (ps_info->rmdir_record->rmdir_num <= (last_shmkey-1)*RMDIRLIST_MAX &&
+					last_shmkey > 1)
+					ps_info->rmdir_record->shmid_count--;
 			}
 		}
 

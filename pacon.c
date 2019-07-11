@@ -719,7 +719,7 @@ int check_rmdir_list(struct pacon *pacon, char *path)
 		for (j = 0; j < pacon->rmdir_record->rmdir_num; ++j)
 		{
 			pos = j - (RMDIRLIST_MAX * (i-1));
-			if (child_cmp_new(path, rmdir_record->rmdir_list[i], 1) != 0)
+			if (child_cmp_new(path, rmdir_record->rmdir_list[pos], 1) != 0)
 				return -1;
 		}
 	}

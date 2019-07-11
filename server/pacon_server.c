@@ -1234,6 +1234,7 @@ void *listen_local_rpc_async(struct pacon_server_info *ps_info_t)
 	char mesg[PATH_MAX];
 	while (1)
 	{
+		i = 0;
 		char rep[1];
 		ms_size = zmq_recv(ps_info->local_rpc_rep, mesg, PATH_MAX, 0);
 		if (ms_size == -1)

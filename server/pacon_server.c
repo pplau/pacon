@@ -861,7 +861,7 @@ int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
 	int ret, i;
 	struct rmdir_record *rmdir_record;
 	int loc = ps_info->rmdir_record->rmdir_num;
-	int shmkey = pacon->rmdir_record->shmid_count;
+	int shmkey = ps_info->rmdir_record->shmid_count;
 	if (loc + 1 > RMDIRLIST_MAX * shmkey)
 	{
     	int shmid;
@@ -924,7 +924,7 @@ int rmdir_post(struct pacon_server_info *ps_info, char *path, int remote)
 		printf("shmget error\n");
 		return -1;
 	}
-	last_shm = shmat(shmid, (void*)0, 0);
+	last_shm = shmat(last_shmid, (void*)0, 0);
 	if (last_shm == (void*) -1)
 	{
 		printf("shmat error\n");
@@ -960,15 +960,15 @@ int rmdir_post(struct pacon_server_info *ps_info, char *path, int remote)
 		for (j = 0; j < ps_info->rmdir_record->rmdir_num; ++j)
 		{
 			pos = j - (RMDIRLIST_MAX * (i-1));
-			if (child_cmp(path, rmdir_record->rmdir_list[pos]) == 2)
+			if (child_cmp(path, rmdir_record->rmdir_list[pos], 1) == 2)
 			{
 				// move the last rmdir to this slot
 				if (i == last_shmkey && pos == last_pos)
 				{
-					sprintf(last_r->rmdir_record->rmdir_list[last_pos], "%s", "\0");
+					sprintf(last_r->rmdir_list[last_pos], "%s", "\0");
 				} else {
-					sprintf(rmdir_record->rmdir_list[pos], last_r->rmdir_record->rmdir_list[last_pos]);
-					sprintf(last_r->rmdir_record->rmdir_list[last_pos], "%s", "\0");
+					sprintf(rmdir_record->rmdir_list[pos], last_r->rmdir_list[last_pos]);
+					sprintf(last_r->rmdir_list[last_pos], "%s", "\0");
 				}
 				ps_info->rmdir_record->rmdir_num--;
 				if (ps_info->rmdir_record->rmdir_num <= (last_shmkey-1))

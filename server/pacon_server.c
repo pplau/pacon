@@ -29,6 +29,8 @@
 // cluster mesg types
 #define CL_RMDIRPRE ":1"
 #define CL_RMDIRPOST ":2"
+#define BARRIER_ASYNC ":6"
+#define BARRIER_ASYNC_WAIT ":7"
 #define BARRIER ":8"
 #define DEL_BARRIER ":9"
 
@@ -412,245 +414,6 @@ int fsync_from_log(struct pacon_server *ps_info, char *path)
 	return 0;
 }
 
-int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
-{
-	int ret = -1;
-	int fd; 
-	int mesg_len = strlen(mesg);
-	char path[PATH_MAX];
-	//strncpy(path, mesg, mesg_len-2);
-	//path[mesg_len-2] = '\0';
-	int i;
-	for (i = 0; i < mesg_len; ++i)
-	{
-		if (mesg[i] != ':')
-			path[i] = mesg[i];
-		else
-			break;
-	}
-	path[i] = '\0';
-
-	// batch permission
-	if (sp_permission == -1)
-	{
-		char *nom_dir_mode = "nom_dir_mode";
-		char *nom_f_mode = "nom_f_mode";
-		char *sp_path = "sp_path";
-		char *nom_dir_mode_val;
-		char *nom_f_mode_val;
-		char *sp_val;
-		nom_dir_mode_val = dmkv_get(ps_info->kv_handle, nom_dir_mode);
-		if (nom_dir_mode_val == NULL)
-		{
-			sp_permission = 0;
-		} else {
-			perm_info.nom_dir_mode = atoi(nom_dir_mode_val);
-			nom_f_mode_val = dmkv_get(ps_info->kv_handle, nom_dir_mode);
-			perm_info.nom_f_mode = atoi(nom_f_mode_val);
-			sp_val = dmkv_get(ps_info->kv_handle, sp_path);
-			int j = 0;
-			int pos = j;
-			int val_len = strlen(sp_val);
-			perm_info.sp_num = 0;
-			for (; j < strlen(sp_val); ++j)
-			{
-				if (sp_val[j] != ':' && sp_val[j] != '|')
-				{
-					perm_info.sp_path[perm_info.sp_num][pos] = sp_val[j];
-				} else if (sp_val[j] == ':') {
-					char mode_tmp[5];
-					j++;
-					int pos_tmp = j;
-					while (sp_val[j] != 'd' && sp_val[j] != 'f')
-					{
-						mode_tmp[j-pos_tmp] = sp_val[j];
-						j++;
-					}
-					mode_tmp[j-pos_tmp] = '\0';
-					if (sp_val[j] == 'd')
-					{
-						perm_info.sp_dir_modes[perm_info.sp_num] = atoi(mode_tmp);
-						perm_info.sp_f_modes[perm_info.sp_num] = 999;
-					} else {
-						perm_info.sp_f_modes[perm_info.sp_num] = atoi(mode_tmp);
-						perm_info.sp_dir_modes[perm_info.sp_num] = 999;
-					}
-				} else if (sp_val[j] == '|') {
-					pos = 0;
-					perm_info.sp_num++;
-				}
-			}
-			perm_info.sp_num++;
-			sp_permission = 1;
-		}
-	}
-
-	// only the remote barrier will go into this logic
-	if (commit_barrier != 0)
-	{
-		// get timestamp
-		uint32_t timestamp;
-		timestamp = atoi(mesg+i+2);
-		if (timestamp > commit_barrier)
-		{
-			remote_reach_barrier = 1;
-			while (commit_barrier != 0);
-		}
-		mesg_count++;
-	}
-	
-	//switch (mesg[mesg_len-1])
-	switch (mesg[i+1])
-	{
-		case '1':
-			//printf("commit to fs, typs: MKDIR\n");
-			if (sp_permission == 0)
-			{
-				ret = mkdir(path, S_IFDIR | 0755);
-			} else if (sp_permission == 1) {
-				ret = mkdir(path, S_IFDIR | 0755);
-			} else {
-				printf("batch permission error\n");
-				return -1;
-			} 
-
-			if (ret == -1)
-			{
-				ret = retry_commit(ps_info, path, 1);
-				if (ret == -1)
-				{
-					printf("fail to commit to fs: typs: MKDIR, path: %s\n", path);
-					return -1;
-				}
-			}
-			break;
-
-		case '2':
-			//printf("commit to fs, typs: CREATE\n");	
-			if (sp_permission == 0)
-			{
-				fd = creat(path, S_IFREG | 0644);
-			} else if (sp_permission == 1) {
-				fd = creat(path, S_IFREG | 0644);
-			} else {
-				printf("batch permission error\n");
-				return -1;
-			}
-
-			if (fd == -1)
-			{
-				fd = retry_commit(ps_info, path, 2);
-				if (fd == -1)
-				{
-					printf("fail to commit to fs: typs: CREATE, path: %s\n", path);
-					return -1;
-				}
-			}
-			char *val;
-			char inline_data[INLINE_MAX];
-			uint64_t cas, temp_cas;
-			val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
-			temp_cas = cas;
-			struct pacon_stat_server st;
-			server_deseri_inline_data(&st, inline_data, val);
-			// write inline data to the new file
-			/*if (server_get_stat_flag(&st, STAT_inline) == 1 && st.size >0)
-			{
-				ret = pwrite(fd, inline_data, strlen(inline_data), 0);
-				if (ret <= 0)
-				{
-					printf("write inline data error\n");
-					return -1;
-				}
-			}*/
-			close(fd);
-			server_set_stat_flag(&st, STAT_file_created, 1);
-			char value[PSTAT_SIZE+INLINE_MAX];
-			server_seri_inline_data(&st, inline_data, value);
-			ret = dmkv_cas(ps_info->kv_handle, path, value, st.size, temp_cas);
-			while (ret != 0)
-			{
-				val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
-				temp_cas = cas;
-				server_deseri_inline_data(&st, inline_data, val);
-				server_set_stat_flag(&st, STAT_file_created, 1);
-				server_seri_inline_data(&st, inline_data, value);
-				ret = dmkv_cas(ps_info->kv_handle, path, value, st.size, temp_cas);
-			}
-			break;
-
-		case '3':
-			//printf("commit to fs, typs: RM\n");
-			ret = remove(path);
-			if (ret != 0)
-			{
-				ret = retry_commit(ps_info, path, 3);
-				if (ret == -1)
-				{
-					printf("fail to commit to fs: typs: RM, path: %s\n", path);
-					return -1;
-				}
-			}
-			// del the invalid item in pacon if necessary
-			ret = dmkv_del(ps_info->kv_handle, path);
-			if (ret != 0)
-			{
-				printf("fail to rm invalid item from dmkv\n");
-				return -1;
-			}
-			break;
-
-		case '4':
-			//printf("commit to fs, typs: RMDIR\n");
-			reach_barrier = 2;
-			while (reach_barrier != 0);
-			break;
-
-		case '5':
-			//printf("commit to fs, typs: READDIR\n");
-			reach_barrier = 2;
-			while (reach_barrier != 0);
-			break;
-
-		case '6':
-			//printf("commit to fs, typs: OWRITE\n");
-			break;
-
-		case '7':
-			//printf("commit to fs, typs: FSYNC\n");
-			ret = fsync_from_log(ps_info, path);
-			if (ret != 0)
-			{
-				printf("pacon server: fsync from log error%s\n", path);
-				return -1;
-			}
-			break;
-
-		case '0':
-			//printf("commit to fs, typs: CHECKPOINT\n");
-			reach_barrier = 2;
-			while (reach_barrier != 0);
-			break;
-
-		case 'A':
-			//printf("commit to fs, typs: RENAME\n");
-			reach_barrier = 2;
-			while (reach_barrier != 0);
-			return 0;
-
-		case 'B':
-			//printf("commit to fs, typs: FLUSHDIR\n");
-			reach_barrier = 2;
-			while (reach_barrier != 0);
-			return 0;
-
-		default:
-			printf("opt type error, type: %c\n", mesg[i+1]);
-			//return -1;
-	}
-	return 0;
-}
-
 // add the barrier in other node in the cluster, and set the commit_barrier in the local
 int broadcast_barrier_begin(struct pacon_server_info *ps_info, uint32_t timestamp)
 {
@@ -685,6 +448,47 @@ int broadcast_barrier_end(struct pacon_server_info *ps_info)
 	commit_barrier = 0;
 	reach_barrier = 0;
 	mesg_count = 0;
+	return ret;
+}
+
+// 
+int broadcast_barrier_begin_async(struct pacon_server_info *ps_info, uint32_t timestamp)
+{
+	int ret;
+	// generate barrier mesg and broadcast it
+	char c_mesg[TIMESTAMP_SIZE+3];
+	char ts[TIMESTAMP_SIZE];
+	sprintf(ts, "%d", timestamp);
+	sprintf(c_mesg, "%s%s", BARRIER, ts);
+	ret = server_broadcast(ps_info->s_comm, c_mesg);
+	if (ret != 0)
+		return -1;
+	return ret;
+}
+
+// 
+int broadcast_barrier_end_async(struct pacon_server_info *ps_info)
+{
+	int ret;
+	// generate barrier mesg and broadcast it
+	char c_mesg[3];
+	strcpy(c_mesg, DEL_BARRIER);
+	ret = server_broadcast(ps_info->s_comm, c_mesg);
+	if (ret != 0)
+		return -1;
+	return ret;
+}
+
+// 
+int broadcast_wait_barrier(struct pacon_server_info *ps_info)
+{
+	int ret;
+	// generate barrier mesg and broadcast it
+	char c_mesg[3];
+	strcpy(c_mesg, BARRIER_ASYNC_WAIT);
+	ret = server_broadcast(ps_info->s_comm, c_mesg);
+	if (ret != 0)
+		return -1;
 	return ret;
 }
 
@@ -1000,6 +804,261 @@ int rmdir_post(struct pacon_server_info *ps_info, char *path, int remote)
 	}
 }
 
+int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
+{
+	int ret = -1;
+	int fd; 
+	int mesg_len = strlen(mesg);
+	char path[PATH_MAX];
+	//strncpy(path, mesg, mesg_len-2);
+	//path[mesg_len-2] = '\0';
+	int i;
+	for (i = 0; i < mesg_len; ++i)
+	{
+		if (mesg[i] != ':')
+			path[i] = mesg[i];
+		else
+			break;
+	}
+	path[i] = '\0';
+
+	// batch permission
+	if (sp_permission == -1)
+	{
+		char *nom_dir_mode = "nom_dir_mode";
+		char *nom_f_mode = "nom_f_mode";
+		char *sp_path = "sp_path";
+		char *nom_dir_mode_val;
+		char *nom_f_mode_val;
+		char *sp_val;
+		nom_dir_mode_val = dmkv_get(ps_info->kv_handle, nom_dir_mode);
+		if (nom_dir_mode_val == NULL)
+		{
+			sp_permission = 0;
+		} else {
+			perm_info.nom_dir_mode = atoi(nom_dir_mode_val);
+			nom_f_mode_val = dmkv_get(ps_info->kv_handle, nom_dir_mode);
+			perm_info.nom_f_mode = atoi(nom_f_mode_val);
+			sp_val = dmkv_get(ps_info->kv_handle, sp_path);
+			int j = 0;
+			int pos = j;
+			int val_len = strlen(sp_val);
+			perm_info.sp_num = 0;
+			for (; j < strlen(sp_val); ++j)
+			{
+				if (sp_val[j] != ':' && sp_val[j] != '|')
+				{
+					perm_info.sp_path[perm_info.sp_num][pos] = sp_val[j];
+				} else if (sp_val[j] == ':') {
+					char mode_tmp[5];
+					j++;
+					int pos_tmp = j;
+					while (sp_val[j] != 'd' && sp_val[j] != 'f')
+					{
+						mode_tmp[j-pos_tmp] = sp_val[j];
+						j++;
+					}
+					mode_tmp[j-pos_tmp] = '\0';
+					if (sp_val[j] == 'd')
+					{
+						perm_info.sp_dir_modes[perm_info.sp_num] = atoi(mode_tmp);
+						perm_info.sp_f_modes[perm_info.sp_num] = 999;
+					} else {
+						perm_info.sp_f_modes[perm_info.sp_num] = atoi(mode_tmp);
+						perm_info.sp_dir_modes[perm_info.sp_num] = 999;
+					}
+				} else if (sp_val[j] == '|') {
+					pos = 0;
+					perm_info.sp_num++;
+				}
+			}
+			perm_info.sp_num++;
+			sp_permission = 1;
+		}
+	}
+
+	// only the remote barrier will go into this logic
+	if (commit_barrier != 0)
+	{
+		// get timestamp
+		uint32_t timestamp;
+		timestamp = atoi(mesg+i+2);
+		if (timestamp > commit_barrier)
+		{
+			remote_reach_barrier = 1;
+			while (commit_barrier != 0);
+		}
+		mesg_count++;
+	}
+	
+	//switch (mesg[mesg_len-1])
+	switch (mesg[i+1])
+	{
+		case '1':
+			//printf("commit to fs, typs: MKDIR\n");
+			if (sp_permission == 0)
+			{
+				ret = mkdir(path, S_IFDIR | 0755);
+			} else if (sp_permission == 1) {
+				ret = mkdir(path, S_IFDIR | 0755);
+			} else {
+				printf("batch permission error\n");
+				return -1;
+			} 
+
+			if (ret == -1)
+			{
+				ret = retry_commit(ps_info, path, 1);
+				if (ret == -1)
+				{
+					printf("fail to commit to fs: typs: MKDIR, path: %s\n", path);
+					return -1;
+				}
+			}
+			break;
+
+		case '2':
+			//printf("commit to fs, typs: CREATE\n");	
+			if (sp_permission == 0)
+			{
+				fd = creat(path, S_IFREG | 0644);
+			} else if (sp_permission == 1) {
+				fd = creat(path, S_IFREG | 0644);
+			} else {
+				printf("batch permission error\n");
+				return -1;
+			}
+
+			if (fd == -1)
+			{
+				fd = retry_commit(ps_info, path, 2);
+				if (fd == -1)
+				{
+					printf("fail to commit to fs: typs: CREATE, path: %s\n", path);
+					return -1;
+				}
+			}
+			char *val;
+			char inline_data[INLINE_MAX];
+			uint64_t cas, temp_cas;
+			val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
+			temp_cas = cas;
+			struct pacon_stat_server st;
+			server_deseri_inline_data(&st, inline_data, val);
+			// write inline data to the new file
+			/*if (server_get_stat_flag(&st, STAT_inline) == 1 && st.size >0)
+			{
+				ret = pwrite(fd, inline_data, strlen(inline_data), 0);
+				if (ret <= 0)
+				{
+					printf("write inline data error\n");
+					return -1;
+				}
+			}*/
+			close(fd);
+			server_set_stat_flag(&st, STAT_file_created, 1);
+			char value[PSTAT_SIZE+INLINE_MAX];
+			server_seri_inline_data(&st, inline_data, value);
+			ret = dmkv_cas(ps_info->kv_handle, path, value, st.size, temp_cas);
+			while (ret != 0)
+			{
+				val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
+				temp_cas = cas;
+				server_deseri_inline_data(&st, inline_data, val);
+				server_set_stat_flag(&st, STAT_file_created, 1);
+				server_seri_inline_data(&st, inline_data, value);
+				ret = dmkv_cas(ps_info->kv_handle, path, value, st.size, temp_cas);
+			}
+			break;
+
+		case '3':
+			//printf("commit to fs, typs: RM\n");
+			ret = remove(path);
+			if (ret != 0)
+			{
+				ret = retry_commit(ps_info, path, 3);
+				if (ret == -1)
+				{
+					printf("fail to commit to fs: typs: RM, path: %s\n", path);
+					return -1;
+				}
+			}
+			// del the invalid item in pacon if necessary
+			ret = dmkv_del(ps_info->kv_handle, path);
+			if (ret != 0)
+			{
+				printf("fail to rm invalid item from dmkv\n");
+				return -1;
+			}
+			break;
+
+		case '4':
+			//printf("commit to fs, typs: RMDIR\n");
+			if (ASYNC_RPC == 0)
+			{
+				reach_barrier = 2;
+				while (reach_barrier != 0);
+			} else {
+				ret = broadcast_wait_barrier(ps_info);
+				if (ret != 0)
+				{
+					printf("wait remote barrier error\n");
+					return -1;
+				}
+				ret = commit_to_fs_barrier_post(ps_info, mesg);
+				if (ret != 0)
+				{
+					printf("barrirt commit post error\n");
+					return -1;
+				}
+			}
+			break;
+
+		case '5':
+			//printf("commit to fs, typs: READDIR\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0);
+			break;
+
+		case '6':
+			//printf("commit to fs, typs: OWRITE\n");
+			break;
+
+		case '7':
+			//printf("commit to fs, typs: FSYNC\n");
+			ret = fsync_from_log(ps_info, path);
+			if (ret != 0)
+			{
+				printf("pacon server: fsync from log error%s\n", path);
+				return -1;
+			}
+			break;
+
+		case '0':
+			//printf("commit to fs, typs: CHECKPOINT\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0);
+			break;
+
+		case 'A':
+			//printf("commit to fs, typs: RENAME\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0);
+			return 0;
+
+		case 'B':
+			//printf("commit to fs, typs: FLUSHDIR\n");
+			reach_barrier = 2;
+			while (reach_barrier != 0);
+			return 0;
+
+		default:
+			printf("opt type error, type: %c\n", mesg[i+1]);
+			//return -1;
+	}
+	return 0;
+}
+
 int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret = -1;
@@ -1091,6 +1150,17 @@ int commit_to_fs_barrier_pre(struct pacon_server_info *ps_info, char *mesg)
 	}
 	path[i] = '\0';
 
+	// test version
+	uint32_t timestamp;
+	timestamp = atoi(mesg+i+2);
+	ret = broadcast_barrier_begin_async(ps_info, timestamp);
+	if (ret != 0)
+	{
+		printf("broadcast barrier error\n");
+		return -1;
+	}
+	// test version
+
 	switch (mesg[i+1])
 	{
 		case '4':
@@ -1107,6 +1177,44 @@ int commit_to_fs_barrier_pre(struct pacon_server_info *ps_info, char *mesg)
 			printf("barrier pre opt type error\n");
 			return -1;
 	}
+	return 0;
+}
+
+int commit_to_fs_barrier_post(struct pacon_server_info *ps_info, char *mesg)
+{
+	int ret = -1;
+	int fd; 
+	int mesg_len = strlen(mesg);
+	char path[PATH_MAX];
+	//strncpy(path, mesg, mesg_len-2);
+	//path[mesg_len-2] = '\0';
+	int i;
+	for (i = 0; i < mesg_len; ++i)
+	{
+		if (mesg[i] != ':')
+			path[i] = mesg[i];
+		else
+			break;
+	}
+	path[i] = '\0';
+
+	switch (mesg[i+1])
+	{
+		case '4':
+			//printf("b commit to fs, typs: RMDIR\n");
+			ret = rmdir_post(ps_info, path, 0);
+			if (ret != 0)
+			{
+				printf("rmdir post error\n");
+				return -1;
+			}
+			break;
+
+		default:
+			printf("barrier pre opt type error\n");
+			return -1;
+	}
+	ret = broadcast_barrier_end_async(ps_info);
 	return 0;
 }
 
@@ -1133,6 +1241,34 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 			{
 				printf("rmdir post error\n");
 				return -1;
+			}
+			break;
+
+		case '6':
+			// printf("async barrier\n");
+			timestamp = atoi(mesg+2);
+			if (timestamp == 0)
+			{
+				printf("timestamp = 0, error\n");
+				return -1;
+			}
+			commit_barrier = timestamp;
+			break;
+
+		case '7':
+			// printf("async wait barrier\n");
+			while (remote_reach_barrier == 0)
+			{
+				if (time(NULL) - timestamp >= 1)
+				{
+					if (mesg_count == 0)
+					{
+						remote_reach_barrier = 1;
+					} else {
+						timestamp = time(NULL);
+						mesg_count = 0;
+					}
+				}
 			}
 			break;
 
@@ -1259,9 +1395,9 @@ void *listen_local_rpc_async(struct pacon_server_info *ps_info_t)
 				rep[0] = '0';
 			}
 			zmq_send(ps_info->local_rpc_rep, rep, 1, 0);
-			ret = commit_to_fs_barrier(ps_info, mesg);
+			/*ret = commit_to_fs_barrier(ps_info, mesg);
 			if (ret != 0)
-				printf("some errors in local rpc\n");
+				printf("some errors in local rpc\n");*/
 
 		} else {
 			/* sync method */

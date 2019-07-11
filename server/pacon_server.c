@@ -26,6 +26,9 @@
 #define RENAME ":A"
 #define FLUSHDIR ":B"
 
+// cluster mesg types
+#define CL_RMDIRPRE ":1"
+#define CL_RMDIRPOST ":2"
 #define BARRIER ":8"
 #define DEL_BARRIER ":9"
 
@@ -123,6 +126,32 @@ void get_local_addr(char *ip)
 		}
 	}
 	ip[i] = '\0';
+}
+
+/* 
+ * ret = 1 means it is sub file/dir, 0 means it is not sub file/dir, 2 mean they are the same path
+ */
+int child_cmp(char *path, char *p_path, int recursive)
+{
+	int len = strlen(path);
+	int p_len = strlen(p_path); 
+	if (len < p_len)
+		return 0;    // not the child dentry
+
+	int i;
+	for (i = 0; i < p_len; ++i)
+	{
+		if (path[i] == p_path[i])
+			continue;
+		if (path[i] != p_path[i])
+			return 0;
+	}
+	if (path[i] != '/' && p_len != len)
+		return 0;
+	if (p_len != len)
+		return 1;
+	if (p_len == len)
+		return 2;
 }
 
 int start_pacon_server(struct pacon_server_info *ps_info)
@@ -826,6 +855,148 @@ void rename_update_dc(struct pacon_server_info *ps_info, char *path)
 	}
 }
 
+// remote = 0 means taht it is used by local, =1 means that it is used by cluster handler
+int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
+{
+	int ret, i;
+	struct rmdir_record *rmdir_record;
+	int loc = ps_info->rmdir_record->rmdir_num;
+	int shmkey = pacon->rmdir_record->shmid_count;
+	if (loc + 1 > RMDIRLIST_MAX * shmkey)
+	{
+    	int shmid;
+    	void* shm;
+    	shmkey++;
+    	shmid = shmget((key_t)shmkey, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
+    	if (shmid == -1)
+    	{
+    		printf("shmget error\n");
+    		return -1;
+    	}
+    	shm = shmat(shmid, (void*)0, 0);
+    	if (shm == (void*) -1)
+    	{
+    		printf("shmat error\n");
+    		return -1;
+    	}
+    	rmdir_record = (struct rmdir_record *)shm;
+	} else {
+		rmdir_record = ps_info->rmdir_record;
+	}
+
+	for (i = 0; i < strlen(path); ++i)
+	{
+		rmdir_record->rmdir_list[loc][i] = path[i];
+	}
+	if (i >= PATH_MAX)
+	{
+		printf("path too long\n");
+		return -1;
+	}
+	rmdir_record->rmdir_list[loc][i] = '\0';
+
+	// the first rmdir_record stores the total rmdir num
+	ps_info->rmdir_record->rmdir_num++;
+	ps_info->rmdir_record->shmid_count++;
+
+	if (remote == 0)
+	{
+		char c_mesg[PATH_MAX+3];
+		sprintf(c_mesg, "%s%s", CL_RMDIRPRE, path);
+		ret = server_broadcast(ps_info->s_comm, c_mesg);
+		if (ret != 0)
+			return -1;
+	}
+	return 0;
+}
+
+// remote = 0 means taht it is used by local, =1 means that it is used by cluster handler
+int rmdir_post(struct pacon_server_info *ps_info, char *path, int remote)
+{
+	int ret, i;
+	struct rmdir_record *rmdir_record, *last_r;
+	int last_shmid;
+	void *last_shm;
+	int last_shmkey = ps_info->rmdir_record->shmid_count;
+	last_shmid = shmget((key_t)last_shmkey, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
+	if (last_shmid == -1)
+	{
+		printf("shmget error\n");
+		return -1;
+	}
+	last_shm = shmat(shmid, (void*)0, 0);
+	if (last_shm == (void*) -1)
+	{
+		printf("shmat error\n");
+		return -1;
+	}
+	last_r = (struct rmdir_record *)last_shm;
+	int last_pos = (ps_info->rmdir_record->rmdir_num) - (RMDIRLIST_MAX * (last_shmkey-1)) - 1;
+
+	for (i = 1; i <= ps_info->rmdir_record->shmid_count; ++i)
+	{
+		if (i = 1)
+		{
+			rmdir_record = ps_info->rmdir_record;
+		} else {
+	    	int shmid;
+	    	void* shm;
+	    	shmid = shmget((key_t)i, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
+	    	if (shmid == -1)
+	    	{
+	    		printf("shmget error\n");
+	    		return -1;
+	    	}
+	    	shm = shmat(shmid, (void*)0, 0);
+	    	if (shm == (void*) -1)
+	    	{
+	    		printf("shmat error\n");
+	    		return -1;
+	    	}
+	    	rmdir_record = (struct rmdir_record *)shm;
+		}
+
+		int j, pos;
+		for (j = 0; j < ps_info->rmdir_record->rmdir_num; ++j)
+		{
+			pos = j - (RMDIRLIST_MAX * (i-1));
+			if (child_cmp(path, rmdir_record->rmdir_list[pos]) == 2)
+			{
+				// move the last rmdir to this slot
+				if (i == last_shmkey && pos == last_pos)
+				{
+					sprintf(last_r->rmdir_record->rmdir_list[last_pos], "%s", "\0");
+				} else {
+					sprintf(rmdir_record->rmdir_list[pos], last_r->rmdir_record->rmdir_list[last_pos]);
+					sprintf(last_r->rmdir_record->rmdir_list[last_pos], "%s", "\0");
+				}
+				ps_info->rmdir_record->rmdir_num--;
+				if (ps_info->rmdir_record->rmdir_num <= (last_shmkey-1))
+					ps_info->rmdir_record->rmdir_num--;
+			}
+		}
+
+		if (i != 1)
+		{
+			ret = shmdt(rmdir_record);
+			if (ret == -1)
+			{
+				printf("free share memory error\n");
+				return -1;
+			}
+		}
+	}
+
+	if (remote == 0)
+	{
+		char c_mesg[PATH_MAX+3];
+		sprintf(c_mesg, "%s%s", CL_RMDIRPOST, path);
+		ret = server_broadcast(ps_info->s_comm, c_mesg);
+		if (ret != 0)
+			return -1;
+	}
+}
+
 int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret = -1;
@@ -864,12 +1035,8 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			 */
 			while (reach_barrier != 2);
 			traversedir_dmkv_del(ps_info, path);
-			/*ret = rmdir(path);
-			if (ret != 0)
-			{
-				printf("remove dir error, %s\n", path);
-				return -1;
-			}*/
+			if (ASYNC_RPC == 1)
+				rmdir_post(ps_info, path, 0);
 			break;
 
 		case '5':
@@ -901,34 +1068,6 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	ret = broadcast_barrier_end(ps_info);
 
 	return ret;
-}
-
-// remote = 0 means taht it is used by local, =1 means that it is used by cluster handler
-int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
-{
-	int ret, i;
-	int loc = ps_info->rmdir_record->rmdir_num;
-	for (i = 0; i < strlen(path); ++i)
-	{
-		ps_info->rmdir_record->rmdir_list[loc][i] = path[i];
-	}
-	if (i >= PATH_MAX)
-	{
-		printf("path too long\n");
-		return -1;
-	}
-	ps_info->rmdir_record->rmdir_list[loc][i] = '\0';
-	ps_info->rmdir_record->rmdir_num++;
-
-	if (remote == 0)
-	{
-		char c_mesg[PATH_MAX+3];
-		sprintf(c_mesg, "%s%s", RMDIR, path);
-		ret = server_broadcast(ps_info->s_comm, c_mesg);
-		if (ret != 0)
-			return -1;
-	}
-	return 0;
 }
 
 int commit_to_fs_barrier_pre(struct pacon_server_info *ps_info, char *mesg)
@@ -974,12 +1113,22 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 	uint32_t timestamp;
 	switch (mesg[1])
 	{
-		case '4':
+		case '1':
 			// printf("rmdir pre\n");
 			ret = rmdir_pre(ps_info, mesg+2, 1);
 			if (ret != 0)
 			{
 				printf("rmdir pre error\n");
+				return -1;
+			}
+			break;
+
+		case '2':
+			// printf("rmdir pre\n");
+			ret = rmdir_post(ps_info, mesg+2, 1);
+			if (ret != 0)
+			{
+				printf("rmdir post error\n");
 				return -1;
 			}
 			break;

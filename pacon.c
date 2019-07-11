@@ -661,6 +661,7 @@ int init_pacon(struct pacon *pacon)
     	}
     	pacon->rmdir_record = (struct rmdir_record *)shm;
     	pacon->rmdir_record->rmdir_num = 0;
+    	pacon->rmdir_record->shmid_count = 1;
     }
 	return 0;
 }
@@ -690,10 +691,37 @@ int free_pacon(struct pacon *pacon)
 int check_rmdir_list(struct pacon *pacon, char *path)
 {
 	int i;
-	for (i = 0; i < pacon->rmdir_record->rmdir_num; ++i)
+	struct rmdir_record *rmdir_record;
+	for (i = 1; i <= pacon->rmdir_record->shmid_count; ++i)
 	{
-		if (child_cmp_new(path, pacon->rmdir_record->rmdir_list[i], 1) != 0)
-			return -1;
+		if (i == 1)
+		{
+			rmdir_record = pacon->rmdir_record;
+		} else {
+	    	int shmid;
+	    	void* shm;
+	    	shmid = shmget((key_t)i, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
+	    	if (shmid == -1)
+	    	{
+	    		printf("shmget error\n");
+	    		return -1;
+	    	}
+	    	shm = shmat(shmid, (void*)0, 0);
+	    	if (shm == (void*) -1)
+	    	{
+	    		printf("shmat error\n");
+	    		return -1;
+	    	}
+	    	rmdir_record = (struct rmdir_record *)shm;
+		}
+
+		int j, pos;
+		for (j = 0; j < pacon->rmdir_record->rmdir_num; ++j)
+		{
+			pos = j - (RMDIRLIST_MAX * (i-1));
+			if (child_cmp_new(path, rmdir_record->rmdir_list[i], 1) != 0)
+				return -1;
+		}
 	}
 	return 0;
 }
@@ -1499,6 +1527,7 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 	}
 
 	struct pacon_stat p_st;
+	char val[PSTAT_SIZE];
 	if (SERI_TYPE == 0)
 	{
 		//struct pacon_stat p_st;
@@ -1512,7 +1541,6 @@ int pacon_mkdir(struct pacon *pacon, const char *path, mode_t mode)
 		p_st.gid = getgid();
 		p_st.nlink = 0;
 		p_st.open_counter = 0;
-		char val[PSTAT_SIZE];
 		seri_val(&p_st, val);
 evict_ok:
 		ret = dmkv_add(pacon->kv_handle, path, val, PSTAT_SIZE);

@@ -25,7 +25,7 @@
 #define SP_LIST_MAX 16
 #define CR_JOINT_MAX 8
 #define RMDIRLIST_MAX 128
-#define SHMKEY 123
+#define SHMKEY 1
 
 #define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log/"
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"

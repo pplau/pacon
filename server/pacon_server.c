@@ -719,6 +719,7 @@ int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
 // remote = 0 means taht it is used by local, =1 means that it is used by cluster handler
 int rmdir_post(struct pacon_server_info *ps_info, char *path, int remote)
 {
+	traversedir_dmkv_del(ps_info, path);
 	int ret, i;
 	struct rmdir_record *rmdir_record, *last_r;
 	int last_shmid;

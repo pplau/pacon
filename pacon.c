@@ -716,10 +716,15 @@ int check_rmdir_list(struct pacon *pacon, char *path)
 		}
 
 		int j, pos;
-		for (j = 0; j < pacon->rmdir_record->rmdir_num; ++j)
+		int max;
+		if (i < pacon->rmdir_record->shmid_count)
+			max = RMDIRLIST_MAX;
+		else
+			max = pacon->rmdir_record->rmdir_num % RMDIRLIST_MAX;
+		for (j = 0; j < max; ++j)
 		{
-			pos = j - (RMDIRLIST_MAX * (i-1));
-			if (child_cmp_new(path, rmdir_record->rmdir_list[pos], 1) != 0)
+			//pos = j - (RMDIRLIST_MAX * (i-1));
+			if (child_cmp_new(path, rmdir_record->rmdir_list[j], 1) != 0)
 				return -1;
 		}
 	}

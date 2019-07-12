@@ -666,7 +666,7 @@ int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
 	struct rmdir_record *rmdir_record;
 	int loc = ps_info->rmdir_record->rmdir_num;
 	int shmkey = ps_info->rmdir_record->shmid_count;
-	if (loc + 1 > RMDIRLIST_MAX * shmkey)
+	if (loc + 1 > shmkey * RMDIRLIST_MAX)
 	{
     	int shmid;
     	void* shm;
@@ -684,6 +684,7 @@ int rmdir_pre(struct pacon_server_info *ps_info, char *path, int remote)
     		return -1;
     	}
     	rmdir_record = (struct rmdir_record *)shm;
+    	loc = loc % RMDIRLIST_MAX;
 	} else {
 		rmdir_record = ps_info->rmdir_record;
 	}
@@ -725,20 +726,24 @@ int rmdir_post(struct pacon_server_info *ps_info, char *path, int remote)
 	int last_shmid;
 	void *last_shm;
 	int last_shmkey = ps_info->rmdir_record->shmid_count;
-	last_shmid = shmget((key_t)last_shmkey, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
-	if (last_shmid == -1)
+	if (last_shmkey > 1)
 	{
-		printf("shmget error\n");
-		return -1;
+		last_shmid = shmget((key_t)last_shmkey, sizeof(struct rmdir_record), 0666 | IPC_CREAT);
+		if (last_shmid == -1)
+		{
+			printf("shmget error\n");
+			return -1;
+		}
+		last_shm = shmat(last_shmid, (void*)0, 0);
+		if (last_shm == (void*) -1)
+		{
+			printf("shmat error\n");
+			return -1;
+		}
+		last_r = (struct rmdir_record *)last_shm;
+	} else {
+		last_r = ps_info->rmdir_record;
 	}
-	last_shm = shmat(last_shmid, (void*)0, 0);
-	if (last_shm == (void*) -1)
-	{
-		printf("shmat error\n");
-		return -1;
-	}
-	last_r = (struct rmdir_record *)last_shm;
-	int last_pos = (ps_info->rmdir_record->rmdir_num) - (RMDIRLIST_MAX * (last_shmkey-1)) - 1;
 
 	for (i = 1; i <= ps_info->rmdir_record->shmid_count; ++i)
 	{
@@ -763,10 +768,11 @@ int rmdir_post(struct pacon_server_info *ps_info, char *path, int remote)
 	    	rmdir_record = (struct rmdir_record *)shm;
 		}
 
-		int j, pos;
+		int j, pos, last_pos;
 		for (j = 0; j < ps_info->rmdir_record->rmdir_num; ++j)
 		{
 			pos = j - (RMDIRLIST_MAX * (i-1));
+			last_pos = (ps_info->rmdir_record->rmdir_num) % RMDIRLIST_MAX;
 			if (child_cmp(path, rmdir_record->rmdir_list[pos], 1) == 2)
 			{
 				// move the last rmdir to this slot

@@ -16,7 +16,7 @@
 
 /******* pacon configure *******/
 #define PARENT_CHECK 1 // 0 is not check the parent dir when creating dir and file
-#define ASYNC_RPC 1  // 0 is sync rpc, 1 is async rpc
+#define ASYNC_RPC 0  // 0 is sync rpc, 1 is async rpc
 
 
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
@@ -30,6 +30,9 @@
 #define FSYNC_LOG_PATH "/mnt/beegfs/pacon_fsync_log/"
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
 #define CRJ_INFO_PATH "./crj_info"
+
+#define BARRIER_ID_MAX 1024
+#define BARRIER_OPT_COUNT_KEY "barrier_opt_count"
 
 
 
@@ -182,6 +185,8 @@ int pacon_readlink(struct pacon *pacon, const char *path, char * buf, size_t siz
 void pacon_init_perm_info(struct permission_info *perm_info);
 
 int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info);
+
+void pacon_barrier(struct pacon *pacon);
 
 /******* some notes in rmdir interface *********
  * these two funcs are cooperated to exectue rmdir 

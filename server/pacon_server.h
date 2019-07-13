@@ -13,7 +13,7 @@
 #include "../comm/comm.h"
 #include "../kv/dmkv.h"
 
-#define ASYNC_RPC 1  // 0 is sync rpc, 1 is async rpc
+#define ASYNC_RPC 0  // 0 is sync rpc, 1 is async rpc
 #define CHECKPOINT_TIME 0  // 0 mean no need checkpoint, >0 mean the perriod of checkpoint (second)
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
 
@@ -25,6 +25,11 @@
 struct carea_info
 {
 
+};
+
+struct barrier_info
+{
+	int barrier[BARRIER_ID_MAX];  // each slot represents a barrier id, 0 is 
 };
 
 struct pacon_server_info

@@ -23,6 +23,7 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
+#define BARRIER ":9"
 #define RENAME ":A"
 #define FLUSHDIR ":B"
 
@@ -35,6 +36,7 @@
 #define DEL_BARRIER ":9"
 
 
+static int reach_barrier_count = 0;
 static uint32_t commit_barrier = 0;  // 0 is not barrier, != 0 is timestamp
 static int reach_barrier = 0;        // 0 is not barrier
 									 // 1 is local rpc receives a barrier but commit mq doesn't reach barrier
@@ -44,6 +46,15 @@ static int mesg_count = 0;
 
 static int sp_permission = -1;  // 0 means using default setting, 1 means using special setting
 static struct permission_info perm_info; 
+
+static char local_ip[17];
+
+// new version
+static int client_num = 0;
+static int current_barrier_id = 0;
+static int pre_barrier = 0;
+static int barrier = 0;
+static struct barrier_info barrier_info;
 
 
 enum statflags
@@ -115,10 +126,10 @@ void get_local_addr(char *ip)
 		printf("cannot open config file\n");
 		return -1;
 	}
-	char temp[17];
-	fgets(temp, 17, fp);
+	char temp[24];  // old 16
+	fgets(temp, 24, fp);
 	int i;
-	for (i = 0; i < 16; ++i)
+	for (i = 0; i < 24; ++i)
 	{
 		if ((temp[i] >= '0' && temp[i] <= '9') || temp[i] == '.')
 		{
@@ -128,6 +139,33 @@ void get_local_addr(char *ip)
 		}
 	}
 	ip[i] = '\0';
+}
+
+void get_local_addr_cnum(void)
+{
+	FILE *fp;
+	fp = fopen("../local_config", "r");
+	if (fp == NULL)
+	{
+		printf("cannot open config file\n");
+		return -1;
+	}
+	char temp[24];
+	fgets(temp, 24, fp);
+	int i;
+	for (i = 0; i < 24; ++i)
+	{
+		if ((temp[i] >= '0' && temp[i] <= '9') || temp[i] == '.')
+		{
+			local_ip[i] = temp[i];
+		} 
+		if (temp[i] == ':')
+		{
+			local_ip[i] = '\0';
+			break;
+		}
+	}
+	client_num = atoi(temp+i+1);
 }
 
 /* 
@@ -286,6 +324,17 @@ int start_pacon_server(struct pacon_server_info *ps_info)
     	}
     	ps_info->rmdir_record = (struct rmdir_record *)shm;
     	ps_info->rmdir_record->rmdir_num = 0;
+	}
+
+	// init barrier info
+	dmkv_set(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, "0", strlen("0"));
+	get_local_addr_cnum();
+	printf("init barrier info: local ip %s, client num %d\n", local_ip, client_num);
+	dmkv_set(ps_info->kv_handle, local_ip, "0", strlen("0"));
+	int i;
+	for (i = 0; i < BARRIER_ID_MAX; ++i)
+	{
+		barrier_info.barrier[i] = 0;
 	}
 	return 0;
 }
@@ -449,6 +498,78 @@ int broadcast_barrier_end(struct pacon_server_info *ps_info)
 	reach_barrier = 0;
 	mesg_count = 0;
 	return ret;
+}
+
+int broadcast_barrier_begin_new(struct pacon_server_info *ps_info, uint32_t timestamp)
+{
+	int ret;
+	int barrier_opt_count;
+	char *val;
+	char new_val[PATH_MAX];
+	uint64_t cas;
+
+	// increase barrier opt count
+getoptc:
+	val = dmkv_get_cas(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, &cas);
+	if (val == NULL)
+	{
+		printf("get barrier opt count error\n");
+		return -1;
+	}
+	barrier_opt_count = atoi(val);
+	barrier_opt_count++;
+	sprintf(new_val, "%d", barrier_opt_count);
+ 	ret = dmkv_cas(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, new_val, strlen(new_val), cas);
+ 	if (ret == 1)
+ 		goto getoptc;
+
+ 	// wait for all nodes reach barrier
+ 	int i, reach;
+ 	for (i = 0; i < client_num; ++i)
+	{
+		reach = 0;
+		while (reach == 0)
+		{
+			val = dmkv_get(ps_info->kv_handle, ps_info->kv_handle->c_info->node_list[i]);
+			reach = atoi(val);
+		}
+	} 
+	return 0;
+}
+
+int broadcast_barrier_end_new(struct pacon_server_info *ps_info)
+{
+	int ret;
+	int barrier_opt_count;
+	char *val;
+	char new_val[PATH_MAX];
+	uint64_t cas;
+
+	// reduce barrier opt count
+getoptc:
+	val = dmkv_get_cas(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, &cas);
+	if (val == NULL)
+	{
+		printf("get barrier opt count error\n");
+		return -1;
+	}
+	barrier_opt_count = atoi(val);
+	barrier_opt_count--;
+	sprintf(new_val, "%d", barrier_opt_count);
+ 	ret = dmkv_cas(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, new_val, strlen(new_val), cas);
+ 	if (ret == 1)
+ 		goto getoptc;
+
+ 	// no concurrent opt, remove the barrier in the local and broadcast del_barrier mesg
+ 	if (barrier_opt_count == 0)
+ 	{	
+		barrier_info.barrier[current_barrier_id] = 0;
+		barrier = 0;
+	 	char c_mesg[3];
+		strcpy(c_mesg, DEL_BARRIER);
+		ret = server_broadcast(ps_info->s_comm, c_mesg);
+ 	}
+ 	return 0;
 }
 
 // 
@@ -884,7 +1005,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		}
 	}
 
-	// only the remote barrier will go into this logic
+	/* only the remote barrier will go into this logic
 	if (commit_barrier != 0)
 	{
 		// get timestamp
@@ -896,9 +1017,10 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			while (commit_barrier != 0);
 		}
 		mesg_count++;
-	}
+	}*/
+
+	while(barrier == 1);
 	
-	//switch (mesg[mesg_len-1])
 	switch (mesg[i+1])
 	{
 		case '1':
@@ -1015,7 +1137,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 				ret = commit_to_fs_barrier_post(ps_info, mesg);
 				if (ret != 0)
 				{
-					printf("barrirt commit post error\n");
+					printf("barrier commit post error\n");
 					return -1;
 				}
 			}
@@ -1038,6 +1160,37 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			{
 				printf("pacon server: fsync from log error%s\n", path);
 				return -1;
+			}
+			break;
+
+		case '9':
+			//printf("commit to fs, typs: BARRIER\n");
+			if (pre_barrier == 0)
+			{
+				if (atoi(path) == current_barrier_id + 1)
+				{
+					current_barrier_id++;
+				} else {
+					printf("current_barrier_id error\n");
+				}
+				pre_barrier = 1;
+			}
+			if (atoi(path) > current_barrier_id)
+			{
+				printf("handle the barrier after current barrier id\n");
+			}
+			barrier_info.barrier[current_barrier_id]++;
+			if (barrier_info.barrier[current_barrier_id] == client_num)
+			{
+				barrier = 1;
+				val = "1";
+				ret = dmkv_set(ps_info->kv_handle, local_ip, val, strlen(val));
+				if (ret != 0)
+				{
+					printf("set barrier in kv error\n");
+					return -1;
+				}
+				pre_barrier = 0;
 			}
 			break;
 
@@ -1075,19 +1228,33 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	//strncpy(path, mesg, mesg_len-2);
 	//path[mesg_len-2] = '\0';
 	int i;
-	for (i = 0; i < mesg_len; ++i)
+	char b_id[PATH_MAX];
+	int barrier_id;
+	for (i = 0; mesg[i] != '/'; ++i)
+	{
+		b_id[i] = mesg[i];
+	}
+	if (i != 0)
+	{
+		b_id[i] = '\0';
+		barrier_id = atoi(b_id);
+	}
+	int j;
+	for (j = 0; i < mesg_len; ++i)
 	{
 		if (mesg[i] != ':')
-			path[i] = mesg[i];
+			path[j] = mesg[i];
 		else
 			break;
+		j++;
 	}
-	path[i] = '\0';
+	path[j] = '\0';
 
 	// get timestamp
 	uint32_t timestamp;
 	timestamp = atoi(mesg+i+2);
-	ret = broadcast_barrier_begin(ps_info, timestamp);
+	//ret = broadcast_barrier_begin(ps_info, timestamp);
+	ret = broadcast_barrier_begin_new(ps_info, timestamp);
 	if (ret != 0)
 	{
 		printf("broadcast barrier error\n");
@@ -1134,7 +1301,8 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			printf("barrier opt type error\n");
 			return -1;
 	}
-	ret = broadcast_barrier_end(ps_info);
+	//ret = broadcast_barrier_end(ps_info);
+	ret = broadcast_barrier_end_new(ps_info);
 
 	return ret;
 }
@@ -1304,10 +1472,12 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 			break;
 
 		case '9':
-			//printf("del timestamp\n");
-			commit_barrier = 0;
+			//printf("del barrier\n");
+			/*commit_barrier = 0;
 			remote_reach_barrier = 0;
-			mesg_count = 0;
+			mesg_count = 0;*/
+			barrier_info.barrier[current_barrier_id] = 0;
+			barrier = 0;
 			break;	
 
 		default:

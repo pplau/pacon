@@ -27,6 +27,7 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
+#define BARRIER ":9"
 #define RENAME ":A"
 #define FLUSHDIR ":B"
 
@@ -54,6 +55,9 @@
 
 static struct dmkv *kv_handle;
 static char mount_path[MOUNT_PATH_MAX];
+
+static int client_num = 0;
+static int current_barrier_id = 0;
 
 
 
@@ -493,10 +497,10 @@ void get_local_addr(char *ip)
 		printf("cannot open config file\n");
 		return -1;
 	}
-	char temp[17];
-	fgets(temp, 17, fp);
+	char temp[24];
+	fgets(temp, 24, fp);
 	int i;
-	for (i = 0; i < 16; ++i)
+	for (i = 0; i < 24; ++i)
 	{
 		if ((temp[i] >= '0' && temp[i] <= '9') || temp[i] == '.')
 		{
@@ -1848,8 +1852,10 @@ int pacon_rmdir(struct pacon *pacon, const char *path)
 		val = dmkv_get(pacon->kv_handle, path);
 	}
 
-	add_to_mq(pacon, path, RMDIR, time(NULL));
-	ret = add_to_local_rpc(pacon, path, RMDIR, time(NULL));
+	//add_to_mq(pacon, path, RMDIR, time(NULL));
+	char path_new[PATH_MAX];
+	sprintf(path_new, "%d%s", current_barrier_id, path);
+	ret = add_to_local_rpc(pacon, path_new, RMDIR, time(NULL));
 	if (ret == -1)
 	{
 		printf("rmdir error: %s\n", path);
@@ -2445,6 +2451,20 @@ int pacon_readlink(struct pacon *pacon, const char * path, char * buf, size_t si
 	return fs_readlink(fs, path, buf, size);
 }
 */
+
+void pacon_barrier(struct pacon *pacon)
+{
+	int ret;
+	current_barrier_id++;
+	if (current_barrier_id >= BARRIER_ID_MAX)
+	{
+		printf("barrier id too large\n");
+		return;
+	}
+	char barrier_id[PATH_MAX];
+	sprintf(barrier_id, "%d", current_barrier_id);
+	add_to_mq(pacon, "", BARRIER, time(NULL));
+}
 
 
 /**************** cregion interfaces ***************/

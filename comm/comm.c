@@ -15,10 +15,10 @@ void get_local_addr_comm(char *ip)
 		printf("cannot open local config file\n");
 		return -1;
 	}
-	char temp[17];
-	fgets(temp, 17, fp);
+	char temp[24];
+	fgets(temp, 24, fp);
 	int i;
-	for (i = 0; i < 16; ++i)
+	for (i = 0; i < 24; ++i)
 	{
 		if ((temp[i] >= '0' && temp[i] <= '9') || temp[i] == '.')
 		{

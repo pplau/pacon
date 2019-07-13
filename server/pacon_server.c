@@ -327,10 +327,20 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	}
 
 	// init barrier info
-	dmkv_set(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, "0", strlen("0"));
+	ret = dmkv_set(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, "0", strlen("0"));
+	if (ret != 0)
+	{
+		printf("init barrier error: fail to set BARRIER_OPT_COUNT_KEY in kv\n");
+		return -1;
+	}
 	get_local_addr_cnum();
 	printf("init barrier info: local ip %s, client num %d\n", local_ip, client_num);
-	dmkv_set(ps_info->kv_handle, local_ip, "0", strlen("0"));
+	ret = dmkv_set(ps_info->kv_handle, local_ip, "0", strlen("0"));
+	if (ret != 0)
+	{
+		printf("init barrier error: fail to set LOCAL_IP in kv\n");
+		return -1;
+	}
 	int i;
 	for (i = 0; i < BARRIER_ID_MAX; ++i)
 	{

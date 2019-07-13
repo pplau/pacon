@@ -2294,7 +2294,7 @@ DIR * pacon_opendir(struct pacon *pacon, const char *path)
 		val = dmkv_get(pacon->kv_handle, path);
 	}
 	
-	add_to_mq(pacon, path, READDIR, time(NULL));
+	//add_to_mq(pacon, path, READDIR, time(NULL));
 	ret = add_to_local_rpc(pacon, path, READDIR, time(NULL));
 	if (ret == -1)
 	{

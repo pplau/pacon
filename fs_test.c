@@ -334,6 +334,7 @@ int main(int argc, char const *argv[])
 
 		printf("\n");
 		printf("/********** readdir test **********/\n");
+		pacon_barrier(pacon);
 		ret = test_readdir(pacon, "/mnt/beegfs/test");
 		if (ret == 0)
 			printf("readdir test succee\n");
@@ -350,6 +351,7 @@ int main(int argc, char const *argv[])
 
 		printf("\n");
 		printf("/********** rmdir test **********/\n");
+		pacon_barrier(pacon);
 		ret = test_rmdir(pacon, "/mnt/beegfs/test");
 		if (ret != 0)
 		{

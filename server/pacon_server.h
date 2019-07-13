@@ -39,6 +39,7 @@ struct pacon_server_info
 	char rec_mq_addr[28];
 	int rec_mq_port;
 	struct dmkv *kv_handle;
+	struct dmkv *kv_handle_for_barrier;
 
 	// batch mode and owner
 	int batch_dir_mode;

@@ -210,6 +210,17 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	}
 	ps_info->kv_handle = kv;
 
+	// init kv for barrier commit thread
+	struct dmkv *kv_b = (struct dmkv *)malloc(sizeof(struct dmkv));
+	set_dmkv_config_type(1);
+	ret = dmkv_init(kv_b);
+	if (ret != 0)
+	{
+		printf("init dmkv for barrier commit thread fail\n");
+		return -1;
+	}
+	ps_info->kv_handle_for_barrier = kv_b;
+
 	/*FILE *fp;
 	fp = fopen("./server_config", "r");
 	if (fp == NULL)
@@ -327,7 +338,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	}
 
 	// init barrier info
-	ret = dmkv_set(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, "0", strlen("0"));
+	ret = dmkv_set(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, "0", strlen("0"));
 	if (ret != 0)
 	{
 		printf("init barrier error: fail to set BARRIER_OPT_COUNT_KEY in kv\n");
@@ -335,7 +346,7 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	}
 	get_local_addr_cnum();
 	printf("init barrier info: local ip %s, client num %d\n", local_ip, client_num);
-	ret = dmkv_set(ps_info->kv_handle, local_ip, "0", strlen("0"));
+	ret = dmkv_set(ps_info->kv_handle_for_barrier, local_ip, "0", strlen("0"));
 	if (ret != 0)
 	{
 		printf("init barrier error: fail to set LOCAL_IP in kv\n");
@@ -520,7 +531,7 @@ int broadcast_barrier_begin_new(struct pacon_server_info *ps_info, uint32_t time
 
 	// increase barrier opt count
 getoptc:
-	val = dmkv_get_cas(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, &cas);
+	val = dmkv_get_cas(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, &cas);
 	if (val == NULL)
 	{
 		printf("get barrier opt count error\n");
@@ -529,7 +540,7 @@ getoptc:
 	barrier_opt_count = atoi(val);
 	barrier_opt_count++;
 	sprintf(new_val, "%d", barrier_opt_count);
- 	ret = dmkv_cas(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, new_val, strlen(new_val), cas);
+ 	ret = dmkv_cas(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, new_val, strlen(new_val), cas);
  	if (ret == 1)
  		goto getoptc;
 
@@ -540,7 +551,7 @@ getoptc:
 		reach = 0;
 		while (reach == 0)
 		{
-			val = dmkv_get(ps_info->kv_handle, ps_info->kv_handle->c_info->node_list[i]);
+			val = dmkv_get(ps_info->kv_handle_for_barrier, ps_info->kv_handle_for_barrier->c_info->node_list[i]);
 			reach = atoi(val);
 		}
 	} 
@@ -557,7 +568,7 @@ int broadcast_barrier_end_new(struct pacon_server_info *ps_info)
 
 	// reduce barrier opt count
 getoptc:
-	val = dmkv_get_cas(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, &cas);
+	val = dmkv_get_cas(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, &cas);
 	if (val == NULL)
 	{
 		printf("get barrier opt count error\n");
@@ -566,7 +577,7 @@ getoptc:
 	barrier_opt_count = atoi(val);
 	barrier_opt_count--;
 	sprintf(new_val, "%d", barrier_opt_count);
- 	ret = dmkv_cas(ps_info->kv_handle, BARRIER_OPT_COUNT_KEY, new_val, strlen(new_val), cas);
+ 	ret = dmkv_cas(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, new_val, strlen(new_val), cas);
  	if (ret == 1)
  		goto getoptc;
 
@@ -640,7 +651,7 @@ void traversedir_dmkv_del(struct pacon_server_info *ps_info, char *path)
 		dir_new[p_len] = '/';
 		memcpy(dir_new + p_len + 1, entry->d_name, c_len);
 		dir_new[p_len+1+c_len] = '\0';
-		dmkv_del(ps_info->kv_handle, dir_new);
+		dmkv_del(ps_info->kv_handle_for_barrier, dir_new);
 
 		if (entry->d_type == DT_DIR)
 		{
@@ -680,7 +691,7 @@ void traversedir_dmkv_flush(struct pacon_server_info *ps_info, char *path)
 		dir_new[p_len] = '/';
 		memcpy(dir_new + p_len + 1, entry->d_name, c_len);
 		dir_new[p_len+1+c_len] = '\0';
-		dmkv_del(ps_info->kv_handle, dir_new);
+		dmkv_del(ps_info->kv_handle_for_barrier, dir_new);
 
 		if (entry->d_type == DT_DIR)
 		{
@@ -731,7 +742,7 @@ void traversedir_dmkv_rename(struct pacon_server_info *ps_info, char *oldpath, c
 
 		if (entry->d_type == DT_DIR)
 		{
-			ret = dmkv_del(ps_info->kv_handle, dir_new);
+			ret = dmkv_del(ps_info->kv_handle_for_barrier, dir_new);
 			if (ret != 0)
 			{
 				printf("traverse rename: del dir error%s\n", dir_new);
@@ -739,7 +750,7 @@ void traversedir_dmkv_rename(struct pacon_server_info *ps_info, char *oldpath, c
 			}
 			traversedir_dmkv_rename(ps_info, dir_new, newpath);
 		} else {
-			ret = dmkv_del(ps_info->kv_handle, dir_new);
+			ret = dmkv_del(ps_info->kv_handle_for_barrier, dir_new);
 			if (ret != 0)
 			{
 				printf("traverse rename del file error%s\n", dir_new);

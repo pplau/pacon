@@ -2463,7 +2463,7 @@ void pacon_barrier(struct pacon *pacon)
 	}
 	char barrier_id[PATH_MAX];
 	sprintf(barrier_id, "%d", current_barrier_id);
-	add_to_mq(pacon, "", BARRIER, time(NULL));
+	add_to_mq(pacon, barrier_id, BARRIER, time(NULL));
 }
 
 

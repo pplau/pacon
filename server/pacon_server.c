@@ -1290,7 +1290,6 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			 * 2. del them in the dmkv
 			 * 3. call rmdir
 			 */
-			while (reach_barrier != 2);
 			traversedir_dmkv_del(ps_info, path);
 			if (ASYNC_RPC == 1)
 				rmdir_post(ps_info, path, 0);
@@ -1302,19 +1301,19 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 
 		case '0':
 			//printf("b commit to fs, typs: CHECKPOINT\n");
-			while (reach_barrier != 2);
+			//while (reach_barrier != 2);
 			checkpoint(path);
 			break;
 
 		case 'A':
 			//printf("b commit to fs, typs: RENAME\n");
-			while (reach_barrier != 2);
+			//while (reach_barrier != 2);
 			rename_update_dc(ps_info, path);
 			break;
 
 		case 'B':
 			//printf("b commit to fs, typs: FLUSHDIR\n");
-			while (reach_barrier != 2);
+			//while (reach_barrier != 2);
 			traversedir_dmkv_flush(ps_info, path);
 			break;
 

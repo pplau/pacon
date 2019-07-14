@@ -546,13 +546,14 @@ getoptc:
 
  	// wait for all nodes reach barrier
  	int i, reach;
- 	for (i = 0; i < client_num; ++i)
+ 	for (i = 0; i < ps_info->kv_handle_for_barrier->node_num; ++i)
 	{
 		reach = 0;
 		while (reach == 0)
 		{
 			val = dmkv_get(ps_info->kv_handle_for_barrier, ps_info->kv_handle_for_barrier->c_info->node_list[i]);
-			reach = atoi(val);
+			if (val != NULL)
+				reach = atoi(val);
 		}
 	} 
 	return 0;
@@ -1204,8 +1205,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			if (barrier_info.barrier[current_barrier_id] == client_num)
 			{
 				barrier = 1;
-				val = "1";
-				ret = dmkv_set(ps_info->kv_handle, local_ip, val, strlen(val));
+				ret = dmkv_set(ps_info->kv_handle, local_ip, "1", strlen("1"));
 				if (ret != 0)
 				{
 					printf("set barrier in kv error\n");

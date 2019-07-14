@@ -546,7 +546,7 @@ getoptc:
 
  	// wait for all nodes reach barrier
  	int i, reach;
- 	for (i = 0; i < ps_info->kv_handle_for_barrier->node_num; ++i)
+ 	for (i = 0; i < ps_info->kv_handle_for_barrier->c_info->node_num; ++i)
 	{
 		reach = 0;
 		while (reach == 0)
@@ -585,7 +585,6 @@ getoptc:
  	// no concurrent opt, remove the barrier in the local and broadcast del_barrier mesg
  	if (barrier_opt_count == 0)
  	{	
-		barrier_info.barrier[current_barrier_id] = 0;
 		barrier = 0;
 	 	char c_mesg[3];
 		strcpy(c_mesg, DEL_BARRIER);
@@ -1187,7 +1186,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '9':
 			//printf("commit to fs, typs: BARRIER\n");
-			if (pre_barrier == 0)
+			/*if (pre_barrier == 0)
 			{
 				if (atoi(path) == current_barrier_id + 1)
 				{
@@ -1200,8 +1199,10 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			if (atoi(path) > current_barrier_id)
 			{
 				printf("handle the barrier after current barrier id\n");
-			}
-			barrier_info.barrier[current_barrier_id]++;
+			}*/
+
+			//barrier_info.barrier[current_barrier_id]++;
+			barrier_info.barrier[atoi(path)-1]++;
 			if (barrier_info.barrier[current_barrier_id] == client_num)
 			{
 				barrier = 1;
@@ -1211,7 +1212,8 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 					printf("set barrier in kv error\n");
 					return -1;
 				}
-				pre_barrier = 0;
+				//pre_barrier = 0;
+				current_barrier_id++;
 			}
 			break;
 

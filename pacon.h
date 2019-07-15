@@ -186,7 +186,7 @@ void pacon_init_perm_info(struct permission_info *perm_info);
 
 int pacon_set_permission(struct pacon *pacon, struct permission_info *perm_info);
 
-void pacon_barrier(struct pacon *pacon);
+void pacon_barrier(struct pacon *pacon, int type); // type = 1 means has opt, = 0 means just barrier
 
 /******* some notes in rmdir interface *********
  * these two funcs are cooperated to exectue rmdir 

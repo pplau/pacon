@@ -53,7 +53,7 @@ static char local_ip[17];
 static int client_num = 0;
 static int current_barrier_id = 0;
 static int pre_barrier = 0;
-static int barrier = 0;
+static int barrier[BARRIER_ID_MAX] = {0};
 static struct barrier_info barrier_info;
 
 
@@ -338,7 +338,9 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	}
 
 	// init barrier info
-	ret = dmkv_set(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, "0", strlen("0"));
+	char opt_key[PATH_MAX];
+	sprintf(opt_key, "%s%c%d", BARRIER_OPT_COUNT_KEY, '.', current_barrier_id);
+	ret = dmkv_set(ps_info->kv_handle_for_barrier, opt_key, "0", strlen("0"));
 	if (ret != 0)
 	{
 		printf("init barrier error: fail to set BARRIER_OPT_COUNT_KEY in kv\n");
@@ -346,7 +348,9 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	}
 	get_local_addr_cnum();
 	printf("init barrier info: local ip %s, client num %d\n", local_ip, client_num);
-	ret = dmkv_set(ps_info->kv_handle_for_barrier, local_ip, "0", strlen("0"));
+	char b_key[PATH_MAX];
+	sprintf(b_key, "%s%c%d", local_ip, '.', current_barrier_id);
+	ret = dmkv_set(ps_info->kv_handle_for_barrier, b_key, "0", strlen("0"));
 	if (ret != 0)
 	{
 		printf("init barrier error: fail to set LOCAL_IP in kv\n");
@@ -528,18 +532,21 @@ int broadcast_barrier_begin_new(struct pacon_server_info *ps_info, uint32_t time
 	char *val;
 	char new_val[PATH_MAX];
 	uint64_t cas;
+	int current_bid = current_barrier_id;
 
  	// wait for all nodes reach barrier
- 	while (barrier == 0);
+ 	while (barrier[current_bid] == 0);
  	int i, reach;
  	for (i = 0; i < ps_info->kv_handle_for_barrier->c_info->node_num; ++i)
 	{
 		if (strcmp(local_ip, ps_info->kv_handle_for_barrier->c_info->node_list[i]) == 0)
 			continue;
+		char b_key[PATH_MAX];
+		sprintf(b_key, "%s%c%d", ps_info->kv_handle_for_barrier->c_info->node_list[i], '.', current_bid);
 		reach = 0;
 		while (reach == 0)
 		{
-			val = dmkv_get(ps_info->kv_handle_for_barrier, ps_info->kv_handle_for_barrier->c_info->node_list[i]);
+			val = dmkv_get(ps_info->kv_handle_for_barrier, b_key);
 			if (val != NULL)
 				reach = atoi(val);
 		}
@@ -554,10 +561,12 @@ int broadcast_barrier_end_new(struct pacon_server_info *ps_info)
 	char *val;
 	char new_val[PATH_MAX];
 	uint64_t cas;
-
+	int current_bid = current_barrier_id - 1;
 	// reduce barrier opt count
+	char opt_key[PATH_MAX];
+	sprintf(opt_key, "%s%c%d", BARRIER_OPT_COUNT_KEY, '.', current_bid);
 getoptc:
-	val = dmkv_get_cas(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, &cas);
+	val = dmkv_get_cas(ps_info->kv_handle_for_barrier, opt_key, &cas);
 	if (val == NULL)
 	{
 		printf("get barrier opt count error\n");
@@ -566,15 +575,17 @@ getoptc:
 	barrier_opt_count = atoi(val);
 	barrier_opt_count--;
 	sprintf(new_val, "%d", barrier_opt_count);
- 	ret = dmkv_cas(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, new_val, strlen(new_val), cas);
+ 	ret = dmkv_cas(ps_info->kv_handle_for_barrier, opt_key, new_val, strlen(new_val), cas);
  	if (ret == 1)
  		goto getoptc;
 
  	// no concurrent opt, remove the barrier in the local and broadcast del_barrier mesg
  	if (barrier_opt_count == 0)
  	{	
-		barrier = 0;
-		ret = dmkv_set(ps_info->kv_handle_for_barrier, local_ip, "0", strlen("0"));
+		barrier[current_bid] = 0;
+		char b_key[PATH_MAX];
+		sprintf(b_key, "%s%c%d", local_ip, '.', current_bid);
+		ret = dmkv_set(ps_info->kv_handle_for_barrier, b_key, "0", strlen("0"));
 	 	char c_mesg[3];
 		strcpy(c_mesg, DEL_BARRIER);
 		ret = server_broadcast(ps_info->s_comm, c_mesg);
@@ -1029,7 +1040,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		mesg_count++;
 	}*/
 
-	while(barrier == 1);
+	while(barrier[current_barrier_id] == 1);
 	
 	switch (mesg[i+1])
 	{
@@ -1225,8 +1236,10 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			barrier_info.barrier[atoi(path+2)-1]++;
 			if (barrier_info.barrier[current_barrier_id] == client_num)
 			{
-				barrier = 1;
-				ret = dmkv_set(ps_info->kv_handle, local_ip, "1", strlen("1"));
+				barrier[current_barrier_id] = 1;
+				char b_key[PATH_MAX];
+				sprintf(b_key, "%s%c%d", local_ip, '.', current_barrier_id);
+				ret = dmkv_set(ps_info->kv_handle, b_key, "1", strlen("1"));
 				if (ret != 0)
 				{
 					printf("set barrier in kv error\n");
@@ -1234,6 +1247,8 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 				}
 				//pre_barrier = 0;
 				current_barrier_id++;
+				sprintf(b_key, "%s%c%d", local_ip, '.', current_barrier_id);
+				ret = dmkv_set(ps_info->kv_handle, b_key, "0", strlen("0"));
 			}
 			break;
 

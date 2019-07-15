@@ -2452,7 +2452,7 @@ int pacon_readlink(struct pacon *pacon, const char * path, char * buf, size_t si
 }
 */
 
-void pacon_barrier(struct pacon *pacon, int type)
+void pacon_barrier(struct pacon *pacon, int opt_num)
 {
 	int ret;
 	current_barrier_id++;
@@ -2461,14 +2461,8 @@ void pacon_barrier(struct pacon *pacon, int type)
 		printf("barrier id too large\n");
 		return;
 	}
-
 	char barrier_id[PATH_MAX];
-	if (typ == 1)
-	{
-		sprintf(barrier_id, "%s%d", "1|", current_barrier_id);
-	} else {
-		sprintf(barrier_id, "%s%d", "0|", current_barrier_id);
-	}
+	sprintf(barrier_id, "%d%c%d", opt_num, '|', current_barrier_id);
 	add_to_mq(pacon, barrier_id, BARRIER, time(NULL));
 }
 

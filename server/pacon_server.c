@@ -530,7 +530,7 @@ int broadcast_barrier_begin_new(struct pacon_server_info *ps_info, uint32_t time
 	uint64_t cas;
 
  	// wait for all nodes reach barrier
- 	while (barrier == 1);
+ 	while (barrier == 0);
  	int i, reach;
  	for (i = 0; i < ps_info->kv_handle_for_barrier->c_info->node_num; ++i)
 	{
@@ -1191,10 +1191,23 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			}*/
 
 			//barrier_info.barrier[current_barrier_id]++;
-			
-			if (path[0] == '1')
+			if (path[0] != '0')
 			{
+				char opt_num_s[PATH_MAX];
+				int opt_num;
+				for (i = 0; i < strlen(path); ++i)
+				{
+					if (path[i] == '|')
+						break;
+					opt_num_s[i] = path[i];
+				}
+				opt_num_s[i] = '\0';
+				opt_num = atoi(opt_num_s);
 				// increase barrier opt count
+				int barrier_opt_count;
+				char *val;
+				char new_val[PATH_MAX];
+				uint64_t cas;
 			getoptc:
 				val = dmkv_get_cas(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, &cas);
 				if (val == NULL)
@@ -1203,7 +1216,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 					return -1;
 				}
 				barrier_opt_count = atoi(val);
-				barrier_opt_count++;
+				barrier_opt_count = barrier_opt_count + opt_num;
 				sprintf(new_val, "%d", barrier_opt_count);
 			 	ret = dmkv_cas(ps_info->kv_handle_for_barrier, BARRIER_OPT_COUNT_KEY, new_val, strlen(new_val), cas);
 			 	if (ret == 1)

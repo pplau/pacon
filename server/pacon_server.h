@@ -29,7 +29,7 @@ struct carea_info
 
 struct barrier_info
 {
-	int barrier[BARRIER_ID_MAX];  // each slot represents a barrier id, 0 is 
+	int barrier[BARRIER_ID_MAX];  // reach count, each slot represents a barrier id
 };
 
 struct pacon_server_info

@@ -52,6 +52,7 @@ static char local_ip[17];
 // new version
 static int client_num = 0;
 static int current_barrier_id = 0;
+static int waiting_barrier_id = 0;
 static int pre_barrier = 0;
 static int barrier[BARRIER_ID_MAX] = {0};
 static struct barrier_info barrier_info;
@@ -532,17 +533,16 @@ int broadcast_barrier_begin_new(struct pacon_server_info *ps_info, uint32_t time
 	char *val;
 	char new_val[PATH_MAX];
 	uint64_t cas;
-	int current_bid = current_barrier_id;
 
  	// wait for all nodes reach barrier
- 	while (barrier[current_bid] == 0);
+ 	while (barrier[waiting_barrier_id] == 0);
  	int i, reach;
  	for (i = 0; i < ps_info->kv_handle_for_barrier->c_info->node_num; ++i)
 	{
 		if (strcmp(local_ip, ps_info->kv_handle_for_barrier->c_info->node_list[i]) == 0)
 			continue;
 		char b_key[PATH_MAX];
-		sprintf(b_key, "%s%c%d", ps_info->kv_handle_for_barrier->c_info->node_list[i], '.', current_bid);
+		sprintf(b_key, "%s%c%d", ps_info->kv_handle_for_barrier->c_info->node_list[i], '.', waiting_barrier_id);
 		reach = 0;
 		while (reach == 0)
 		{
@@ -550,7 +550,7 @@ int broadcast_barrier_begin_new(struct pacon_server_info *ps_info, uint32_t time
 			if (val != NULL)
 				reach = atoi(val);
 		}
-	} 
+	}
 	return 0;
 }
 
@@ -561,10 +561,10 @@ int broadcast_barrier_end_new(struct pacon_server_info *ps_info)
 	char *val;
 	char new_val[PATH_MAX];
 	uint64_t cas;
-	int current_bid = current_barrier_id - 1;
+
 	// reduce barrier opt count
 	char opt_key[PATH_MAX];
-	sprintf(opt_key, "%s%c%d", BARRIER_OPT_COUNT_KEY, '.', current_bid);
+	sprintf(opt_key, "%s%c%d", BARRIER_OPT_COUNT_KEY, '.', waiting_barrier_id);
 getoptc:
 	val = dmkv_get_cas(ps_info->kv_handle_for_barrier, opt_key, &cas);
 	if (val == NULL)
@@ -582,13 +582,14 @@ getoptc:
  	// no concurrent opt, remove the barrier in the local and broadcast del_barrier mesg
  	if (barrier_opt_count == 0)
  	{	
-		barrier[current_bid] = 0;
+		barrier[waiting_barrier_id] = 0;
 		char b_key[PATH_MAX];
-		sprintf(b_key, "%s%c%d", local_ip, '.', current_bid);
+		sprintf(b_key, "%s%c%d", local_ip, '.', waiting_barrier_id);
 		ret = dmkv_set(ps_info->kv_handle_for_barrier, b_key, "0", strlen("0"));
 	 	char c_mesg[3];
 		strcpy(c_mesg, DEL_BARRIER);
 		ret = server_broadcast(ps_info->s_comm, c_mesg);
+		waiting_barrier_id++;
  	}
  	return 0;
 }
@@ -1040,7 +1041,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		mesg_count++;
 	}*/
 
-	while(barrier[current_barrier_id] == 1);
+	while(barrier[waiting_barrier_id] == 1);
 	
 	switch (mesg[i+1])
 	{
@@ -1533,8 +1534,9 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 			/*commit_barrier = 0;
 			remote_reach_barrier = 0;
 			mesg_count = 0;*/
-			barrier_info.barrier[current_barrier_id] = 0;
-			barrier = 0;
+			barrier_info.barrier[waiting_barrier_id] = 0;
+			barrier[waiting_barrier_id] = 0;
+			waiting_barrier_id++;
 			break;	
 
 		default:

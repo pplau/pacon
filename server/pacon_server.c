@@ -575,8 +575,9 @@ getoptc:
 	val = dmkv_get_cas(ps_info->kv_handle_for_barrier, opt_key, &cas);
 	if (val == NULL)
 	{
-		printf("get barrier opt count error\n");
-		return -1;
+		//printf("get barrier opt count error\n");
+		//return -1;
+		goto getoptc;
 	}
 	barrier_opt_count = atoi(val);
 	barrier_opt_count--;
@@ -1232,8 +1233,9 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 				val = dmkv_get_cas(ps_info->kv_handle_for_barrier, opt_key, &cas);
 				if (val == NULL)
 				{
-					printf("get barrier opt count error\n");
-					return -1;
+					//printf("get barrier opt count error\n");
+					//return -1;
+					goto getoptc;
 				}
 				barrier_opt_count = atoi(val);
 				barrier_opt_count = barrier_opt_count + opt_num;

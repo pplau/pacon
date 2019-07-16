@@ -554,7 +554,10 @@ int broadcast_barrier_begin_new(struct pacon_server_info *ps_info, uint32_t time
 		{
 			val = dmkv_get(ps_info->kv_handle_for_barrier, b_key);
 			if (val != NULL)
+			{
 				reach = atoi(val);
+			}
+			usleep(rand()%50000);
 		}
 	}
 	return 0;
@@ -592,7 +595,13 @@ getoptc:
 		barrier[waiting_barrier_id] = 0;
 		char b_key[PATH_MAX];
 		sprintf(b_key, "%s%c%d", local_ip, '.', waiting_barrier_id);
+reset:
 		ret = dmkv_set(ps_info->kv_handle_for_barrier, b_key, "0", strlen("0"));
+		if (ret != 0)
+		{
+			usleep(rand()%50000);
+			goto reset;
+		}
 	 	char c_mesg[3];
 		strcpy(c_mesg, DEL_BARRIER);
 		ret = server_broadcast(ps_info->s_comm, c_mesg);
@@ -1048,7 +1057,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 		mesg_count++;
 	}*/
 
-	while(barrier[waiting_barrier_id] == 1);
+	//while(barrier[waiting_barrier_id] == 1);
 	
 	switch (mesg[i+1])
 	{
@@ -1544,7 +1553,7 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 			/*commit_barrier = 0;
 			remote_reach_barrier = 0;
 			mesg_count = 0;*/
-			barrier_info.barrier[waiting_barrier_id] = 0;
+			//barrier_info.barrier[waiting_barrier_id] = 0;
 			barrier[waiting_barrier_id] = 0;
 			waiting_barrier_id++;
 			break;	

@@ -2295,7 +2295,9 @@ DIR * pacon_opendir(struct pacon *pacon, const char *path)
 	}
 	
 	//add_to_mq(pacon, path, READDIR, time(NULL));
-	ret = add_to_local_rpc(pacon, path, READDIR, time(NULL));
+	char path_new[PATH_MAX];
+	sprintf(path_new, "%d%s", current_barrier_id, path);
+	ret = add_to_local_rpc(pacon, path_new, READDIR, time(NULL));
 	if (ret == -1)
 	{
 		printf("readdir server error: %s\n", path);
@@ -2390,8 +2392,10 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 	}
 	char joint_path[PATH_MAX];
 	sprintf(joint_path, "%s%c%s", path, '-', newpath);
-	add_to_mq(pacon, joint_path, RENAME, time(NULL));
-	ret = add_to_local_rpc(pacon, joint_path, RENAME, time(NULL));
+	//add_to_mq(pacon, joint_path, RENAME, time(NULL));
+	char joint_path_new[PATH_MAX];
+	sprintf(joint_path_new, "%d%s", current_barrier_id, joint_path);
+	ret = add_to_local_rpc(pacon, joint_path_new, RENAME, time(NULL));
 	if (ret == -1)
 	{
 		printf("readdir server error: %s\n", path);

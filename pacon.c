@@ -1781,8 +1781,8 @@ int pacon_rm(struct pacon *pacon, const char *path)
 		seri_val(&p_st, val);
 		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
 	}*/
-	
-	ret = dmkv_del(ps_info->kv_handle, path);
+
+	ret = dmkv_del(pacon->kv_handle, path);
 	if (ret != 0)
 	{
 		printf("fail to rm invalid item from dmkv\n");

@@ -981,6 +981,10 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	int fd; 
 	int mesg_len = strlen(mesg);
 	char path[PATH_MAX];
+
+	char *val;
+	char inline_data[INLINE_MAX];
+	uint64_t cas, temp_cas;
 	//strncpy(path, mesg, mesg_len-2);
 	//path[mesg_len-2] = '\0';
 	int i;
@@ -1091,9 +1095,6 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '2':
 			//printf("commit to fs, typs: CREATE\n");	
-			char *val;
-			char inline_data[INLINE_MAX];
-			uint64_t cas, temp_cas;
 			val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
 			if (val == NULL)
 				break;

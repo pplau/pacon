@@ -1208,20 +1208,22 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '8':
 			//printf("commit to fs, typs: WRITE\n");
-			fd = open(path, 0, 0);
+			fd = open(path, O_RDWR);
 			if (fd == -1)
 				break;
 			char *val1;
-			char value1[PSTAT_SIZE+INLINE_MAX];
 			char inline_data1[INLINE_MAX];
+			struct pacon_stat_server st1;
 			val1 = dmkv_get(ps_info->kv_handle, path);
-			server_seri_inline_data(&st, inline_data1, value1);
-			ret = pwrite(fd, inline_data1, strlen(inline_data1), 0);
+			server_deseri_inline_data(&st1, inline_data1, val1);
+			ret = pwrite(fd, inline_data1, st1->size, 0);
 			if (ret <= 0)
 			{
 				printf("write inline data error\n");
+				close(fd);
 				return -1;
 			}
+			close(fd);
 			break;
 
 		case '9':

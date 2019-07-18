@@ -23,6 +23,7 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
+#define WRITE ":8"
 #define BARRIER ":9"
 #define RENAME ":A"
 #define FLUSHDIR ":B"
@@ -1201,6 +1202,23 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			if (ret != 0)
 			{
 				printf("pacon server: fsync from log error%s\n", path);
+				return -1;
+			}
+			break;
+
+		case '8':
+			//printf("commit to fs, typs: WRITE\n");
+			fd = open(path, 0, 0);
+			if (fd == -1)
+				break;
+			char *val;
+			char value[PSTAT_SIZE+INLINE_MAX];
+			val = dmkv_get(ps_info->kv_handle, path);
+			server_seri_inline_data(&st, inline_data, value);
+			ret = pwrite(fd, inline_data, strlen(inline_data), 0);
+			if (ret <= 0)
+			{
+				printf("write inline data error\n");
 				return -1;
 			}
 			break;

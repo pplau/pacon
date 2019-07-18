@@ -27,6 +27,7 @@
 #define READDIR ":5"
 #define OWRITE ":6"  // data size is larger than the INLINE_MAX, write it back to DFS
 #define FSYNC ":7"
+#define WRITE ":8"
 #define BARRIER ":9"
 #define RENAME ":A"
 #define FLUSHDIR ":B"
@@ -2039,6 +2040,7 @@ retry:
 				return -1;
 			}
 			p_file->size = size + offset;
+			add_to_mq(pacon, path, WRITE, time(NULL));
 			return size;
 		} else {
 			printf("need buffer outside the md\n");
@@ -2074,6 +2076,7 @@ retry:
 				return -1;
 			}
 			p_file->size = size + offset;
+			add_to_mq(pacon, path, WRITE, time(NULL));
 			return size;
 		} else {
 			printf("need buffer outside the md\n");
@@ -2119,6 +2122,7 @@ retry:
 		}
 		ret = add_local_fd(path, fd);
 		p_file->fd = fd;
+		add_to_mq(pacon, path, WRITE, time(NULL));
 		goto begin;
 	}
 	return -1;
@@ -2404,6 +2408,12 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath)
 	return 0;
 }
 
+int pacon_symlink(struct pacon *pacon, const char *oldpath, const char *newpath)
+{
+	int ret;
+
+}
+
 /*
 int pacon_release(struct pacon *pacon, const char *path)
 {
@@ -2443,11 +2453,6 @@ int pacon_batch_chown(struct pacon *pacon, const char * path, uid_t owner, gid_t
 int pacon_access(struct pacon *pacon, const char * path, int amode)
 {
 	return fs_access(fs, path, amode);
-}
-
-int pacon_symlink(struct pacon *pacon, const char * oldpath, const char * newpath)
-{
-	return fs_symlink(fs, oldpath, newpath);
 }
 
 int pacon_readlink(struct pacon *pacon, const char * path, char * buf, size_t size)

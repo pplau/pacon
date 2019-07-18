@@ -1152,6 +1152,10 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '3':
 			//printf("commit to fs, typs: RM\n");
+			val = dmkv_get(ps_info->kv_handle, path);
+			if (val == NULL)
+				break;
+
 			ret = remove(path);
 			if (ret != 0)
 			{

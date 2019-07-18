@@ -1091,6 +1091,16 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '2':
 			//printf("commit to fs, typs: CREATE\n");	
+			char *val;
+			char inline_data[INLINE_MAX];
+			uint64_t cas, temp_cas;
+			val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
+			if (val == NULL)
+				break;
+			temp_cas = cas;
+			struct pacon_stat_server st;
+			server_deseri_inline_data(&st, inline_data, val);
+
 			if (sp_permission == 0)
 			{
 				fd = creat(path, S_IFREG | 0644);
@@ -1110,13 +1120,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 					return -1;
 				}
 			}
-			char *val;
-			char inline_data[INLINE_MAX];
-			uint64_t cas, temp_cas;
-			val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
-			temp_cas = cas;
-			struct pacon_stat_server st;
-			server_deseri_inline_data(&st, inline_data, val);
+
 			// write inline data to the new file
 			/*if (server_get_stat_flag(&st, STAT_inline) == 1 && st.size >0)
 			{
@@ -1135,6 +1139,8 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			while (ret != 0)
 			{
 				val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
+				if (val == NULL)
+					break;
 				temp_cas = cas;
 				server_deseri_inline_data(&st, inline_data, val);
 				server_set_stat_flag(&st, STAT_file_created, 1);
@@ -1208,7 +1214,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '8':
 			//printf("commit to fs, typs: WRITE\n");
-			fd = open(path, O_RDWR);
+			/*fd = open(path, O_RDWR);
 			if (fd == -1)
 				break;
 			char *val1;
@@ -1216,14 +1222,14 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			struct pacon_stat_server st1;
 			val1 = dmkv_get(ps_info->kv_handle, path);
 			server_deseri_inline_data(&st1, inline_data1, val1);
-			ret = pwrite(fd, inline_data1, st1->size, 0);
+			ret = pwrite(fd, inline_data1, st1.size, 0);
 			if (ret <= 0)
 			{
 				printf("write inline data error\n");
 				close(fd);
 				return -1;
 			}
-			close(fd);
+			close(fd);*/
 			break;
 
 		case '9':

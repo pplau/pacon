@@ -1752,7 +1752,7 @@ int pacon_rm(struct pacon *pacon, const char *path)
 			return -1;
 	}
 
-	uint64_t cas, cas_temp;
+	/*uint64_t cas, cas_temp;
 	//ret = dmkv_del(pacon->kv_handle, path);
 	struct pacon_stat p_st;
 	char *val;
@@ -1780,6 +1780,13 @@ int pacon_rm(struct pacon *pacon, const char *path)
 		set_stat_flag(&p_st, STAT_rm, 1);
 		seri_val(&p_st, val);
 		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_temp);
+	}*/
+	
+	ret = dmkv_del(ps_info->kv_handle, path);
+	if (ret != 0)
+	{
+		printf("fail to rm invalid item from dmkv\n");
+		return -1;
 	}
 	ret = add_to_mq(pacon, path, RM, time(NULL));
 	return ret;

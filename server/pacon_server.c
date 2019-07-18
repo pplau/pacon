@@ -1211,11 +1211,12 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			fd = open(path, 0, 0);
 			if (fd == -1)
 				break;
-			char *val;
-			char value[PSTAT_SIZE+INLINE_MAX];
-			val = dmkv_get(ps_info->kv_handle, path);
-			server_seri_inline_data(&st, inline_data, value);
-			ret = pwrite(fd, inline_data, strlen(inline_data), 0);
+			char *val1;
+			char value1[PSTAT_SIZE+INLINE_MAX];
+			char inline_data1[INLINE_MAX];
+			val1 = dmkv_get(ps_info->kv_handle, path);
+			server_seri_inline_data(&st, inline_data1, value1);
+			ret = pwrite(fd, inline_data1, strlen(inline_data1), 0);
 			if (ret <= 0)
 			{
 				printf("write inline data error\n");

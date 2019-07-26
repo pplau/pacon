@@ -59,6 +59,15 @@ static int barrier[BARRIER_ID_MAX] = {0};
 static struct barrier_info barrier_info;
 static int barrier_id_lock = 0;
 
+// the commit porcess will discard a create/mkdir operation if its path is under the removing list
+struct romving_dirs
+{
+	int count;
+	char list[BARRIER_ID_MAX][PATH_MAX];
+};
+
+static struct removing_dirs removing_dirs;
+
 
 enum statflags
 {
@@ -369,6 +378,13 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	for (i = 0; i < BARRIER_ID_MAX; ++i)
 	{
 		barrier_info.barrier[i] = 0;
+	}
+
+	// init remvoing dirs structure
+	removing_dirs.count = 0;
+	for (i = 0; i < BARRIER_ID_MAX; ++i)
+	{
+		sprintf(removing_dirs.list[i], "%s", "");
 	}
 	return 0;
 }

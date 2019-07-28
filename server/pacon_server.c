@@ -31,6 +31,8 @@
 // cluster mesg types
 #define CL_RMDIRPRE ":1"
 #define CL_RMDIRPOST ":2"
+#define CL_ADD_REMOVING_DIR ":3"
+#define CL_DEL_REMOVING_DIR ":4"
 #define BARRIER_ASYNC ":6"
 #define BARRIER_ASYNC_WAIT ":7"
 #define BARRIER ":8"
@@ -1003,7 +1005,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	uint64_t cas, temp_cas;
 	//strncpy(path, mesg, mesg_len-2);
 	//path[mesg_len-2] = '\0';
-	int i;
+	int i, pos;
 	for (i = 0; i < mesg_len; ++i)
 	{
 		if (mesg[i] != ':')
@@ -1088,6 +1090,15 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	{
 		case '1':
 			//printf("commit to fs, typs: MKDIR\n");
+			if (removing_dirs.count > 0)
+			{
+				for (pos = 0; i < removing_dirs.count-1; ++i)
+				{
+					if (child_cmp(path, removing_dirs.list[pos]) == 1)
+						return 0;
+				}
+			}
+
 			if (sp_permission == 0)
 			{
 				ret = mkdir(path, S_IFDIR | 0755);
@@ -1110,7 +1121,16 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			break;
 
 		case '2':
-			//printf("commit to fs, typs: CREATE\n");	
+			//printf("commit to fs, typs: CREATE\n");
+			if (removing_dirs.count > 0)
+			{
+				for (pos = 0; i < removing_dirs.count-1; ++i)
+				{
+					if (child_cmp(path, removing_dirs.list[pos]) == 1)
+						return 0;
+				}
+			}
+
 			val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
 			if (val == NULL)
 				break;
@@ -1389,6 +1409,17 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	//ret = broadcast_barrier_begin(ps_info, timestamp);
 	//while (barrier_id_lock == 1);
 	//barrier_id_lock = 1;
+
+	/* if opt is rmdir then add removing path */
+	if (mesg[i+1] == '4')
+	{
+		sprintf(romving_dirs.list[romving_dirs.count], "%s", path);
+		romving_dirs.count++;
+	 	char c_mesg[PATH_MAX+3];
+	 	sprintf(c_mesg, "%s%s", path, CL_REMOVING_DIR);
+		server_broadcast(ps_info->s_comm, c_mesg);
+	}
+
 	ret = broadcast_barrier_begin_new(ps_info, timestamp, barrier_id);
 	if (ret != 0)
 	{
@@ -1435,6 +1466,29 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			printf("barrier opt type error\n");
 			return -1;
 	}
+
+	/* if opt is rmdir then del removing path */
+	if (mesg[i+1] == '4')
+	{
+		int pos;
+		for (pos = removing_dirs.count; pos > 0; --pos)
+		{
+			if (child_cmp(removing_dirs.list[pos-1], path, 1) == 2)
+			{
+				if (pos != removing_dirs.count)
+				{
+					sprintf(removing_dirs.list[pos-1], "%s", removing_dirs.list[removing_dirs.count-1]);
+				}
+				sprintf(removing_dirs.list[pos-1], "%s", "");
+				removing_dirs.count--;
+				break;
+			}
+		}
+	 	char c_mesg[PATH_MAX+3];
+	 	sprintf(c_mesg, "%s%s", path, CL_DEL_REMOVING_DIR);
+		server_broadcast(ps_info->s_comm, c_mesg);
+	}
+
 	//ret = broadcast_barrier_end(ps_info);
 	ret = broadcast_barrier_end_new(ps_info, barrier_id);
 	//barrier_id_lock = 0;
@@ -1532,7 +1586,19 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 {
 	int ret;
 	uint32_t timestamp;
-	switch (mesg[1])
+	char path[PATH_MAX];
+	int mesg_len = strlen(mesg);
+	int i, pos;
+	for (i = 0; i < mesg_len; ++i)
+	{
+		if (mesg[i] != ':')
+			path[i] = mesg[i];
+		else
+			break;
+	}
+	path[i] = '\0';
+
+	switch (mesg[i+1])
 	{
 		case '1':
 			// printf("rmdir pre\n");
@@ -1551,6 +1617,29 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 			{
 				printf("rmdir post error\n");
 				return -1;
+			}
+			break;
+
+		case '3':
+			// printf("add removing dir\n");
+			sprintf(romving_dirs.list[romving_dirs.count], "%s", path);
+			romving_dirs.count++;
+			break;
+
+		case '4':
+			// printf("del removing dir\n");
+			for (pos = removing_dirs.count; pos > 0; --pos)
+			{
+				if (child_cmp(removing_dirs.list[pos-1], path, 1) == 2)
+				{
+					if (pos != removing_dirs.count)
+					{
+						sprintf(removing_dirs.list[pos-1], "%s", removing_dirs.list[removing_dirs.count-1]);
+					}
+					sprintf(removing_dirs.list[pos-1], "%s", "");
+					removing_dirs.count--;
+					break;
+				}
 			}
 			break;
 

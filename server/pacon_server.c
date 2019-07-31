@@ -1404,8 +1404,8 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	/* if opt is rmdir then add removing path */
 	if (mesg[i+1] == '4')
 	{
-		sprintf(romving_dirs.list[romving_dirs.count], "%s", path);
-		romving_dirs.count++;
+		sprintf(ps_info->removing_dirs.list[ps_info->removing_dirs.count], "%s", path);
+		ps_info->removing_dirs.count++;
 	 	char c_mesg[PATH_MAX+3];
 	 	sprintf(c_mesg, "%s%s", path, CL_REMOVING_DIR);
 		server_broadcast(ps_info->s_comm, c_mesg);
@@ -1468,7 +1468,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 			{
 				if (pos != ps_info->removing_dirs.count)
 				{
-					sprintf(ps_info->removing_dirs.list[pos-1], "%s", ps_info->removing_dirs.list[removing_dirs.count-1]);
+					sprintf(ps_info->removing_dirs.list[pos-1], "%s", ps_info->removing_dirs.list[ps_info->removing_dirs.count-1]);
 				}
 				sprintf(ps_info->removing_dirs.list[pos-1], "%s", "");
 				ps_info->removing_dirs.count--;
@@ -1613,8 +1613,8 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 
 		case '3':
 			// printf("add removing dir\n");
-			sprintf(romving_dirs.list[romving_dirs.count], "%s", path);
-			romving_dirs.count++;
+			sprintf(ps_info->removing_dirs.list[ps_info->removing_dirs.count], "%s", path);
+			ps_info->removing_dirs.count++;
 			break;
 
 		case '4':
@@ -1625,7 +1625,7 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 				{
 					if (pos != ps_info->removing_dirs.count)
 					{
-						sprintf(ps_info->removing_dirs.list[pos-1], "%s", ps_info->removing_dirs.list[removing_dirs.count-1]);
+						sprintf(ps_info->removing_dirs.list[pos-1], "%s", ps_info->removing_dirs.list[ps_info->removing_dirs.count-1]);
 					}
 					sprintf(ps_info->removing_dirs.list[pos-1], "%s", "");
 					ps_info->removing_dirs.count--;

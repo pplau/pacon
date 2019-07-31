@@ -33,7 +33,7 @@ struct barrier_info
 };
 
 // the commit porcess will discard a create/mkdir operation if its path is under the removing list
-struct romving_dirs
+struct removing_dirs
 {
 	int count;
 	char list[BARRIER_ID_MAX][PATH_MAX];

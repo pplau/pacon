@@ -1407,7 +1407,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 		sprintf(ps_info->removing_dirs.list[ps_info->removing_dirs.count], "%s", path);
 		ps_info->removing_dirs.count++;
 	 	char c_mesg[PATH_MAX+3];
-	 	sprintf(c_mesg, "%s%s", path, CL_REMOVING_DIR);
+	 	sprintf(c_mesg, "%s%s", path, CL_ADD_REMOVING_DIR);
 		server_broadcast(ps_info->s_comm, c_mesg);
 	}
 

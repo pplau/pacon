@@ -61,15 +61,6 @@ static int barrier[BARRIER_ID_MAX] = {0};
 static struct barrier_info barrier_info;
 static int barrier_id_lock = 0;
 
-// the commit porcess will discard a create/mkdir operation if its path is under the removing list
-struct romving_dirs
-{
-	int count;
-	char list[BARRIER_ID_MAX][PATH_MAX];
-};
-
-static struct removing_dirs removing_dirs;
-
 
 enum statflags
 {
@@ -383,10 +374,10 @@ int start_pacon_server(struct pacon_server_info *ps_info)
 	}
 
 	// init remvoing dirs structure
-	removing_dirs.count = 0;
+	ps_info->removing_dirs.count = 0;
 	for (i = 0; i < BARRIER_ID_MAX; ++i)
 	{
-		sprintf(removing_dirs.list[i], "%s", "");
+		sprintf(ps_info->removing_dirs.list[i], "%s", "");
 	}
 	return 0;
 }
@@ -1090,11 +1081,11 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 	{
 		case '1':
 			//printf("commit to fs, typs: MKDIR\n");
-			if (removing_dirs.count > 0)
+			if (ps_info->removing_dirs.count > 0)
 			{
-				for (pos = 0; i < removing_dirs.count-1; ++i)
+				for (pos = 0; i < ps_info->removing_dirs.count-1; ++i)
 				{
-					if (child_cmp(path, removing_dirs.list[pos]) == 1)
+					if (child_cmp(path, ps_info->removing_dirs.list[pos], 1) == 1)
 						return 0;
 				}
 			}
@@ -1122,11 +1113,11 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '2':
 			//printf("commit to fs, typs: CREATE\n");
-			if (removing_dirs.count > 0)
+			if (ps_info->removing_dirs.count > 0)
 			{
-				for (pos = 0; i < removing_dirs.count-1; ++i)
+				for (pos = 0; i < ps_info->removing_dirs.count-1; ++i)
 				{
-					if (child_cmp(path, removing_dirs.list[pos]) == 1)
+					if (child_cmp(path, ps_info->removing_dirs.list[pos], 1) == 1)
 						return 0;
 				}
 			}
@@ -1471,16 +1462,16 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	if (mesg[i+1] == '4')
 	{
 		int pos;
-		for (pos = removing_dirs.count; pos > 0; --pos)
+		for (pos = ps_info->removing_dirs.count; pos > 0; --pos)
 		{
-			if (child_cmp(removing_dirs.list[pos-1], path, 1) == 2)
+			if (child_cmp(ps_info->removing_dirs.list[pos-1], path, 1) == 2)
 			{
-				if (pos != removing_dirs.count)
+				if (pos != ps_info->removing_dirs.count)
 				{
-					sprintf(removing_dirs.list[pos-1], "%s", removing_dirs.list[removing_dirs.count-1]);
+					sprintf(ps_info->removing_dirs.list[pos-1], "%s", ps_info->removing_dirs.list[removing_dirs.count-1]);
 				}
-				sprintf(removing_dirs.list[pos-1], "%s", "");
-				removing_dirs.count--;
+				sprintf(ps_info->removing_dirs.list[pos-1], "%s", "");
+				ps_info->removing_dirs.count--;
 				break;
 			}
 		}
@@ -1628,16 +1619,16 @@ int handle_cluster_mesg(struct pacon_server_info *ps_info, char *mesg)
 
 		case '4':
 			// printf("del removing dir\n");
-			for (pos = removing_dirs.count; pos > 0; --pos)
+			for (pos = ps_info->removing_dirs.count; pos > 0; --pos)
 			{
-				if (child_cmp(removing_dirs.list[pos-1], path, 1) == 2)
+				if (child_cmp(ps_info->removing_dirs.list[pos-1], path, 1) == 2)
 				{
-					if (pos != removing_dirs.count)
+					if (pos != ps_info->removing_dirs.count)
 					{
-						sprintf(removing_dirs.list[pos-1], "%s", removing_dirs.list[removing_dirs.count-1]);
+						sprintf(ps_info->removing_dirs.list[pos-1], "%s", ps_info->removing_dirs.list[removing_dirs.count-1]);
 					}
-					sprintf(removing_dirs.list[pos-1], "%s", "");
-					removing_dirs.count--;
+					sprintf(ps_info->removing_dirs.list[pos-1], "%s", "");
+					ps_info->removing_dirs.count--;
 					break;
 				}
 			}

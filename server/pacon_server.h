@@ -32,6 +32,13 @@ struct barrier_info
 	int barrier[BARRIER_ID_MAX];  // reach count, each slot represents a barrier id
 };
 
+// the commit porcess will discard a create/mkdir operation if its path is under the removing list
+struct romving_dirs
+{
+	int count;
+	char list[BARRIER_ID_MAX][PATH_MAX];
+};
+
 struct pacon_server_info
 {
 	int carea_num;
@@ -62,6 +69,9 @@ struct pacon_server_info
 
 	// for rmdir
 	struct rmdir_record *rmdir_record;
+
+	// record the removing dir
+	struct removing_dirs removing_dirs;
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11

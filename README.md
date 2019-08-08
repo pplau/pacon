@@ -1,4 +1,5 @@
-# Pacon
+# Pacon   
+A partial consistency library   
 
 # Install:  
 `cd /pacon ` 

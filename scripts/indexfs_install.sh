@@ -3,6 +3,7 @@ cd ..
 cd ..
 yum install -y cmake
 yum install -y gcc g++ make flex bison
+yum install -y gcc-c++
 yum install -y autoconf automake libtool
 yum install -y pkgconfig
 yum install -y zlib-deve

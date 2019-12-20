@@ -1,9 +1,10 @@
+# #############################################################
 #  setup MPI on TIANHE-II
 #
 #  Before run this script, you should:
 #  1. Copy mpi.tgz, intel.tar.gz and licenses.tgz to /usr/local of the target node 
 #  2. Copy /opt/intel to /opt of the target node
-#
+###############################################################
 
 cd /usr/local
 tar -zxvf mpi.tgz

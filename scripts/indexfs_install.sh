@@ -1,6 +1,14 @@
 # prepare evn and install indexfs
+
+# configure yum repo (only for TIANHE-II)
+rm -rf /etc/yum.repos.d/
+scp -r 10.182.171.1:/etc/yum.repos.d/ /etc/
+scp 10.182.171.1:/etc/pki/rpm-gpg/RPM-GPG-KEY-EPEL-7 /etc/pki/rpm-gpg/
+yum -y update
+
 cd ..
 cd ..
+yum install -y perf
 yum install -y cmake
 yum install -y gcc g++ make flex bison
 yum install -y gcc-c++

@@ -138,6 +138,8 @@ struct pacon_file * new_pacon_file(void);
 
 int pacon_open(struct pacon *pacon, const char *path, int flag, mode_t mode, struct pacon_file *p_file);
 
+int pacon_create_open(struct pacon *pacon, const char *path, int flag, mode_t mode, struct pacon_file *p_file);
+
 int pacon_close(struct pacon *pacon, struct pacon_file *p_file);
 
 int pacon_create(struct pacon *pacon, const char *path, mode_t mode);

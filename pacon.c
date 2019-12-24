@@ -1290,6 +1290,20 @@ out:
 	return 0;
 }
 
+/* create a new file and then open it */
+int pacon_create_open(struct pacon *pacon, const char *path, int flag, mode_t mode, struct pacon_file *p_file)
+{
+	int ret;
+	ret = pacon_create(pacon, path, p_file);
+	if (ret != 0)
+	{
+		printf("pacon_create_open: create file error\n");
+		return -1;
+	}
+	p_file->fd = -1;
+	return 0;
+}
+
 /* reduce the opened counter */
 int pacon_close(struct pacon *pacon, struct pacon_file *p_file)
 {

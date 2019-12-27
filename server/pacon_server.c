@@ -1412,7 +1412,7 @@ int commit_to_fs_barrier(struct pacon_server_info *ps_info, char *mesg)
 	}
 
 	ret = broadcast_barrier_begin_new(ps_info, timestamp, barrier_id);
-	if (ret != 0)`
+	if (ret != 0)
 	{
 		printf("broadcast barrier error\n");
 		return -1;

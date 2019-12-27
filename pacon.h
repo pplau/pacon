@@ -84,7 +84,7 @@ struct pacon
 };
 
 #define PSTAT_SIZE 44 // 32 int * 11
-#define INLINE_MAX 468 // PSTAT_SIZE + INLINE_MAX = 512B
+#define INLINE_MAX 4052 //468 // PSTAT_SIZE + INLINE_MAX = 512B
 struct pacon_stat
 {
 	uint32_t flags;   //  including the metadata type

@@ -2149,6 +2149,75 @@ retry:
 	return -1;
 }	
 
+/* success: return write bytes, error: return -1 */
+int pacon_write_new(struct pacon *pacon, char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset)
+{
+	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, WRITE_PC);
+		if (ret < 0)
+			return -1;
+	}
+
+	int data_size = strlen(buf);
+	if (data_size > size)
+	{
+		printf("write buffer size error\n");
+		return -1;
+	}
+
+begin:
+	if (p_file->fd != -1)
+	{
+		ret = pwrite(p_file->fd, buf, size, offset);
+		return ret;
+	}
+
+	char *val;
+	uint64_t cas;
+	struct pacon_stat new_st;
+	char inline_data[INLINE_MAX];
+
+retry:
+	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+	if (val == NULL)
+		goto retry;
+	deseri_inline_data(&new_st, inline_data, val);
+
+	int new_size = ((new_st.size-offset)+size)>new_st.size?((new_st.size-offset)+size):new_st.size;
+
+	if (new_size < INLINE_MAX - 1)
+	{
+		char new_data[INLINE_MAX];
+		memcpy(new_data, inline_data, offset);
+		memcpy(new_data+offset, buf, size);
+		if (offset + size < new_st.size)
+			memcpy(new_data+offset+size, inline_data+offset+size, new_st.size-(offset+size));
+		new_data[new_size+1] = '\0';
+		new_st.atime = time(NULL);
+		new_st.mtime = time(NULL);
+		new_st.size = new_size;
+		char val[PSTAT_SIZE+INLINE_MAX];
+		seri_inline_data(&new_st, &new_data, val);
+		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE + new_size, cas);
+		if (ret == 1)
+			goto retry;
+
+		if (ret == -1)
+		{
+			printf("write inline data error\n");
+			return -1;
+		}
+		p_file->size = size + offset;
+
+		return size;
+	} else {
+		printf("need buffer outside the md\n");
+		return -1;
+	}
+}
+
 int pacon_fsync(struct pacon *pacon, char *path, struct pacon_file *p_file)
 {
 	int ret;

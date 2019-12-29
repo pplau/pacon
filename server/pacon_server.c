@@ -1160,7 +1160,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 				}
 			}*/
 			close(fd);
-			server_set_stat_flag(&st, STAT_file_created, 1);
+			/*server_set_stat_flag(&st, STAT_file_created, 1);
 			char value[PSTAT_SIZE+INLINE_MAX];
 			server_seri_inline_data(&st, inline_data, value);
 			ret = dmkv_cas(ps_info->kv_handle, path, value, st.size, temp_cas);
@@ -1174,7 +1174,7 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 				server_set_stat_flag(&st, STAT_file_created, 1);
 				server_seri_inline_data(&st, inline_data, value);
 				ret = dmkv_cas(ps_info->kv_handle, path, value, st.size, temp_cas);
-			}
+			}*/
 			break;
 
 		case '3':

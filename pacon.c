@@ -2019,7 +2019,7 @@ int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, c
 	// remote cregion case
 	if (p_file->hit_remote_cr > 0)
 	{
-		ret = pacon_read(pacon->remote_pacon_list[p_file->hit_remote_cr], path, p_file, buf, size, offset);
+		ret = pacon_read_new(pacon->remote_pacon_list[p_file->hit_remote_cr], path, p_file, buf, size, offset);
 		if (ret == -1)
 		{
 			printf("read from remote cregion error\n");
@@ -2028,18 +2028,42 @@ int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, c
 		return ret;
 	}
 
-	struct pacon_stat new_st;
-	char *val;
-	uint64_t cas;
-	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
-	if (val == NULL)
+	if (p_file->fd != -1)
 	{
-		printf("read: get inline data error\n");
-		return -1;
-	}
-	char inline_data[INLINE_MAX];
-	deseri_inline_data(&new_st, inline_data, val);
+		// DFS case
+		ret = pread(p_file->fd, buf, size, offset);
+		return ret;
+	} else {
+		struct pacon_stat new_st;
+		char *val;
+		uint64_t cas;
+		val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+		if (val == NULL)
+		{
+			printf("read: get inline data error\n");
+			return -1;
+		}
+		char inline_data[INLINE_MAX];
+		deseri_inline_data(&new_st, inline_data, val);
 
+		if (get_stat_flag(&new_st, STAT_inline) == 1)
+		{
+			// inline case
+			if (offset + size > new_st.size)
+			{
+				printf("read overflow\n");
+				return -1;
+			}
+			memcpy(buf, inline_data+offset, size);
+			buf[offset+size] = '\0';
+			return size;
+		} else {
+			// DFS case
+			p_file->fd = open(path, 0, 0);
+			ret = pread(p_file->fd, buf, size, offset);
+			return ret;
+		}
+	}
 }
 
 /* success: return write bytes, error: return -1 */

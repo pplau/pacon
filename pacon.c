@@ -1301,6 +1301,8 @@ int pacon_create_open(struct pacon *pacon, const char *path, int flag, mode_t mo
 		return -1;
 	}
 	p_file->fd = -1;
+	p_file->open_mode = mode;
+	p_file->hit_remote_cr = 0;
 	return 0;
 }
 
@@ -1998,10 +2000,46 @@ int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char 
 			return -1;
 		}
 		memcpy(buf, inline_data+offset, size);
-		buf[size] = '\0';
+		buf[offset+size] = '\0';
 		return size;
 	}
 	return -1;
+}
+
+int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset)
+{
+	int ret;
+	if (pacon->perm_info != NULL)
+	{
+		ret = check_permission(pacon, path, 1, READ_PC);
+		if (ret < 0)
+			return -1;
+	}
+
+	// remote cregion case
+	if (p_file->hit_remote_cr > 0)
+	{
+		ret = pacon_read(pacon->remote_pacon_list[p_file->hit_remote_cr], path, p_file, buf, size, offset);
+		if (ret == -1)
+		{
+			printf("read from remote cregion error\n");
+			return -1;
+		}
+		return ret;
+	}
+
+	struct pacon_stat new_st;
+	char *val;
+	uint64_t cas;
+	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+	if (val == NULL)
+	{
+		printf("read: get inline data error\n");
+		return -1;
+	}
+	char inline_data[INLINE_MAX];
+	deseri_inline_data(&new_st, inline_data, val);
+
 }
 
 /* success: return write bytes, error: return -1 */
@@ -2185,8 +2223,14 @@ retry:
 		goto retry;
 	deseri_inline_data(&new_st, inline_data, val);
 
-	int new_size = ((new_st.size-offset)+size)>new_st.size?((new_st.size-offset)+size):new_st.size;
-
+	int new_size; 
+	if (new_st.size < offset)
+	{
+		printf("write offset larger than the file size, offset:%d, w_size:%d, size:%d\n", offset, size, new_st.size);
+		return -1;
+	}
+	new_size = (offset+size)>new_st.size?offset+size:new_st.size;
+	// inline write
 	if (new_size < INLINE_MAX - 1)
 	{
 		char new_data[INLINE_MAX];
@@ -2209,10 +2253,11 @@ retry:
 			printf("write inline data error\n");
 			return -1;
 		}
-		p_file->size = size + offset;
+		p_file->size = new_size;
 
 		return size;
 	} else {
+	// DFS write
 		printf("need buffer outside the md\n");
 		return -1;
 	}

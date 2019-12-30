@@ -160,6 +160,8 @@ int pacon_rename(struct pacon *pacon, const char *path, const char *newpath);
 
 int pacon_read(struct pacon *pacon, char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset);
 
+int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, char *buf, size_t size, off_t offset);
+
 int pacon_write(struct pacon *pacon, char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset);
 
 int pacon_write_new(struct pacon *pacon, char *path, struct pacon_file *p_file, const char *buf, size_t size, off_t offset);

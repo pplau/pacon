@@ -14,5 +14,4 @@ for node in $(cat $CONFIG)
 do
 	($SSH $node "cd /root/yubo/mdtest_pacon/pacon/server && (./pacon_server &)") &
 	$SSH $node "ldconfig"
-
-exit 0
+done

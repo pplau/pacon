@@ -2219,7 +2219,10 @@ int pacon_write_new(struct pacon *pacon, char *path, struct pacon_file *p_file, 
 	{
 		ret = check_permission(pacon, path, 1, WRITE_PC);
 		if (ret < 0)
+		{
+			printf("permission error\n");
 			return -1;
+		}
 	}
 
 	int data_size = strlen(buf);
@@ -2233,6 +2236,7 @@ begin:
 	if (p_file->fd != -1)
 	{
 		ret = pwrite(p_file->fd, buf, size, offset);
+		p_file->size = new_size;
 		return ret;
 	}
 
@@ -2240,14 +2244,14 @@ begin:
 	uint64_t cas;
 	struct pacon_stat new_st;
 	char inline_data[INLINE_MAX];
+	int new_size;
 
 retry:
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	if (val == NULL)
 		goto retry;
 	deseri_inline_data(&new_st, inline_data, val);
-
-	int new_size; 
+ 
 	if (new_st.size < offset)
 	{
 		printf("write offset larger than the file size, offset:%d, w_size:%d, size:%d\n", offset, size, new_st.size);
@@ -2266,6 +2270,7 @@ retry:
 		new_st.atime = time(NULL);
 		new_st.mtime = time(NULL);
 		new_st.size = new_size;
+		set_stat_flag(&new_st, STAT_inline, 1);
 		char val[PSTAT_SIZE+INLINE_MAX];
 		seri_inline_data(&new_st, &new_data, val);
 		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE + new_size, cas);

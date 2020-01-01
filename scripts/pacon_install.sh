@@ -43,6 +43,11 @@ cd ./libzmq-4.3.1
 cd ..
 ldconfig
 
+# configure ld.so.conf (only for TIANHE-II)
+echo "/opt/intel/composer_xe_2013_sp1/lib/intel64/" >> /etc/ld.so.conf
+ldconfig
+
+
 # install libcuckoo
 #git clone https://github.com/efficient/libcuckoo.git
 #cd ./libcuckoo

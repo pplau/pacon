@@ -2055,7 +2055,7 @@ int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, c
 				return -1;
 			}
 			memcpy(buf, inline_data+offset, size);
-			//buf[offset+size] = '\0';
+			buf[size] = '\0';
 			return size;
 		} else {
 			// DFS case
@@ -2266,7 +2266,7 @@ retry:
 		memcpy(new_data+offset, buf, size);
 		if (offset + size < new_st.size)
 			memcpy(new_data+offset+size, inline_data+offset+size, new_st.size-(offset+size));
-		new_data[new_size+1] = '\0';
+		new_data[new_size] = '\0';
 		new_st.atime = time(NULL);
 		new_st.mtime = time(NULL);
 		new_st.size = new_size;

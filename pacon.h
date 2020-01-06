@@ -34,6 +34,10 @@
 #define BARRIER_ID_MAX 1024
 #define BARRIER_OPT_COUNT_KEY "barrier_opt_count"
 
+#define INLINE_ASYNC_WB 0  // 0: do not asynchronously writeback the inline data
+						   // 1: put a writeback mesg into mq after each inline write, pacon server will sync the inline data when it recive this mesg
+
+
 
 
 struct permission_info

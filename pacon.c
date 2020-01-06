@@ -2284,11 +2284,20 @@ retry:
 		}
 		p_file->size = new_size;
 
+		if (INLINE_ASYNC_WB == 1)
+			add_to_mq(pacon, path, WRITE, time(NULL));
+		
 		return size;
 	} else {
 	// DFS write
-		printf("need buffer outside the md\n");
-		return -1;
+		//printf("need buffer outside the md\n");
+		int fd = open(path, O_RDWR);
+		if (fd > 0)
+		{
+
+		} else {
+
+		}
 	}
 }
 

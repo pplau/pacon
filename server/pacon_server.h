@@ -21,6 +21,9 @@
 #define SP_LIST_MAX 16
 #define RMDIRLIST_MAX 128
 
+#define INLINE_ASYNC_WB 0  // 0: do not asynchronously writeback the inline data
+						   // 1: put a writeback mesg into mq after each inline write, pacon server will sync the inline data when it recive this mesg
+
 
 struct carea_info
 {

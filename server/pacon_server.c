@@ -1246,22 +1246,25 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 
 		case '8':
 			//printf("commit to fs, typs: WRITE\n");
-			/*fd = open(path, O_RDWR);
-			if (fd == -1)
-				break;
-			char *val1;
-			char inline_data1[INLINE_MAX];
-			struct pacon_stat_server st1;
-			val1 = dmkv_get(ps_info->kv_handle, path);
-			server_deseri_inline_data(&st1, inline_data1, val1);
-			ret = pwrite(fd, inline_data1, st1.size, 0);
-			if (ret <= 0)
+			if (INLINE_ASYNC_WB == 1)
 			{
-				printf("write inline data error\n");
+				fd = open(path, O_RDWR);
+				if (fd == -1)
+					break;
+				char *val1;
+				char inline_data1[INLINE_MAX];
+				struct pacon_stat_server st1;
+				val1 = dmkv_get(ps_info->kv_handle, path);
+				server_deseri_inline_data(&st1, inline_data1, val1);
+				ret = pwrite(fd, inline_data1, st1.size, 0);
+				if (ret <= 0)
+				{
+					printf("write inline data error\n");
+					close(fd);
+					return -1;
+				}
 				close(fd);
-				return -1;
 			}
-			close(fd);*/
 			break;
 
 		case '9':

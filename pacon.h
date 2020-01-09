@@ -34,9 +34,11 @@
 #define BARRIER_ID_MAX 1024
 #define BARRIER_OPT_COUNT_KEY "barrier_opt_count"
 
-#define INLINE_ASYNC_WB 0  // 0: do not asynchronously writeback the inline data
+#define INLINE_ASYNC_WB 1  // 0: do not asynchronously writeback the inline data
 						   // 1: put a writeback mesg into mq after each inline write, pacon server will sync the inline data when it recive this mesg
 
+#define CACHEDFILE_MAX 128
+#define CACHEDFILE_INDEX_MAX 128
 
 
 
@@ -126,6 +128,13 @@ struct pacon_file
 	int p_fd; // p_fd only be used when the file data are cached in pacon 
 	char *buf; // buffer for inline file data, its largest size is 1KB
 	int hit_remote_cr;  // 1 is hit in other cregion
+};
+
+// use for inline data fsync
+struct cache_meta
+{
+	char path[PATH_MAX];
+	int cas_num;
 };
 
 

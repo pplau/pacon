@@ -73,7 +73,6 @@ enum statflags
 	STAT_existedin_dfs,  //  0: a new item after pacon run, 1: it was created before pacon run
 	STAT_child_check,  //  0: haven't check its children, 1: already checked its children
 	STAT_rm,
-	STAT_cachefile,  //  0: no data in the cache file, 1: some data are cached
 };
 
 void set_stat_flag(struct pacon_stat *p_st, int flag_type, int val)

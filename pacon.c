@@ -940,6 +940,7 @@ struct pacon_file * new_pacon_file(void)
 	struct pacon_file *p_file = (struct pacon_file *)malloc(sizeof(struct pacon_file));
 	//char *buf = (char *)malloc(INLINE_MAX);
 	//p_file->buf = buf;
+	p_file->fd = -1;
 	return p_file;
 }
 
@@ -2025,7 +2026,6 @@ int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, c
 			printf("read from remote cregion error\n");
 			return -1;
 		}
-		return ret;
 	}
 
 	if (p_file->fd != -1)
@@ -2059,7 +2059,7 @@ int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, c
 			return size;
 		} else {
 			// DFS case
-			p_file->fd = open(path, 0, 0);
+			p_file->fd = open(path, O_RDWR);
 			ret = pread(p_file->fd, buf, size, offset);
 			return ret;
 		}
@@ -2241,6 +2241,7 @@ int pacon_write_new(struct pacon *pacon, char *path, struct pacon_file *p_file, 
 	uint32_t exetime = time(NULL);
 retry:
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
+	uint64_t cas_tmp = cas;
 	if (val == NULL)
 		goto retry;
 	deseri_inline_data(&new_st, inline_data, val);
@@ -2252,7 +2253,7 @@ retry:
 		p_file->size = new_size;
 		goto update;
 	}
-	
+
 	if (new_st.size < offset)
 	{
 		printf("write offset larger than the file size, offset:%d, w_size:%d, size:%d\n", offset, size, new_st.size);
@@ -2274,7 +2275,7 @@ retry:
 		set_stat_flag(&new_st, STAT_inline, 1);
 		char val[PSTAT_SIZE+INLINE_MAX];
 		seri_inline_data(&new_st, &new_data, val);
-		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE + new_size, cas);
+		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE + new_size, cas_tmp);
 		if (ret == 1)
 			goto retry;
 
@@ -2298,6 +2299,7 @@ retry:
 			// wait for the target file was created on DFS
 			fd = open(path, O_RDWR);
 		}
+		p_file->fd = fd;
 
 		// check inline data and write it to the target file if necessary
 		if (get_stat_flag(&new_st, STAT_inline) == 1)
@@ -2322,14 +2324,13 @@ update:
 		new_st.mtime = exetime;
 		new_st.size = new_size;
 		set_stat_flag(&new_st, STAT_inline, 0);
-		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas_tmp);
 		if (ret == 1)
 		{
 			if (new_st.atime < exetime || new_st.size < new_size)
 				goto retry;
 		}
 		p_file->size = new_size;
-		p_file->fd = fd;
 		return size;
 	}
 }

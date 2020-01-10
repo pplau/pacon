@@ -2232,26 +2232,27 @@ int pacon_write_new(struct pacon *pacon, char *path, struct pacon_file *p_file, 
 		return -1;
 	}
 
-begin:
-	if (p_file->fd != -1)
-	{
-		ret = pwrite(p_file->fd, buf, size, offset);
-		p_file->size = new_size;
-		return ret;
-	}
-
 	char *val;
 	uint64_t cas;
 	struct pacon_stat new_st;
 	char inline_data[INLINE_MAX];
 	int new_size;
 
+	uint32_t exetime = time(NULL);
 retry:
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	if (val == NULL)
 		goto retry;
 	deseri_inline_data(&new_st, inline_data, val);
  
+
+	if (p_file->fd > 0)
+	{
+		ret = pwrite(p_file->fd, buf, size, offset);
+		p_file->size = new_size;
+		goto update;
+	}
+	
 	if (new_st.size < offset)
 	{
 		printf("write offset larger than the file size, offset:%d, w_size:%d, size:%d\n", offset, size, new_st.size);
@@ -2267,8 +2268,8 @@ retry:
 		if (offset + size < new_st.size)
 			memcpy(new_data+offset+size, inline_data+offset+size, new_st.size-(offset+size));
 		new_data[new_size] = '\0';
-		new_st.atime = time(NULL);
-		new_st.mtime = time(NULL);
+		new_st.atime = exetime;
+		new_st.mtime = exetime;
 		new_st.size = new_size;
 		set_stat_flag(&new_st, STAT_inline, 1);
 		char val[PSTAT_SIZE+INLINE_MAX];
@@ -2301,11 +2302,35 @@ retry:
 		// check inline data and write it to the target file if necessary
 		if (get_stat_flag(&new_st, STAT_inline) == 1)
 		{
-			/* code */
-		}	
+			ret = pwrite(fd, inline_data, new_st.size, 0);
+			if (ret != new_st.size)
+			{
+				printf("write inline data to file error\n");
+				return -1;
+			}
+		}
+		ret = pwrite(fd, buf, size, offset);
+		if (ret != size)
+		{
+			printf("write to dfs error\n");
+			return -1;
+		}
 
 		// update metadata
-
+update:
+		new_st.atime = exetime;
+		new_st.mtime = exetime;
+		new_st.size = new_size;
+		set_stat_flag(&new_st, STAT_inline, 0);
+		ret = dmkv_cas(pacon->kv_handle, path, val, PSTAT_SIZE, cas);
+		if (ret == 1)
+		{
+			if (new_st.atime < exetime || new_st.size < new_size)
+				goto retry;
+		}
+		p_file->size = new_size;
+		p_file->fd = fd;
+		return size;
 	}
 }
 

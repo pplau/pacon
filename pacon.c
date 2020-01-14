@@ -1710,7 +1710,24 @@ evict_ok:
 	// md in pacon, deserialize it
 	if (SERI_TYPE == 0)
 	{
-		deseri_val(st, val);
+		// case1: using st_tmp to aviod the "-g" bug in mdtest //
+		struct pacon_stat st_tmp;
+		deseri_val(&st_tmp, val);
+		st->flags = st_tmp.flags;
+		st->ctime = st_tmp.ctime;
+		st->atime = st_tmp.atime;
+		st->mtime = st_tmp.mtime;
+		st->size = st_tmp.size;
+		st->mode = st_tmp.mode;
+		st->uid  = st_tmp.uid;
+		st->gid = st_tmp.gid;
+		st->nlink = st_tmp.nlink;
+		////////////////////////////////////////////////////////
+
+		/////    case 2: original, open the next line     /////
+		//deseri_val(st, val);
+		///////////////////////////////////////////////////////
+
 		if (get_stat_flag(st, STAT_rm) == 1)
 		{
 			printf("getattr: path not existed: %s\n", path);
@@ -2028,7 +2045,7 @@ int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, c
 		}
 	}
 
-	if (p_file->fd != -1)
+	if (p_file->fd > 0)
 	{
 		// DFS case
 		ret = pread(p_file->fd, buf, size, offset);
@@ -2237,8 +2254,8 @@ int pacon_write_new(struct pacon *pacon, char *path, struct pacon_file *p_file, 
 	struct pacon_stat new_st;
 	char inline_data[INLINE_MAX];
 	int new_size;
+	uint32_t exetime;
 
-	uint32_t exetime = time(NULL);
 retry:
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	uint64_t cas_tmp = cas;
@@ -2251,6 +2268,7 @@ retry:
 	{
 		ret = pwrite(p_file->fd, buf, size, offset);
 		p_file->size = new_size;
+		exetime = time(NULL);
 		goto update;
 	}
 
@@ -2269,6 +2287,7 @@ retry:
 		if (offset + size < new_st.size)
 			memcpy(new_data+offset+size, inline_data+offset+size, new_st.size-(offset+size));
 		new_data[new_size] = '\0';
+		exetime = time(NULL);
 		new_st.atime = exetime;
 		new_st.mtime = exetime;
 		new_st.size = new_size;
@@ -2317,6 +2336,7 @@ retry:
 			printf("write to dfs error\n");
 			return -1;
 		}
+		exetime = time(NULL);
 
 		// update metadata
 update:

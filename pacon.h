@@ -21,7 +21,7 @@
 
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
 #define MOUNT_PATH_MAX 128
-#define PATH_MAX 128
+#define PATH_MAX 128  // enlarge this value to support deep namespace in mdtest (this value in the pacon server also should be changed)
 #define SP_LIST_MAX 16
 #define CR_JOINT_MAX 8
 #define RMDIRLIST_MAX 128

@@ -17,7 +17,7 @@
 #define CHECKPOINT_TIME 0  // 0 mean no need checkpoint, >0 mean the perriod of checkpoint (second)
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
 
-#define PATH_MAX 128
+#define PATH_MAX 128 // enlarge this value to support deep namespace in mdtest (this value in the pacon client also should be changed)
 #define SP_LIST_MAX 16
 #define RMDIRLIST_MAX 128
 

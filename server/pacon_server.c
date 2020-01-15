@@ -409,7 +409,8 @@ int stop_pacon_server(struct pacon_server_info *ps_info)
 int retry_commit(struct pacon_server_info *ps_info, char *path, int type)
 {
 	int ret, i;
-	for (i = 0; i < 5; ++i)
+	//for (i = 0; i < 500; ++i)
+	while (1)
 	{
 		if (type == 1)
 		{
@@ -428,6 +429,10 @@ int retry_commit(struct pacon_server_info *ps_info, char *path, int type)
 			ret = remove(path);
 			if (ret == 0)
 				return 0;
+		}
+		if (type != 1 && type != 2 && type != 3 )
+		{
+			return -1;
 		}
 	}
 
@@ -1249,12 +1254,14 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 			if (INLINE_ASYNC_WB == 1)
 			{
 				fd = open(path, O_RDWR);
-				if (fd == -1)
+				if (fd < 0)
 					break;
 				char *val1;
 				char inline_data1[INLINE_MAX];
 				struct pacon_stat_server st1;
 				val1 = dmkv_get(ps_info->kv_handle, path);
+				if (val1 == NULL)
+					break;
 				server_deseri_inline_data(&st1, inline_data1, val1);
 				ret = pwrite(fd, inline_data1, st1.size, 0);
 				if (ret <= 0)

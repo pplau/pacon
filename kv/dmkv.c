@@ -91,7 +91,7 @@ int memc_add(memcached_st *memc, char *key, char *val, int val_len)
 		if (rc == MEMCACHED_MEMORY_ALLOCATION_FAILURE)
 			return -2;
 		if (rc == MEMCACHED_TIMEOUT)
-			return -3
+			return -3;
 		printf("memcached error: %d, %s\n", rc, memcached_strerror(memc, rc));
 		return -1;
 	}

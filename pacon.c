@@ -1403,6 +1403,11 @@ evict_ok:
 		char *tmp_val;
 		struct pacon_stat tmp_p_st;
 		tmp_val = dmkv_get(pacon->kv_handle, path);
+		if (tmp_val == NULL)
+		{
+			printf("create file fail, memcached error\n");
+			return -1;
+		}
 		deseri_val(&tmp_p_st, tmp_val);
 		if (get_stat_flag(&tmp_p_st, STAT_rm) == 1)
 		{
@@ -1413,8 +1418,9 @@ evict_ok:
 				return -1;
 			}
 		} else {
-			printf("file is existed\n");
-			ret = -1;
+			// in some cases, 
+			printf("file is existed or memcached error, %s\n", path);
+			return -1;
 		}
 		//return ret;
 	}
@@ -1503,6 +1509,11 @@ evict_ok:
 			char *tmp_val;
 			struct pacon_stat tmp_p_st;
 			tmp_val = dmkv_get(pacon->kv_handle, path);
+			if (tmp_val == NULL)
+			{
+				printf("create dir fail, memcached error\n");
+				return -1;
+			}
 			deseri_val(&tmp_p_st, tmp_val);
 			if (get_stat_flag(&tmp_p_st, STAT_rm) == 1)
 			{
@@ -1513,7 +1524,7 @@ evict_ok:
 					return -1;
 				}
 			} else {
-				printf("file is existed\n");
+				printf("file is existed or memcached error\n");
 				ret = -1;
 			}
 			//return ret;
@@ -1612,6 +1623,28 @@ evict_ok:
 		{
 			evict_metadata(pacon);
 			goto evict_ok;
+		}
+
+		char *tmp_val;
+		struct pacon_stat tmp_p_st;
+		tmp_val = dmkv_get(pacon->kv_handle, path);
+		if (tmp_val == NULL)
+		{
+			printf("create dir fail, memcached error\n");
+			return -1;
+		}
+		deseri_val(&tmp_p_st, tmp_val);
+		if (get_stat_flag(&tmp_p_st, STAT_rm) == 1)
+		{
+			ret = dmkv_set(pacon->kv_handle, path, val, PSTAT_SIZE);
+			if (ret != 0)
+			{
+				printf("fail to create dir: %s\n", path);
+				return -1;
+			}
+		} else {
+			printf("dir is existed or memcached error, %s\n", path);
+			return -1;
 		}
 		return ret;
 	}

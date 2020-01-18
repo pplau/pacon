@@ -1126,14 +1126,14 @@ int commit_to_fs(struct pacon_server_info *ps_info, char *mesg)
 						return 0;
 				}
 			}
-
+			/* ipdps
 			val = dmkv_get_cas(ps_info->kv_handle, path, &cas);
 			if (val == NULL)
 				break;
 			temp_cas = cas;
 			struct pacon_stat_server st;
 			server_deseri_inline_data(&st, inline_data, val);
-
+			*/
 			if (sp_permission == 0)
 			{
 				fd = creat(path, S_IFREG | 0644);

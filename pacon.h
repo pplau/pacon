@@ -17,11 +17,13 @@
 /******* pacon configure *******/
 #define PARENT_CHECK 1 // 0 is not check the parent dir when creating dir and file
 #define ASYNC_RPC 0  // 0 is sync rpc, 1 is async rpc
+#define ROOT_EMPTY 1 // 1 is empty, 0 is not empty
 
 
 #define KV_TYPE 0   // 0 is memc3, 1 is redis
 #define MOUNT_PATH_MAX 128
 #define PATH_MAX 128  // enlarge this value to support deep namespace in mdtest (this value in the pacon server also should be changed)
+					  // however, the Memcached supports up to 250B as the key size
 #define SP_LIST_MAX 16
 #define CR_JOINT_MAX 8
 #define RMDIRLIST_MAX 128

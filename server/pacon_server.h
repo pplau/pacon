@@ -18,6 +18,7 @@
 #define CHECKPOINT_PATH "/mnt/beegfs/pacon_checkpoint"
 
 #define PATH_MAX 128 // enlarge this value to support deep namespace in mdtest (this value in the pacon client also should be changed)
+					 // however, the Memcached supports up to 250B as the key size
 #define SP_LIST_MAX 16
 #define RMDIRLIST_MAX 128
 

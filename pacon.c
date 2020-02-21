@@ -586,7 +586,8 @@ int init_pacon(struct pacon *pacon)
     	printf("inital root dir fail\n");
     	return -1;
     }
-    add_to_dir_check_table(pacon->mount_path);
+    if (ROOT_EMPTY == 1)
+    	add_to_dir_check_table(pacon->mount_path);
 
     // init fsync log: 1. check the path  2. create the log file
     if (access(FSYNC_LOG_PATH, F_OK) != 0)

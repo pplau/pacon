@@ -1,5 +1,5 @@
-# Pacon   
-A partial consistency library   
+# Pacon  
+A library that allows existing distributed file system to use partial consistency. Partial consistency provides the application with strong consistency guarantee for only its workspace.
 
 # Install:  
 `cd /pacon ` 

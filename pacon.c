@@ -430,7 +430,7 @@ int test_entry_exist(struct pacon *pacon, char *path)
 	else
 		return -1;
 
-	int existed = get_stat_flag(st_tmp, STAT_rm);
+	int existed = get_stat_flag(&st_tmp, STAT_rm);
 	if (existed == 1)
 		return 0;
 	else
@@ -456,7 +456,7 @@ void flush_dir_new(struct pacon *pacon, char *path)
 		dir_new[p_len+1+c_len] = '\0';
 
 		if (test_entry_exist(pacon, dir_new) == 1)
-			dmkv_del(pacon->kv_handle_for_barrier, dir_new);
+			dmkv_del(pacon->kv_handle, dir_new);
 
 		if (entry->d_type == DT_DIR)
 		{

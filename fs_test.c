@@ -237,6 +237,7 @@ int main(int argc, char const *argv[])
 		return -1;
 	}
 	printf("init pacon success\n");
+	sleep(1);
 
 	if (TEST_TYPE == 0)
 	{

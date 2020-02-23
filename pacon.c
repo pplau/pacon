@@ -430,7 +430,7 @@ int test_entry_exist(struct pacon *pacon, char *path)
 	else
 		return -1;
 
-	int existed = get_stat_flag(st, STAT_rm);
+	int existed = get_stat_flag(st_tmp, STAT_rm);
 	if (existed == 1)
 		return 0;
 	else
@@ -531,7 +531,7 @@ retry:
 	struct dirent *entry;
 
 find_again:
-	dir = opendir(pacon, pacon->mount_path);
+	dir = opendir(pacon->mount_path);
 	entry = readdir(dir);
 	c = 0;
 	int found = 0;
@@ -564,7 +564,7 @@ find_again:
 		c++;
 		entry = readdir(dir);
 	}
-	closedir(pacon, dir);
+	closedir(dir);
 	if (found == 0)
 	{
 		rr = 0;

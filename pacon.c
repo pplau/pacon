@@ -531,8 +531,9 @@ retry:
 	DIR *dir;
 	struct dirent *entry;
 
+	int r1;
 find_again:
-	int r1 = 0, r2 = 0;
+	r1 = 0;
 	dir = opendir(pacon->mount_path);
 	entry = readdir(dir);
 	c = 0;
@@ -541,15 +542,12 @@ find_again:
 	{
 		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
 		{
-			if (r1 == 1 && r2 == 1)
+			r1++;
+			if (r1 >= 3)
 			{
 				closedir(dir);
 				goto find_again;
 			}
-			if (strcmp(entry->d_name, ".") == 0)
-				r1 = 1;
-			else
-				r2 = 1;
 			entry = readdir(dir);
 			continue;
 		}

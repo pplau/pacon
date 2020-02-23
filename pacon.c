@@ -470,7 +470,8 @@ int flush_file_new(struct pacon *pacon, char *path)
 {
 	int ret;
 	struct stat buf;
-	while (stat(path, &buf) != 0)
+	if (stat(path, &buf) != 0)
+		return 0;
 	if (test_entry_exist(pacon, path) == 1)
 	{
 		ret = dmkv_del(pacon->kv_handle, path);
@@ -531,6 +532,7 @@ retry:
 	struct dirent *entry;
 
 find_again:
+	int r1 = 0, r2 = 0;
 	dir = opendir(pacon->mount_path);
 	entry = readdir(dir);
 	c = 0;
@@ -539,6 +541,15 @@ find_again:
 	{
 		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
 		{
+			if (r1 == 1 && r2 == 1)
+			{
+				closedir(dir);
+				goto find_again;
+			}
+			if (strcmp(entry->d_name, ".") == 0)
+				r1 = 1;
+			else
+				r2 = 1;
 			entry = readdir(dir);
 			continue;
 		}

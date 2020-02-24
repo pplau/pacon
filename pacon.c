@@ -487,7 +487,7 @@ int flush_file_new(struct pacon *pacon, char *path)
 /*
  * Policy:
  * 1. select an entry under the root dir by the DFS interface
- * 2. evict the enties under/of it
+ * 2. evict the entries under/of it
  */
 int evict_metadata_new(struct pacon *pacon)
 {
@@ -579,6 +579,102 @@ find_again:
 		rr = 0;
 		goto find_again;
 	}
+
+	char new_evict_record[128];
+	sprintf(new_evict_record, "%d", rr);
+	ret = dmkv_set(pacon->kv_handle, evict_record, new_evict_record, strlen(new_evict_record));
+	if (ret != 0)
+	{
+		printf("update evict record error\n");
+		return -1;
+	}
+
+	// free evict lock, doesn't need cas, becasue only the item has already been locked
+	ret = dmkv_set(pacon->kv_handle, evict_lock, "0", strlen("0"));
+	if (ret != 0)
+	{
+		printf("free evict lock error\n");
+		return -1;
+	}
+	return 0;
+}
+
+int evict_metadata_explicit(struct pacon *pacon)
+{
+	int ret;
+	// get evict lock
+	char *val;
+	uint64_t cas;
+	uint64_t cas_temp;
+	char *evict_lock = "evict_lock";
+retry:
+	val = dmkv_get_cas(pacon->kv_handle, evict_lock, &cas);
+	if (val == NULL)
+	{
+		printf("get evict lock error: not existed\n");
+		return -1;
+	}
+	if (val[0] == '0')
+	{
+		ret = dmkv_cas(pacon->kv_handle, evict_lock, "1", strlen("1"), cas);
+		if (ret == 1)
+			goto retry;
+	} else if (val[0] == '1') {
+		goto retry;
+	} else {
+		printf("evict lock val error\n");
+		return -1;
+	}
+
+	// find a entry to be evicted
+	char *record_val;
+	char *evict_record = "evict_record";
+	record_val = dmkv_get(pacon->kv_handle, evict_record);
+	if (record_val == NULL)
+	{
+		printf("get evict record val error\n");
+		return -1;
+	}
+	int rr = atoi(record_val);
+	int c;
+
+	DIR *dir;
+	struct dirent *entry;
+
+	dir = pacon_opendir(pacon, pacon->mount_path);
+	entry = pacon_readdir(dir);
+	c = 0;
+	int found = 0;
+	while (entry != NULL)
+	{
+		if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+		{
+			entry = pacon_readdir(dir);
+			continue;
+		}
+		if (c == rr)
+		{
+			char evict_path[PATH_MAX];
+			sprintf(evict_path, "%s%s%s", pacon->mount_path, "/", entry->d_name);
+			if (entry->d_type == DT_DIR)
+			{
+				flush_dir_new(pacon, evict_path);
+			} else {
+				ret = flush_file_new(pacon, evict_path);
+				if (ret != 0)
+				{
+					printf("evict metadata: flush file error\n");
+					return -1;
+				}
+			}
+			rr++;
+			found = 1;
+			break;
+		}
+		c++;
+		entry = pacon_readdir(dir);
+	}
+	pacon_closedir(pacon, dir);
 
 	char new_evict_record[128];
 	sprintf(new_evict_record, "%d", rr);

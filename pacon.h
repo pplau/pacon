@@ -218,9 +218,13 @@ void pacon_barrier(struct pacon *pacon, int opt_num);
  * app must clean the parent check table on each client after call rmdir
  * example:
  *		if (rank == 0)
- *			pacon_rmdir();
- *		else
- *			pacon_rmdir_clean();
+ *		{
+ *			pacon_barrier(pacon, 1);
+ *			pacon_rmdir(...);
+ *		} else {
+ *			pacon_barrier(pacon, 0);
+ *			pacon_rmdir_clean(...);
+ *		}
  *		MPI_Barrier();  // it is optional
  *						// because each client holds an independent parent check table
  *						// but app needs to ensure that there is no ops under the deleted dir in the code behind this line
@@ -228,6 +232,24 @@ void pacon_barrier(struct pacon *pacon, int opt_num);
 int pacon_rmdir(struct pacon *pacon, const char *path);
 int pacon_rmdir_clean(struct pacon *pacon);
 
+/******* some notes in explicit evict interface *********
+ * this interface is used to implement eviction module by admin/app
+ * admin/app can use parallel programming framwork (e.g., MPI) to implement the eviction module
+ * admin/app needs to implement a memory monitor and deploies it on each node
+ * example:
+ *		barrier for eviction
+ *		if (the cache size of rank N exceeds the thrshold)
+ *		{
+ *			if (rank == N)
+ *	 		{
+ *	 			pacon_barrier(pacon, 1);
+ *	 			evict_metadata_explicit(...);
+ *	 		} else {
+ *	 			pacon_barrier(pacon, 0);
+ *	 		}
+ *		}
+ ***********************************************/
+int evict_metadata_explicit(struct pacon *pacon);
 
 
 /**************** consistent region interfaces ****************/

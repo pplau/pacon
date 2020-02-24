@@ -92,6 +92,7 @@ int memc_add(memcached_st *memc, char *key, char *val, int val_len)
 			return -2;
 		if (rc == MEMCACHED_TIMEOUT)
 			return -3;
+		// debug message, can be closed when app runs
 		printf("memcached error: %d, %s\n", rc, memcached_strerror(memc, rc));
 		return -1;
 	}

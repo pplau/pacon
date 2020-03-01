@@ -18,6 +18,7 @@
 #define PARENT_CHECK 1 // 0 is not check the parent dir when creating dir and file
 #define ASYNC_RPC 0  // 0 is sync rpc, 1 is async rpc
 #define ROOT_EMPTY 1 // 1 is empty, 0 is not empty
+#define SLEEP_AFTER_INIT_SEC 5 // sleep 5s after init pacon
 
 
 #define KV_TYPE 0   // 0 is memc3, 1 is redis

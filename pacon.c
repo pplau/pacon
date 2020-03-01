@@ -829,9 +829,10 @@ int init_pacon(struct pacon *pacon)
 	// init mq
 	void *context = zmq_ctx_new();
     void *publisher = zmq_socket(context, ZMQ_PUB);
-    //int q_len = 0;
-    //int rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, &q, sizeof(q_len));
-    int rc = zmq_connect(publisher, "ipc:///run/pacon_commit");
+    /* set it unlimit */
+    int q_len = 0;
+    int rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, &q_len, sizeof(q_len));
+    rc = zmq_connect(publisher, "ipc:///run/pacon_commit");
     if (rc != 0)
     {
     	printf("init commit mq error\n");
@@ -844,7 +845,7 @@ int init_pacon(struct pacon *pacon)
 	void *context_local_rpc = zmq_ctx_new();
     void *local_rpc_req = zmq_socket(context_local_rpc, ZMQ_REQ);
     //int q_len = 0;
-    //int rc = zmq_setsockopt(publisher, ZMQ_SNDHWM, &q, sizeof(q_len));
+    rc = zmq_setsockopt(local_rpc_req, ZMQ_SNDHWM, &q_len, sizeof(q_len));
     rc = zmq_connect(local_rpc_req, "tcp://127.0.0.1:5555");
     if (rc != 0)
     {
@@ -946,6 +947,11 @@ int init_pacon(struct pacon *pacon)
     	pacon->rmdir_record->shmid_count = 1;
     }
 	return 0;
+	if (SLEEP_AFTER_INIT_SEC > 0)
+	{
+		printf("initialing pacon.......\n");
+		sleep(SLEEP_AFTER_INIT_SEC);
+	}
 }
 
 int free_pacon(struct pacon *pacon)

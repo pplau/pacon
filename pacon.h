@@ -265,6 +265,7 @@ int cregion_joint(struct pacon *pacon, int cr_num);
 
 int cregion_split(struct pacon *pacon, int cr_num);
 
+/* need to be used with barrier, like the usage of pacon_rmdir */
 int cregion_checkpoint(struct pacon *pacon);
 
 int cregion_recover(struct pacon *pacon);

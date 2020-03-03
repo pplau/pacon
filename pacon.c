@@ -2357,7 +2357,8 @@ int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, c
 		if (ret == -1)
 		{
 			printf("read from remote cregion error\n");
-			return -1;
+			goto dfs;
+			//return -1;
 		}
 	}
 
@@ -2392,6 +2393,7 @@ int pacon_read_new(struct pacon *pacon, char *path, struct pacon_file *p_file, c
 			return size;
 		} else {
 			// DFS case
+dfs:
 			p_file->fd = open(path, O_RDWR);
 			ret = pread(p_file->fd, buf, size, offset);
 			return ret;
@@ -2576,7 +2578,11 @@ retry:
 	val = dmkv_get_cas(pacon->kv_handle, path, &cas);
 	uint64_t cas_tmp = cas;
 	if (val == NULL)
-		goto retry;
+	{
+		int fd_1 = open(path, O_RDWR);
+		return pwrite(fd_1, buf, size, offset);
+		//goto retry;
+	}
 	deseri_inline_data(&new_st, inline_data, val);
  
 
@@ -3153,7 +3159,7 @@ int cregion_split(struct pacon *pacon, int remote_cr_num)
 int cregion_checkpoint(struct pacon *pacon)
 {
 	int ret;
-	add_to_mq(pacon, pacon->mount_path, CHECKPOINT, time(NULL));
+	//add_to_mq(pacon, pacon->mount_path, CHECKPOINT, time(NULL));  // may not need it, removed after ipdps camera-ready
 	ret = add_to_local_rpc(pacon, pacon->mount_path, CHECKPOINT, time(NULL));
 	if (ret == -1)
 	{

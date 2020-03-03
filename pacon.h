@@ -226,7 +226,7 @@ void pacon_barrier(struct pacon *pacon, int opt_num);
  *			pacon_barrier(pacon, 0);
  *			pacon_rmdir_clean(...);
  *		}
- *		MPI_Barrier();  // it is optional
+ *		MPI_Barrier();  // it is optional, but we recommend using
  *						// because each client holds an independent parent check table
  *						// but app needs to ensure that there is no ops under the deleted dir in the code behind this line
  ***********************************************/
@@ -249,6 +249,7 @@ int pacon_rmdir_clean(struct pacon *pacon);
  *	 			pacon_barrier(pacon, 0);
  *	 		}
  *		}
+ *		MPI_Barrier();  // it is optional, but we recommend using 
  ***********************************************/
 int evict_metadata_explicit(struct pacon *pacon);
 

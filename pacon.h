@@ -106,7 +106,7 @@ struct pacon_stat
 	uint32_t gid;
 	uint32_t nlink;
 	uint32_t open_counter;
-	//uint32_t fd;
+	uint32_t fd;
 };
 
 struct pacon_file

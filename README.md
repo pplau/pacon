@@ -28,7 +28,7 @@ $ ./pacon   // run test
 $ bash ./scripts/stop_pacon.sh
 ```
 
-# Pacon Interfaces  
+# Interfaces  
 Most interefaces in Pacon are similar to POSIX, except rmdir, readdir  
 
 

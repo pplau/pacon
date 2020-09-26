@@ -17,10 +17,10 @@ $ make
 # Start Pacon  
 ```bash
 $ echo $NODE_IP > /pacon/config 
-$ echo $NODE_IP:$CLIENT_NUM > /pacon/local_config //CLIENT_NUM is the number of current clients in this node  
-$ modify the file path in start_pacon_new.sh   
+$ echo $NODE_IP:$CLIENT_NUM > /pacon/local_config # CLIENT_NUM is the number of current clients in this node  
+# modify the file path in start_pacon_new.sh   
 $ bash ./scripts/start_pacon_new.sh
-$ ./pacon   // run test  
+$ ./pacon   # run test  
 ```
 
 # Stop Pacon  

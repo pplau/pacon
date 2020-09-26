@@ -1,9 +1,9 @@
-# Pacon: Improving Scalability and Efficiency of Metadata Service through Partial Consistency
+# Pacon: Improving Scalability and Efficiency of Metadata Service through Partial Consistency (IPDPS'20)
 A library that allows existing distributed file system to use partial consistency. Partial consistency provides the application with strong consistency guarantee for only its workspace.
 
-Find out more about Pacon in our IPDPS'20 paper:
+Find out more about Pacon in our [paper](https://ieeexplore.ieee.org/abstract/document/9139884):
 
-Yubo Liu, Yutong Lu, Zhiguang Chen, and Ming Zhao. Pacon: Improving Scalability and Efficiency of Metadata Service through Partial Consistency. In Proceedings of International Parallel and Distributed Processing Symposium (IPDPS), 2020, pp. 986–996.
+***Yubo Liu, Yutong Lu, Zhiguang Chen, and Ming Zhao. Pacon: Improving Scalability and Efficiency of Metadata Service through Partial Consistency. In Proceedings of International Parallel and Distributed Processing Symposium (IPDPS), 2020, pp. 986–996.***
 
 # Install:  
 ```bash

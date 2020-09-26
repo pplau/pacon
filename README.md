@@ -1,5 +1,5 @@
 # Pacon: Improving Scalability and Efficiency of Metadata Service through Partial Consistency (IPDPS'20)
-A library that allows existing distributed file system to use partial consistency. Partial consistency provides the application with strong consistency guarantee for only its workspace.
+A library that allows existing distributed file system to use partial consistency. Partial consistency provides the application with strong consistency guarantee for only its workspace. Pacon improves the scalability of metadata service by optimizing the consistency model of client side metadata cache. 
 
 Find out more about Pacon in our [paper](https://ieeexplore.ieee.org/abstract/document/9139884):
 
@@ -16,16 +16,16 @@ $ make
 
 # Start Pacon  
 ```bash
-$ echo $NODE_IP > /pacon/config`  
-$ echo $NODE_IP:$CLIENT_NUM > /pacon/local_config //CLIENT_NUM is the number of current clients in this node`  
+$ echo $NODE_IP > /pacon/config 
+$ echo $NODE_IP:$CLIENT_NUM > /pacon/local_config //CLIENT_NUM is the number of current clients in this node  
 $ modify the file path in start_pacon_new.sh   
-$ bash ./scripts/start_pacon_new.sh`  
-$ ./pacon   // run test`  
+$ bash ./scripts/start_pacon_new.sh
+$ ./pacon   // run test  
 ```
 
 # Stop Pacon  
 ```bash
-$ bash ./scripts/stop_pacon.sh`
+$ bash ./scripts/stop_pacon.sh
 ```
 
 # Pacon Interfaces  

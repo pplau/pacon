@@ -9,7 +9,7 @@ Find out more about Pacon in our [paper](https://ieeexplore.ieee.org/abstract/do
 ```bash
 $ cd /pacon
 $ bash ./scripts/pacon_install.sh   
-$ make   // build test tool      
+$ make   # build test tool      
 $ cd ./pacon/server
 $ make 
 ```

@@ -3,7 +3,7 @@ A library that allows existing distributed file system to use partial consistenc
 
 Find out more about Pacon in our [paper](https://ieeexplore.ieee.org/abstract/document/9139884):
 
-***Yubo Liu, Yutong Lu, Zhiguang Chen, and Ming Zhao. Pacon: Improving Scalability and Efficiency of Metadata Service through Partial Consistency. In Proceedings of International Parallel and Distributed Processing Symposium (IPDPS), 2020, pp. 986–996.***
+***Pacon: Improving Scalability and Efficiency of Metadata Service through Partial Consistency. Yubo Liu, Yutong Lu, Zhiguang Chen, and Ming Zhao. In Proceedings of International Parallel and Distributed Processing Symposium (IPDPS), 2020, pp. 986–996.***
 
 # Install:  
 ```bash
@@ -33,8 +33,10 @@ Most interefaces in Pacon are similar to POSIX, except rmdir, readdir
 
 
 # Batch Permission Setting
-If application does not call the pacon_set_permission() function, Pacon use the default setting     
-If application want to define the permission, it must call pacon_set_permission() in each client and make sure they use the same permission setting     
+* Pacon uses the default setting (all clients ) if a application does not customize the permission information by the *pacon_set_permission()* function.
+
+* If a application defines the permission information, it must call pacon_set_permission() in each client and make sure they use the same permission setting.  
+ 
 
 # Joint Consistent Regions
 1. add all addresses of remote cregion into ./cr_joint_config    
